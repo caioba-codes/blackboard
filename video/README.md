@@ -6,7 +6,7 @@ Copy the runtime files into a new project directory. A project is self-contained
 
 | Runtime file | Role |
 |---|---|
-| `tts.py` | Narrates every spoken cue with ElevenLabs and measures it. Writes `timeline.json`, `timeline.js`, `narration.wav` and their fingerprint `tts.done`. |
+| `tts.py` | Narrates every spoken cue (local Kokoro by default, ElevenLabs with a key) and measures it. Writes `timeline.json`, `timeline.js`, `narration.wav` and their fingerprint `tts.done`. |
 | `engine.js`, `style.css` | Scene engine and board look (fonts, KaTeX, colors, components). |
 | `index.html` | Loads `timeline.js`, `engine.js`, then the scene files named in `SPLIT.json`, and checks every registration. |
 | `capture.mjs` | Strict check, QA stills, preview server, and the resumable full frame render. |
@@ -22,7 +22,7 @@ Copy the runtime files into a new project directory. A project is self-contained
 - Python 3.9+ (stdlib only), Node 18+, `ffmpeg`/`ffprobe` built with libx264, libmp3lame and aac.
 - Playwright Chromium: run `npm install` and `npx playwright install chromium` once per project.
 - Network access during capture, because `index.html` loads Playfair Display, Crimson Pro and Patrick Hand from Google Fonts and KaTeX 0.16.11 from cdnjs.
-- `ELEVENLABS_API_KEY` in the environment, needed only when a cue still has to be narrated.
+- A narrator, needed only when a cue still has to be narrated: local Kokoro (`sh <skill>/bin/setup_tts.sh` once per machine) or `ELEVENLABS_API_KEY` in the environment.
 
 ## Project files you write
 
@@ -75,7 +75,7 @@ Run these from the project directory:
 ```sh
 npm install && npx playwright install chromium        # once
 python3 tts.py --check                                # cached vs missing cues, no API call (exit 1 if any missing)
-ELEVENLABS_API_KEY=... python3 tts.py                 # narrate missing cues → timeline.json, timeline.js, narration.wav, tts.done
+python3 tts.py                                        # narrate missing cues → timeline.json, timeline.js, narration.wav, tts.done
 python3 tts.py --verify                               # those three files come from one complete run (exit 1 otherwise)
 node capture.mjs check                                # strict: SPLIT.json order + every scene registered (exit 1 otherwise)
 node capture.mjs scene s05 2                          # QA stills of one scene → qa/s05_<t>.png (warns about unbuilt scenes)
@@ -92,18 +92,20 @@ node capture.mjs all 4 && ./finish.sh
 
 ### tts.py
 
-- The voice comes from `script.json` `voice` (default `XrExE9yKIg1WjnnlVkGX`). The model defaults to `eleven_v4`, with voice settings stability 0.55, similarity_boost 0.8, style 0.15, speed 0.97 and output format `mp3_44100_192`.
+- Engine (`--engine` or `BLACKBOARD_TTS_ENGINE`, default `auto`): ElevenLabs when `ELEVENLABS_API_KEY` is set or every cue is already cached from it, else Kokoro-82M (Apache-2.0, runs locally, no key). With neither, it exits 2 with `TTS_BLOCKED` and the install line.
+- Kokoro runs in `$BLACKBOARD_TTS_HOME/tts-venv` (default `~/.cache/blackboard`) with weights in `kokoro/`, both made by the skill's `bin/setup_tts.sh`. Voice `BLACKBOARD_TTS_VOICE`, else `script.json` `kokoroVoice`, else `af_heart`; speed `BLACKBOARD_TTS_SPEED` (1.0). Each subtitle chunk is synthesized separately and its span measured, so cue durations and subtitle times come from the audio. Cues are `audio/<scene>_<cue>.wav` plus `.wav.json`, keyed on model, voice, speed and text.
+- ElevenLabs: the voice comes from `script.json` `voice` (default `XrExE9yKIg1WjnnlVkGX`). The model defaults to `eleven_v4`, with voice settings stability 0.55, similarity_boost 0.8, style 0.15, speed 0.97 and output format `mp3_44100_192`.
 - `ELEVENLABS_MODEL` overrides the model. `ELEVENLABS_API_BASE` overrides the endpoint (the smoke test uses a local mock). `--workers N` sets the number of parallel requests (default 3).
-- Every cue is stored as `audio/<scene>_<cue>.mp3` plus `.mp3.json`, which holds the alignment and the cache key. The key is a SHA-256 of the model, voice, voice settings, output format and text. Changing any of them re-narrates only the affected cues.
+- Every ElevenLabs cue is stored as `audio/<scene>_<cue>.mp3` plus `.mp3.json`, which holds the alignment and the cache key. The key is a SHA-256 of the model, voice, voice settings, output format and text. Changing any of them re-narrates only the affected cues.
 - Audio cached by the earlier pipeline (key `sha1(model+voice+text)` under the same default settings) is accepted and its metadata upgraded in place, so already-narrated lessons are not paid for twice.
 - Writes are atomic. Before a cue's audio is replaced, its old metadata is deleted, and the new metadata is written last, so an interrupted run leaves that cue missing (never cached under the wrong text) and resumes when you run it again.
 - `narration.wav` is built to a temporary file first. Only then are `timeline.json`, `timeline.js` and `narration.wav` replaced, and `tts.done` is written last with the SHA-256 of the script and all three outputs. `--verify` checks that fingerprint against the current script, and `capture.mjs all` and `finish.sh` run it before doing anything, so a failed or interrupted run can never be rendered as a mix of new and old files. Rerunning `tts.py` (no API call when every cue is cached) writes a valid `tts.done`, including for projects narrated before it existed.
 - Exit codes:
   - `0`: done.
   - `1`: `--check` found missing cues, or `--verify` found files that do not match `tts.done` (`TTS_INCOMPLETE: …`).
-  - `2`: bad `script.json`, or the key is missing while cues need narration.
+  - `2`: bad `script.json`, or no narrator for the cues that need one (`TTS_BLOCKED`, or ElevenLabs forced without a key).
   - `3`: quota or auth refused (`TTS_QUOTA_OR_AUTH: HTTP 401 quota_exceeded …`). The run stops at once, keeps what was cached and says how many cues are left.
-  - `4`: other API failure after 6 attempts (429, 5xx and network errors are retried with backoff).
+  - `4`: other API failure after 6 attempts (429, 5xx and network errors are retried with backoff), or a Kokoro run failed.
 - When anything fails, the previously published `timeline.json`, `timeline.js` and `narration.wav` are left as they were.
 
 ### capture.mjs

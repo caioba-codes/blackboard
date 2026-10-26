@@ -28,6 +28,7 @@ def check(name, ok, detail=""):
 def environ(env=None):
     e = dict(os.environ)
     e.pop("ELEVENLABS_API_KEY", None)
+    e["BLACKBOARD_TTS_ENGINE"] = "elevenlabs"   # the mock exercises the ElevenLabs path, never the local Kokoro
     e.update(env or {})
     return e
 

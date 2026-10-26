@@ -1,22 +1,28 @@
 #!/usr/bin/env python3
-"""Narrate every cue of script.json with ElevenLabs (with timestamps), then build timeline.json + timeline.js.
+"""Narrate every cue of script.json, then build timeline.json + timeline.js from the measured audio.
 
-audio/<scene>_<cue>.mp3 + .json (alignment). Re-runs skip cues whose model, voice, voice settings, output
-format and text did not change, so an interrupted or quota-stopped run resumes where it stopped.
+Narrators: Kokoro-82M (local, Apache-2.0, no key; the default) or ElevenLabs (when ELEVENLABS_API_KEY is set).
+audio/<scene>_<cue>.wav (Kokoro) or .mp3 (ElevenLabs) + .json (timing). Re-runs skip cues whose engine, model,
+voice, settings and text did not change, so an interrupted or quota-stopped run resumes where it stopped.
 timeline.json: scenes with absolute start/dur, cues with scene-local s/e, subtitle chunks per sentence.
 tts.done: sha256 of timeline.json, timeline.js and narration.wav, written last; render refuses any other set.
 
   python3 tts.py               narrate what is missing, then write timeline.json, timeline.js, narration.wav, tts.done
   python3 tts.py --check       report cached / missing cues without calling the API (exit 0 = all cached)
   python3 tts.py --verify      exit 0 only if the three published files are the set tts.done fingerprints
-  python3 tts.py --workers 3   parallel requests (default 3)
+  python3 tts.py --workers 3   parallel ElevenLabs requests (default 3)
+  python3 tts.py --engine kokoro|elevenlabs   force a narrator (default auto, or BLACKBOARD_TTS_ENGINE)
 
-Credentials: ELEVENLABS_API_KEY in the environment (only needed when a cue is missing).
-Overrides: ELEVENLABS_MODEL, ELEVENLABS_API_BASE. The voice comes from script.json "voice".
-Exit codes: 0 ok, 2 usage/script/credential error, 3 quota or auth refused by the API, 4 other API failure.
+auto: ElevenLabs when ELEVENLABS_API_KEY is set or every cue is already cached from it, else Kokoro.
+Kokoro lives outside the project: $BLACKBOARD_TTS_HOME (default ~/.cache/blackboard)/tts-venv and kokoro/,
+installed by the skill's bin/setup_tts.sh. Voice: BLACKBOARD_TTS_VOICE, else script.json "kokoroVoice", else
+af_heart; speed BLACKBOARD_TTS_SPEED (1.0). ElevenLabs: voice from script.json "voice"; overrides
+ELEVENLABS_MODEL, ELEVENLABS_API_BASE.
+Exit codes: 0 ok, 2 usage/script error or no narrator available (TTS_BLOCKED), 3 quota or auth refused by the
+API, 4 other API or narrator failure.
 """
 import argparse, base64, concurrent.futures as cf, hashlib, json, os, re, subprocess, sys, tempfile, threading, time
-import urllib.error, urllib.request
+import urllib.error, urllib.request, wave
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 AUD = os.path.join(ROOT, "audio")
@@ -31,6 +37,16 @@ HEAD, TAIL = 0.6, 0.9  # scene padding
 SAFE_ID = re.compile(r"^[A-Za-z0-9_-]+$")
 DONE = os.path.join(ROOT, "tts.done")
 PUBLISHED = ("script.json", "timeline.json", "timeline.js", "narration.wav")
+
+TTS_HOME = os.path.expanduser(os.environ.get("BLACKBOARD_TTS_HOME", "~/.cache/blackboard"))
+KOKORO_PY = os.path.join(TTS_HOME, "tts-venv", "bin", "python")
+KOKORO_FILES = (os.path.join(TTS_HOME, "kokoro", "kokoro-v1.0.onnx"), os.path.join(TTS_HOME, "kokoro", "voices-v1.0.bin"))
+KOKORO_MODEL = "kokoro-v1.0"
+KOKORO_VOICE = "af_heart"   # Kokoro's highest-graded voice; clearest of af_heart / am_michael / bf_emma for teaching
+KOKORO_SPEED = float(os.environ.get("BLACKBOARD_TTS_SPEED", "1.0"))
+KOKORO_GAP = {".": 0.3, "?": 0.3, "!": 0.3, ":": 0.25}   # silence after a sentence; 0.12 s after a comma split
+INSTALL_HINT = ("install the free local narrator with: sh ~/.claude/skills/blackboard/bin/setup_tts.sh "
+                "(or set ELEVENLABS_API_KEY)")
 
 
 class Stop(Exception):
@@ -95,6 +111,16 @@ def cache_key(voice, text, model=MODEL, settings=None, fmt=OUTPUT_FORMAT):
     return "v2:" + hashlib.sha256(blob.encode()).hexdigest()
 
 
+def kokoro_key(voice, text):
+    blob = json.dumps({"engine": "kokoro", "model": KOKORO_MODEL, "voice": voice, "speed": KOKORO_SPEED,
+                       "gaps": KOKORO_GAP, "text": text}, sort_keys=True, ensure_ascii=False)
+    return "kokoro1:" + hashlib.sha256(blob.encode()).hexdigest()
+
+
+def kokoro_available():
+    return os.access(KOKORO_PY, os.X_OK) and all(os.path.isfile(f) for f in KOKORO_FILES)
+
+
 def legacy_key(voice, text):
     # Projects narrated before the cache key covered the settings used sha1(model + voice + text) with exactly
     # these defaults; accept such audio only while the defaults are still in force.
@@ -106,6 +132,13 @@ def legacy_key(voice, text):
 
 def cached(path, voice, text):
     meta = path + ".json"
+    if path.endswith(".wav"):   # Kokoro cue
+        try:
+            with open(meta) as f:
+                m = json.load(f)
+        except (OSError, ValueError):
+            return False
+        return os.path.exists(path) and bool(m.get("alignment")) and m.get("hash") == kokoro_key(voice, text)
     if not (os.path.exists(path) and os.path.exists(meta)):
         return False
     try:
@@ -217,41 +250,134 @@ def tts(path, voice, text, key):
     print("tts", os.path.basename(path), flush=True)
 
 
+def pieces(text):
+    """(start, end) inclusive char spans of the subtitle chunks: sentences, long ones split at commas."""
+    out = []
+    for m in re.finditer(r"[^.?!:]+[.?!:]?", text):
+        seg = m.group(0)
+        if not seg.strip():
+            continue
+        parts = re.split(r"(?<=,)\s", seg) if len(seg) > 95 else [seg]
+        pos = m.start()
+        for p in parts:
+            a = text.find(p, pos)
+            b = a + len(p) - 1
+            pos = b + 1
+            a2 = a + (len(p) - len(p.lstrip()))
+            if a2 <= b:
+                out.append((a2, b))
+    return out
+
+
+def kokoro_alignment(text, spans):
+    """Character timing built from each chunk's measured (start, end) in the audio, spread linearly inside it."""
+    st, en = [0.0] * len(text), [0.0] * len(text)
+    prev = 0
+    for (a, b), (s0, s1) in zip(pieces(text), spans):
+        for i in range(prev, a):                  # whitespace between chunks: at the previous chunk's end
+            st[i] = en[i] = en[i - 1] if i else 0.0
+        step = (s1 - s0) / (b - a + 1)
+        for i in range(a, b + 1):
+            st[i], en[i] = round(s0 + step * (i - a), 4), round(s0 + step * (i - a + 1), 4)
+        prev = b + 1
+    for i in range(prev, len(text)):
+        st[i] = en[i] = en[i - 1] if i else 0.0
+    return {"characters": list(text), "character_start_times_seconds": st, "character_end_times_seconds": en}
+
+
+KOKORO_HELPER = r"""
+import json, sys
+import numpy as np, soundfile as sf
+from kokoro_onnx import Kokoro
+req = json.load(sys.stdin)
+k = Kokoro(req["model"], req["voices"])
+for job in req["jobs"]:
+    out, t, sr = [], 0.0, 24000
+    spans = []
+    for text, gap in zip(job["pieces"], job["gaps"]):
+        a, sr = k.create(text, voice=job["voice"], speed=job["speed"], lang=job["lang"])
+        spans.append([round(t, 4), round(t + len(a) / sr, 4)])
+        out.append(a)
+        t += len(a) / sr
+        if gap:
+            out.append(np.zeros(int(gap * sr), dtype=np.float32))
+            t += gap
+    sf.write(job["tmp"], np.concatenate(out), sr, subtype="PCM_16", format="WAV")
+    print(json.dumps({"tmp": job["tmp"], "spans": spans}), flush=True)
+"""
+
+
+def kokoro_synth(jobs):
+    """Render [{"tmp", "pieces", "gaps", "voice", "speed", "lang"}] with the Kokoro venv; yields {"tmp", "spans"}."""
+    req = {"model": KOKORO_FILES[0], "voices": KOKORO_FILES[1], "jobs": jobs}
+    p = subprocess.run([KOKORO_PY, "-I", "-c", KOKORO_HELPER], input=json.dumps(req), capture_output=True, text=True)
+    done = [json.loads(line) for line in p.stdout.splitlines() if line.startswith("{")]
+    if p.returncode:
+        raise Stop(4, f"TTS_FAILED: Kokoro exited {p.returncode} after {len(done)} of {len(jobs)} cues: {p.stderr.strip()[-600:]}")
+    return done
+
+
+def kokoro_run(missing, voice):
+    jobs = []
+    for path, _, text in missing:
+        ps = pieces(text)
+        gaps = [KOKORO_GAP.get(text[a:b + 1].rstrip()[-1:], 0.12) for a, b in ps[:-1]] + [0]
+        jobs.append({"path": path, "text": text, "tmp": os.path.join(AUD, ".tmp-" + os.path.basename(path)),
+                     "pieces": [text[a:b + 1].strip() for a, b in ps], "gaps": gaps, "voice": voice, "speed": KOKORO_SPEED,
+                     "lang": "en-gb" if voice[:1] == "b" else "en-us"})
+    by_tmp = {j["tmp"]: j for j in jobs}
+    for r in kokoro_synth([{k: v for k, v in j.items() if k not in ("path", "text")} for j in jobs]):
+        j = by_tmp[r["tmp"]]
+        if os.path.exists(j["path"] + ".json"):
+            os.remove(j["path"] + ".json")
+        os.replace(j["tmp"], j["path"])
+        atomic_write(j["path"] + ".json", json.dumps({"hash": kokoro_key(voice, j["text"]), "engine": "kokoro",
+                                                       "model": KOKORO_MODEL, "voice": voice, "speed": KOKORO_SPEED,
+                                                       "text": j["text"], "spans": r["spans"],
+                                                       "alignment": kokoro_alignment(j["text"], r["spans"])}).encode())
+        print("tts", os.path.basename(j["path"]), flush=True)
+
+
 def dur(path):
     return float(subprocess.check_output(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", path]).decode())
 
 
 def chunks(text, al):
     """Split narration into subtitle chunks (sentences, long ones split at commas) with times."""
-    chars, st, en = al["characters"], al["character_start_times_seconds"], al["character_end_times_seconds"]
-    joined = "".join(chars)
-    out, i = [], 0
-    for m in re.finditer(r"[^.?!:]+[.?!:]?", joined):
-        seg = m.group(0)
-        if not seg.strip():
-            continue
-        parts = [seg]
-        if len(seg) > 95:
-            parts = re.split(r"(?<=,)\s", seg)
-        pos = m.start()
-        for p in parts:
-            a = joined.find(p, pos)
-            b = a + len(p) - 1
-            pos = b + 1
-            a2 = a + (len(p) - len(p.lstrip()))
-            if a2 > b:
-                continue
-            out.append({"text": p.strip(), "s": st[a2], "e": en[b]})
-    return out
+    joined = "".join(al["characters"])
+    st, en = al["character_start_times_seconds"], al["character_end_times_seconds"]
+    return [{"text": joined[a:b + 1].strip(), "s": st[a], "e": en[b]} for a, b in pieces(joined)]
 
 
-def jobs_for(script):
-    voice = script.get("voice") or VOICE
-    return [(os.path.join(AUD, f"{sc['id']}_{cue['id']}.mp3"), voice, cue["say"])
+def kokoro_voice(script):
+    return os.environ.get("BLACKBOARD_TTS_VOICE") or script.get("kokoroVoice") or KOKORO_VOICE
+
+
+def jobs_for(script, engine="elevenlabs"):
+    voice, ext = (kokoro_voice(script), "wav") if engine == "kokoro" else (script.get("voice") or VOICE, "mp3")
+    return [(os.path.join(AUD, f"{sc['id']}_{cue['id']}.{ext}"), voice, cue["say"])
             for sc in script["scenes"] for cue in sc["cues"] if "say" in cue]
 
 
-def build_timeline(script):
+def choose_engine(script, requested=None):
+    """(engine, reason). Raises Stop(2, TTS_BLOCKED …) when no narrator can produce the missing cues."""
+    req = (requested or os.environ.get("BLACKBOARD_TTS_ENGINE") or "auto").strip().lower()
+    if req not in ("auto", "kokoro", "elevenlabs"):
+        raise Stop(2, f"unknown TTS engine {req!r}: use auto, kokoro or elevenlabs")
+    if req != "auto":
+        return req, "requested"
+    if os.environ.get("ELEVENLABS_API_KEY", "").strip():
+        return "elevenlabs", "ELEVENLABS_API_KEY is set"
+    for eng in ("elevenlabs", "kokoro"):
+        jobs = jobs_for(script, eng)
+        if jobs and all(cached(*j) for j in jobs):
+            return eng, "every cue already cached"
+    if kokoro_available():
+        return "kokoro", "local Kokoro (no key needed)"
+    raise Stop(2, "TTS_BLOCKED: no narrator: Kokoro is not installed and ELEVENLABS_API_KEY is not set; " + INSTALL_HINT)
+
+
+def build_timeline(script, engine="elevenlabs"):
     t, scenes, concat = 0.0, [], []
     for sc in script["scenes"]:
         local, cues, subs = HEAD, {}, []
@@ -260,7 +386,7 @@ def build_timeline(script):
                 d = cue["pause"]
                 cues[cue["id"]] = {"s": local, "e": local + d, "pause": True}
             else:
-                p = os.path.join(AUD, f"{sc['id']}_{cue['id']}.mp3")
+                p = os.path.join(AUD, f"{sc['id']}_{cue['id']}.{'wav' if engine == 'kokoro' else 'mp3'}")
                 d = dur(p)
                 cues[cue["id"]] = {"s": local, "e": local + d}
                 with open(p + ".json") as f:
@@ -282,6 +408,7 @@ def main(argv=None):
     ap.add_argument("--check", action="store_true", help="report cached/missing cues, no API calls")
     ap.add_argument("--verify", action="store_true", help="check that the published files form one complete run")
     ap.add_argument("--workers", type=int, default=3)
+    ap.add_argument("--engine", choices=("auto", "kokoro", "elevenlabs"))
     a = ap.parse_args(argv)
     if a.verify:
         why = verify_done()
@@ -294,15 +421,29 @@ def main(argv=None):
         raise Stop(2, "--workers must be >= 1")
     script = load_script(os.path.join(ROOT, "script.json"))
     os.makedirs(AUD, exist_ok=True)
-    jobs = jobs_for(script)
+    try:
+        engine, why = choose_engine(script, a.engine)
+    except Stop:
+        if not a.check:
+            raise
+        engine, why = "kokoro", "no narrator installed: " + INSTALL_HINT
+    jobs = jobs_for(script, engine)
     missing = [j for j in jobs if not cached(*j)]
+    model = KOKORO_MODEL if engine == "kokoro" else MODEL
     print(f"cues: {len(jobs)} spoken, {len(jobs) - len(missing)} cached, {len(missing)} to narrate "
-          f"(model {MODEL}, voice {jobs[0][1] if jobs else '-'})", flush=True)
+          f"(engine {engine}: {why}; model {model}, voice {jobs[0][1] if jobs else '-'})", flush=True)
     if a.check:
         for p, _, _ in missing:
             print("missing", os.path.basename(p))
         return 0 if not missing else 1
-    if missing:
+    if missing and engine == "kokoro":
+        if not kokoro_available():
+            raise Stop(2, f"TTS_BLOCKED: Kokoro is not installed and {len(missing)} cue(s) need narration; " + INSTALL_HINT)
+        kokoro_run(missing, jobs[0][1])
+        left = sum(1 for j in jobs if not cached(*j))
+        if left:
+            raise Stop(4, f"TTS_FAILED: {left} of {len(jobs)} cues still missing after the Kokoro run; rerun tts.py")
+    elif missing:
         key = os.environ.get("ELEVENLABS_API_KEY", "").strip()
         if not key:
             raise Stop(2, f"ELEVENLABS_API_KEY is not set and {len(missing)} cue(s) need narration")
@@ -320,7 +461,7 @@ def main(argv=None):
             raise Stop(e.code, f"{'TTS_QUOTA_OR_AUTH' if e.code == 3 else 'TTS_FAILED'}: {e}\n"
                                f"{len(jobs) - left} of {len(jobs)} cues are cached; rerun tts.py to resume the other {left}.")
 
-    tl, concat, t = build_timeline(script)
+    tl, concat, t = build_timeline(script, engine)
     data = json.dumps(tl, indent=1)
     # narration track: place each clip at its absolute time
     inputs, filt = [], []
