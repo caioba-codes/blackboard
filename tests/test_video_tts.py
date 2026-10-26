@@ -96,7 +96,7 @@ class TtsEngineTest(unittest.TestCase):
     def test_voice_override(self):
         with patch.dict(os.environ, {"BLACKBOARD_TTS_VOICE": "bf_emma"}):
             self.assertEqual(self.tts.jobs_for(SCRIPT, "kokoro")[0][1], "bf_emma")
-        self.assertEqual(self.tts.jobs_for(SCRIPT, "kokoro")[0][1], "af_heart")
+        self.assertEqual(self.tts.jobs_for(SCRIPT, "kokoro")[0][1], "am_michael")
 
     @unittest.skipUnless(shutil.which("ffmpeg") and shutil.which("ffprobe"), "needs ffmpeg/ffprobe")
     def test_kokoro_run_measures_timeline_and_caches(self):

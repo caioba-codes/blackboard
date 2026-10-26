@@ -16,7 +16,7 @@ tts.done: sha256 of timeline.json, timeline.js and narration.wav, written last; 
 auto: ElevenLabs when ELEVENLABS_API_KEY is set or every cue is already cached from it, else Kokoro.
 Kokoro lives outside the project: $BLACKBOARD_TTS_HOME (default ~/.cache/blackboard)/tts-venv and kokoro/,
 installed by the skill's bin/setup_tts.sh. Voice: BLACKBOARD_TTS_VOICE, else script.json "kokoroVoice", else
-af_heart; speed BLACKBOARD_TTS_SPEED (1.0). ElevenLabs: voice from script.json "voice"; overrides
+am_michael; speed BLACKBOARD_TTS_SPEED (1.0). ElevenLabs: voice from script.json "voice"; overrides
 ELEVENLABS_MODEL, ELEVENLABS_API_BASE.
 Exit codes: 0 ok, 2 usage/script error or no narrator available (TTS_BLOCKED), 3 quota or auth refused by the
 API, 4 other API or narrator failure.
@@ -42,7 +42,7 @@ TTS_HOME = os.path.expanduser(os.environ.get("BLACKBOARD_TTS_HOME", "~/.cache/bl
 KOKORO_PY = os.path.join(TTS_HOME, "tts-venv", "bin", "python")
 KOKORO_FILES = (os.path.join(TTS_HOME, "kokoro", "kokoro-v1.0.onnx"), os.path.join(TTS_HOME, "kokoro", "voices-v1.0.bin"))
 KOKORO_MODEL = "kokoro-v1.0"
-KOKORO_VOICE = "af_heart"   # Kokoro's highest-graded voice; clearest of af_heart / am_michael / bf_emma for teaching
+KOKORO_VOICE = "am_michael"   # Caio picked it over af_heart and bf_emma (2026-10-26)
 KOKORO_SPEED = float(os.environ.get("BLACKBOARD_TTS_SPEED", "1.0"))
 KOKORO_GAP = {".": 0.3, "?": 0.3, "!": 0.3, ":": 0.25}   # silence after a sentence; 0.12 s after a comma split
 INSTALL_HINT = ("install the free local narrator with: sh ~/.claude/skills/blackboard/bin/setup_tts.sh "
