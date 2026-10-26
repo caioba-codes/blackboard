@@ -196,6 +196,19 @@ class VideoPipelineTest(unittest.TestCase):
         verified = json.loads((self.project / "video-0042.json").read_text())
         self.assertTrue(verified["captionsBurnedIn"])
 
+    def test_rounding_never_makes_segments_overlap(self):
+        # measured scene boundaries that differ inside EPS used to round to a start 1 ms before the previous end
+        self.plan()
+        t = json.loads((self.project / "timeline.json").read_text())
+        t["scenes"][0]["dur"] = 10.0006
+        t["scenes"][1]["start"], t["scenes"][1]["dur"] = 9.9996, 5.0004
+        (self.project / "timeline.json").write_text(json.dumps(t), encoding="utf-8")
+        self.cli("build-map", "--project", self.project)
+        segs = json.loads((self.project / "video-0042.json").read_text())["segments"]
+        for a, b in zip(segs, segs[1:]):
+            self.assertEqual(a["end"], b["start"])
+            self.assertLess(b["start"], b["end"])
+
     def test_unpaired_or_grouped_questions_fail_before_map(self):
         anchors = self.plan()
         anchors["segments"][0]["to"] = "end"

@@ -226,7 +226,10 @@ def anchors_ok(project_dir, config, lesson, script, timeline):
             for cid, c in scene["cues"].items():
                 if c.get("pause") is True and start - EPS <= scene["start"] + c["s"] < end - EPS:
                     raise PipelineError(f"anchor {aid}: measured think cue {cid} needs its own question/answer practice gate")
-        result.append({"id": aid, "label": label, "start": round(start, 3), "end": round(end, 3), "line": line, "step": step, "practice": practice})
+        # each segment starts exactly where the previous one ended: rounding the two boundaries separately
+        # can leave a start 1 ms before the previous end (they differ within EPS), which the board rejects as overlap
+        start_r = result[-1]["end"] if result else round(start, 3)
+        result.append({"id": aid, "label": label, "start": start_r, "end": max(round(end, 3), start_r + 0.001), "line": line, "step": step, "practice": practice})
     if abs(prev - timeline["total"]) > EPS:
         raise PipelineError(f"anchors end at {prev:.3f}; timeline ends at {timeline['total']:.3f}")
     return result
