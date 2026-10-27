@@ -237,6 +237,22 @@ class VideoPipelineTest(unittest.TestCase):
         failure = self.cli("build-map", "--project", self.project, ok=False)
         self.assertIn("step requires line", failure.stderr)
 
+    def test_every_lesson_practice_item_needs_a_pause_and_solve_segment(self):
+        # lines: 1 title, 2-5 checkin (bullets 3 and 5, 4 continuation), 6-11 mcq block, 12 summary
+        self.lesson.write_text("# Motion\n::: checkin\n- Question one || hint\n  $$x=1$$\n- Question two || hint\n:::\n"
+                               "::: mcq m1 a\nStem\n- right\n- wrong || mistake\nwhy: because\n:::\nSummary\n", encoding="utf-8")
+        anchors = self.plan()
+        anchors["segments"][0]["line"], anchors["segments"][1]["line"], anchors["segments"][2]["line"] = 4, 5, 13
+        (self.project / "anchors.json").write_text(json.dumps(anchors), encoding="utf-8")
+        self.cli("build-map", "--project", self.project)
+        report = json.loads(self.cli("check", "--project", self.project, ok=False).stdout)
+        self.assertIn("1 of 3 lesson practice items", report["stages"]["practice"])
+        self.assertIn("line 7: ::: mcq m1 a", report["stages"]["practice"])
+        spec = importlib.util.spec_from_file_location("video_pipeline", CLI)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        self.assertEqual(module.practice_items(self.lesson.read_text().splitlines()), [(3, 4), (5, 5), (7, 12)])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -12,6 +12,9 @@ Routes
   GET  /api/lesson?id=NNNN&from=N&hash=H   {text, offset, reset}  (text = new bytes cut at last blank line)
   GET  /events?id=NNNN   SSE: `change` when the lesson file or state changes
   GET  /assets/<file>    $WS/lessons/assets/<file>
+  GET  /api/sources?id=NNNN   {files: [...]} every file the lesson cites, with its viewer URL
+  GET  /api/source-check?p=REF&p=REF   which references (e.g. paths the chat cites) name a viewable file
+  GET  /source/<path>    a cited file (pdf, image, text), only from inside the course folder
   GET  /anim/<path>      board/anim/<path>
   GET  /end-card.jpg     the optional end-of-lesson photo (end_card_path()), 404 when none is configured
   POST /ask              {kind,...} -> appended to queue.jsonl, wake per host
@@ -999,7 +1002,91 @@ def lesson_sources(wsp, lpath):
     return out[:40], cited[:3000]
 
 
-def chat_prompt(lid, lpath, wsp, text):
+# files the board may show in its source viewer: documents and images only (no svg or html, which could run script)
+SOURCE_VIEW_EXTS = {".pdf", ".png", ".jpg", ".jpeg", ".gif", ".webp", ".txt", ".md", ".csv", ".tex"}
+SOURCE_TRY_EXTS = ("", ".pdf", ".png", ".jpg", ".jpeg", ".md", ".txt", ".pdf.txt", ".docx.txt", ".pptx.txt")
+SOURCE_COMMENT = re.compile(r"<!--\s*source:\s*(\S+)(.*?)-->", re.S)
+
+
+def source_file(ref, wsp):
+    """The viewable file a source reference names (`exams2/fa18-kj-e2.pdf`, `review/exam2-2026-1019`,
+    `../sources/x.pdf`), looked up in sources/, the workspace, lessons/ and the course folder, in that order.
+    None unless its real path sits inside the course folder, outside any hidden folder, with a viewable extension."""
+    ref = urllib.parse.unquote(str(ref or "")).strip().split("#")[0].strip().rstrip(".,;:)")
+    if not ref or "\0" in ref or os.path.isabs(ref) or ref.startswith("~") or len(ref) > 400:
+        return None
+    root = os.path.realpath(course_root(wsp))
+    for base in (os.path.join(wsp, "sources"), wsp, lessons_dir(wsp), root):
+        for ext in SOURCE_TRY_EXTS:
+            p = os.path.realpath(os.path.join(base, ref + ext))
+            if not p.startswith(root + os.sep) or not os.path.isfile(p):
+                continue
+            if any(part.startswith(".") for part in os.path.relpath(p, root).split(os.sep)):
+                continue
+            low = p.lower()
+            # text pulled out of a PDF (`x.pdf.txt`, or `x.txt` beside `x.pdf`) opens the PDF itself
+            for orig in ((p[:-4],) if low.endswith((".pdf.txt", ".docx.txt", ".pptx.txt")) else (p[:-4] + ".pdf",) if low.endswith(".txt") else ()):
+                if orig.lower().endswith(".pdf") and os.path.isfile(orig):
+                    return orig
+            if any(low.endswith(e) for e in SOURCE_VIEW_EXTS):
+                return p
+    if "/" not in ref:  # a bare file name (`sp10-lw-s2`): the first match anywhere in the course folder
+        for ext in SOURCE_TRY_EXTS:
+            hits = sorted(p for p in course_files(wsp) if os.path.basename(p) == ref + ext)
+            if hits:
+                return source_file(os.path.relpath(hits[0], root), wsp) if not os.path.isabs(os.path.relpath(hits[0], root)) else None
+    return None
+
+
+def source_entry(ref, wsp, slug, page=None):
+    """How the board links one source reference: its viewer URL (under /w/<slug>/source/), name and kind."""
+    p = source_file(ref, wsp)
+    if not p:
+        return {"ref": ref, "found": False, "name": os.path.basename(ref.rstrip("/")) or ref}
+    root = os.path.realpath(course_root(wsp))
+    rel = os.path.relpath(p, root)
+    srcdir = os.path.realpath(os.path.join(wsp, "sources"))
+    shown = os.path.relpath(p, srcdir) if p.startswith(srcdir + os.sep) else rel
+    ext = os.path.splitext(p)[1].lower()
+    kind = "pdf" if ext == ".pdf" else "image" if ext in (".png", ".jpg", ".jpeg", ".gif", ".webp") else "text"
+    url = (f"/w/{urllib.parse.quote(slug, safe='')}" if slug else "") + "/source/" + urllib.parse.quote(rel)
+    return {"ref": ref, "found": True, "path": shown, "name": os.path.basename(p), "kind": kind, "url": url, "page": page}
+
+
+def cited_files(wsp, lpath, slug):
+    """Every file the lesson cites, for the Sources drop-down: links and code spans in its sources block, then the
+    `<!-- source: … -->` comment before each problem (with its first page). An official solution file (`…-s2`) brings
+    its exam (`…-e2`) along, so the practice exam itself is one click away."""
+    try:
+        with open(lpath, encoding="utf-8") as f:
+            text = f.read()
+    except OSError:
+        return []
+    refs = []
+    _, cited = lesson_sources(wsp, lpath)
+    for r in SOURCE_REF.finditer(cited):
+        ref = (r.group(1) or r.group(2) or "").strip()
+        if ref and not re.match(r"https?://", ref) and ("/" in ref or re.search(r"\.[A-Za-z0-9]{1,5}$", ref)):
+            refs.append((ref, None))
+    for m in SOURCE_COMMENT.finditer(text):
+        pg = re.search(r"\bpp?\.\s*(\d+)", m.group(2))
+        refs.append((m.group(1).rstrip(".,;:"), int(pg.group(1)) if pg else None))
+    out, seen = [], set()
+    def add(ref, page):
+        e = source_entry(ref, wsp, slug, page)
+        key = e.get("url") or ("missing:" + ref)
+        if key not in seen:
+            seen.add(key)
+            out.append(e)
+    for ref, page in refs:
+        exam = re.sub(r"-s(\d)(\.pdf)?$", r"-e\1\2", ref)
+        if exam != ref and source_file(exam, wsp):
+            add(exam, None)
+        add(ref, page)
+    return out[:200]
+
+
+def chat_prompt(lid, lpath, wsp, text, viewing=None):
     """The turn as the model sees it: where the user is on the board, the lesson's sources, then the message."""
     with open(lpath, encoding="utf-8") as f:
         src = f.read()
@@ -1013,6 +1100,8 @@ def chat_prompt(lid, lpath, wsp, text):
         ctx.append("Also in this workspace: " + ", ".join(also))
     if cited:
         ctx.append("The lesson's own Sources section:\n" + cited)
+    if viewing:
+        ctx.append(f"[Viewing: the user has {viewing} open beside this chat. A question like \"this problem\" is about that file: read it first.]")
     return "\n\n".join(ctx) + "\n\n---\n\n" + text
 
 
@@ -1225,6 +1314,19 @@ class H(BaseHTTPRequestHandler):
                 turn = TURNS.get(key)
             thread.update(running=bool(turn), pending={"text": turn.text, "steps": turn.steps} if turn else None)
             return self.send(200, thread)
+        if path == "/api/sources":
+            p = lesson_path(qs.get("id", [current(slug)])[0], wsp)
+            return self.send(200, {"files": cited_files(wsp, p, slug) if p else []})
+        if path == "/api/source-check":
+            if self.foreign():
+                return self.send(403, {"error": "only the board may check sources"})
+            return self.send(200, {r: source_entry(r, wsp, slug) for r in qs.get("p", [])[:30]})
+        if path.startswith("/source/"):
+            # the source viewer: a file the lesson cites, confined to the course folder (see source_file)
+            if self.foreign():
+                return self.send(403, "only the board may open sources", "text/plain")
+            p = source_file(urllib.parse.unquote(path[len("/source/"):]), wsp)
+            return self.static(p, cors=False) if p else self.send(404, "not found on this Mac", "text/plain")
         if path.startswith("/assets/"):
             assets = os.path.realpath(os.path.join(lessons_dir(wsp), "assets"))
             if not assets.startswith(os.path.realpath(wsp) + os.sep):
@@ -1254,7 +1356,7 @@ class H(BaseHTTPRequestHandler):
             return self.send(405, "", "text/plain")
         return self.do_GET()
 
-    def static(self, p, confined_to=None):
+    def static(self, p, confined_to=None, cors=True):
         if confined_to and not os.path.realpath(p).startswith(os.path.realpath(confined_to) + os.sep):
             return self.send(404, "missing", "text/plain")
         if not os.path.isfile(p):
@@ -1262,7 +1364,8 @@ class H(BaseHTTPRequestHandler):
         ext = os.path.splitext(p)[1].lower()
         ctype = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".gif": "image/gif", ".svg": "image/svg+xml",
                  ".mp4": "video/mp4", ".webp": "image/webp", ".txt": "text/plain", ".md": "text/plain",
-                 ".js": "text/javascript", ".css": "text/css"}.get(ext, "application/octet-stream")
+                 ".js": "text/javascript", ".css": "text/css", ".pdf": "application/pdf", ".csv": "text/plain",
+                 ".tex": "text/plain"}.get(ext, "application/octet-stream")
         try:
             with open(p, "rb") as f:
                 size = os.fstat(f.fileno()).st_size
@@ -1295,7 +1398,10 @@ class H(BaseHTTPRequestHandler):
                 self.send_response(code)
                 self.send_header("Content-Type", ctype + ("; charset=utf-8" if ctype.startswith("text") else ""))
                 self.send_header("Accept-Ranges", "bytes")
-                self.send_header("Access-Control-Allow-Origin", "*")
+                if cors:
+                    self.send_header("Access-Control-Allow-Origin", "*")
+                else:
+                    self.send_header("X-Content-Type-Options", "nosniff")
                 self.send_header("Cache-Control", "no-store")
                 if code == 416:
                     self.send_header("Content-Range", f"bytes */{size}")
@@ -1463,7 +1569,8 @@ class H(BaseHTTPRequestHandler):
         if not shutil.which("claude"):
             return self.send(503, {"error": "Claude Code (claude) is not installed"})
         said = ("> " + selection.replace("\n", "\n> ") + "\n\n" if selection else "") + text
-        prompt = chat_prompt(lid, lesson_path(lid, wsp), wsp, said)
+        viewing = re.sub(r"[\x00-\x1f\[\]]", " ", str(req.get("viewing") or ""))[:300].strip()
+        prompt = chat_prompt(lid, lesson_path(lid, wsp), wsp, said, viewing)
         with TURNS_LOCK:
             if key in TURNS:
                 return self.send(409, {"error": "a reply is already running for this lesson"})

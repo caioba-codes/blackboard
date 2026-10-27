@@ -24,6 +24,16 @@ python3 "$BB_ROOT/bin/video_pipeline.py" init --lesson "$LESSON" --project "$PRO
 
 Give the Opus video author [video-briefs/author.md](video-briefs/author.md), the lesson path, project path, current lesson routing receipt, and all source material. The author writes `script.json`, `anchors.json`, independent `mathcheck.py`, and `SPLIT.json`. Script scenes use `title`, `subtitle`, `voice`, `chapters`, `scenes`; each scene has `id`, `chapter`, `visual`, `cues`. Cues are `{ "id": "a", "say": "..." }` or `{ "id": "think1", "pause": 4 }`. The Opus author runs the math check and corrects its own video work; any lesson discrepancy goes back to the designated lesson author. Meaning and concrete picture precede the formula. Each worked example and question gets a visual whose quantities and geometry can be verified.
 
+## Pacing and practice (Caio, 2026-10-26)
+
+A video that jumps from concept to concept fails, whatever its length. There is **no length cap or target**: the video runs as many minutes as it takes to be easy to follow.
+
+- **Every concept**: say what it is and why it is needed, then build it one visible step at a time. Example for a full adder: what a half adder does and its truth table, why one is not enough, wire the first half adder, trace its outputs, wire the second, trace it, why the OR, the final values.
+- **Define before use**: never put a symbol, gate, wire name or term on screen or in narration before saying what it means, in that scene or an earlier one.
+- **Worked examples narrate every intermediate value**: each carry, partial sum, flipped bit, select value or wire value is said aloud and shown as it appears. No step is skipped as obvious.
+- **Bridges**: one sentence links each concept to the next (why the next idea is needed now).
+- **Practice from official sources**: every lesson practice item (each check-in bullet, checkpoint MCQ, practice-exam part and quiz MCQ) must be a real problem from the course's official material (past exams, practice sets, homework, official review or slides), verified against its official solution and an independent calculation; a changed-number analog or invented item is replaced by an official problem on the same skill before the video is made. The video covers **all** of them: show the full prompt, a `think` pause long enough to try it (8–20 s; longer for multi-part work), then the complete step-by-step solution with every intermediate value, and every MCQ distractor named with its mistake. `video_pipeline.py check` fails its `practice` stage when a lesson practice item has no anchored pause-and-solve segment.
+
 Then in the external project:
 
 ```sh
@@ -62,7 +72,7 @@ python3 "$BB_ROOT/bin/lesson_video.py" import --workspace "$WS" --lesson "$ID" -
 python3 "$BB_ROOT/bin/lesson_video.py" status --workspace "$WS" --lesson "$ID"
 ```
 
-`check` verifies schema, source SHA, ordered measured coverage, scene modules, supplied runtime receipts, the `RENDERED` success marker, final MP4 audio/video duration, and media freshness against script, timeline, scene, narration, and render inputs. It does not judge pedagogy or prove runtime identity. Rerun `./render.sh` after editing an input, even when the MP4 duration stays the same. The existing importer verifies the installed board schema and media duration. Use `--replace` on import only after reviewing a conflict. The lesson remains accessible without video if this chain cannot finish.
+`check` verifies schema, source SHA, ordered measured coverage, a pause-and-solve segment for every lesson practice item, scene modules, supplied runtime receipts, the `RENDERED` success marker, final MP4 audio/video duration, and media freshness against script, timeline, scene, narration, and render inputs. It does not judge pedagogy or prove runtime identity. Rerun `./render.sh` after editing an input, even when the MP4 duration stays the same. The existing importer verifies the installed board schema and media duration. Use `--replace` on import only after reviewing a conflict. The lesson remains accessible without video if this chain cannot finish.
 
 ## Anchor format
 

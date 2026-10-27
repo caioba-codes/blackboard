@@ -824,6 +824,29 @@ html.chatopen #chat{display:flex}
 html.chatdrag,html.chatdrag *{user-select:none !important;cursor:col-resize !important}
 @media (max-width:760px){html.chatopen{--chatw:0px}#chat{width:100vw}#chatgrip{display:none}}
 @media (prefers-reduced-motion:reduce){#chat .cs.live::before,#chat .cthink::before{animation:none;opacity:1}}
+/* source viewer: a cited file fills the lesson column, the chat stays open on the right */
+details.sources .srcfiles{margin-top:12px}
+details.sources .srcfiles h4{margin:10px 0 4px;font:600 13px var(--body);letter-spacing:.06em;text-transform:uppercase;color:var(--dim)}
+details.sources .srcfiles .sfrow{display:flex;flex-wrap:wrap;gap:6px 8px;margin:0 0 6px}
+a.srclink{color:var(--acc);text-decoration:none;border-bottom:1px dashed color-mix(in srgb,var(--acc) 55%,transparent);cursor:pointer}
+a.srclink:hover,a.srclink:focus-visible{border-bottom-style:solid}
+details.sources .srcfiles a.srclink{font:13px/1.3 ui-monospace,SFMono-Regular,Menlo,monospace;padding:3px 8px;border:1px solid var(--rule);border-radius:6px;background:#ffffff08}
+details.sources .srcfiles a.srclink:hover{border-color:var(--acc)}
+details.sources .srcfiles .sfmiss{font:13px ui-monospace,Menlo,monospace;color:var(--dim);opacity:.7}
+#srcview{position:fixed;top:0;left:0;bottom:0;right:var(--chatw,0px);z-index:1005;display:none;flex-direction:column;background:#111}
+html.srcopen #srcview{display:flex}
+html.srcopen body{overflow:hidden}
+#srcview .svbar{display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--rule);background:#0f0f0f;color:var(--chalk);font-family:var(--body)}
+#srcview .svname{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:14px ui-monospace,Menlo,monospace}
+#srcview .svname small{color:var(--dim);margin-left:8px}
+#srcview .svbar a,#srcview .svbar button{font:13px var(--body);color:var(--chalk);background:#ffffff0d;border:1px solid var(--rule);border-radius:8px;padding:6px 12px;cursor:pointer;text-decoration:none;white-space:nowrap}
+#srcview .svbar button.svback{background:var(--acc);color:#111;border-color:var(--acc);font-weight:600}
+#srcview .svbody{flex:1;min-height:0;overflow:auto}
+#srcview iframe{width:100%;height:100%;border:0;display:block;background:#525659}
+#srcview img{display:block;width:100%;height:auto}
+#srcview pre{margin:0;padding:24px 28px;white-space:pre-wrap;word-break:break-word;font:14px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--chalk)}
+#srcview .svmd{padding:24px 32px;max-width:860px;color:var(--chalk)}
+#srcview .svmiss{padding:40px;color:var(--dim);font-family:var(--body)}
 </style>
 <link rel="stylesheet" href="/lib/lesson-video.css">
 </head>
@@ -839,6 +862,7 @@ html.chatdrag,html.chatdrag *{user-select:none !important;cursor:col-resize !imp
 <button id="tocbtn" type="button" aria-label="Contents and XP (t)" title="Contents (t)" aria-controls="toc" aria-expanded="false"><svg class="ring" viewBox="0 0 38 38" aria-hidden="true"><circle class="trk" cx="19" cy="19" r="16"/><circle class="arc" cx="19" cy="19" r="16"/></svg><svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M3 4h10M3 8h10M3 12h6"/></svg><span class="hplbl" hidden>XP</span><span class="hp" aria-hidden="true" hidden></span><span class="rl" hidden></span></button>
 <div id="topbar"><a id="toplessons" href="/lessons" title="Back" aria-label="Back"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3.5 5.5 8l4.5 4.5"/></svg></a><div id="zoomctl" role="group" aria-label="Zoom"><button type="button" data-z="-1" aria-label="Zoom out (-)" title="Zoom out (-)">&minus;</button><button type="button" class="zv" data-z="0" aria-label="Reset zoom (0)" title="Reset zoom (0)">100%</button><button type="button" data-z="1" aria-label="Zoom in (+)" title="Zoom in (+)">+</button></div><div id="topsearch" role="search"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><circle cx="7" cy="7" r="4.8"/><path d="M10.6 10.6 14 14"/></svg><input id="topq" type="search" placeholder="Search every lesson" autocomplete="off" aria-label="Search every lesson" aria-controls="topresults"><kbd>/</kbd><div id="topresults" role="listbox"></div></div></div>
 <button id="chatbtn" type="button" hidden aria-label="Chat about this lesson" aria-controls="chat" aria-expanded="false"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 3.5a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v6.5a1 1 0 0 1-1 1H7l-3 2.5V11h-.5a1 1 0 0 1-1-1z"/></svg></button>
+<div id="srcview" role="dialog" aria-label="Source file" aria-hidden="true"><div class="svbar"><span class="svname"></span><a class="svtab" target="_blank" rel="noopener">Open in new tab</a><button type="button" class="svback" title="Back to lesson (Esc)">Back to lesson</button></div><div class="svbody"></div></div>
 <aside id="chat" aria-label="Study chat"><div id="chatgrip" role="separator" aria-orientation="vertical" aria-label="Drag to resize the chat. Double-click to reset." title="Drag to resize · double-click to reset"></div><div class="chead"><span class="ct">Chat</span><button type="button" class="cib" id="chatnew" title="New chat" aria-label="New chat"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg></button><button type="button" class="cib" id="chatclose" aria-label="Close chat"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg></button></div><div class="cmid"><div id="chatlist" role="log" aria-live="polite"></div><button type="button" id="chatdown" hidden aria-label="Jump to the latest message" title="Jump to the latest message"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3v10M3.5 8.5 8 13l4.5-4.5"/></svg></button></div><form id="chatform"><div id="chatsel" hidden><span class="cselt"></span><button type="button" class="cib" id="chatselx" aria-label="Remove the quoted selection" title="Remove the quoted selection"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7"/></svg></button></div><textarea id="chatq" rows="1" placeholder="Ask about this lesson" aria-label="Message"></textarea><div class="cbar"><span class="cctx"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><path d="M4 1.8h5.5L12.5 5v9.2H4z"/><path d="M9.5 1.8V5h3"/></svg><span id="chatctx"></span></span><button type="submit" id="chatsend" aria-label="Send" disabled><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 13V3M3.5 7.5 8 3l4.5 4.5"/></svg></button></div></form></aside>
 <div id="tocshade"></div>
 <nav id="toc" aria-label="Lesson contents: level map" aria-hidden="true" inert><div class="tochead"><b>Contents</b><kbd>t</kbd><span class="xpsum"></span></div><ol></ol></nav>
@@ -1384,7 +1408,7 @@ async function loadLesson(){
   fresh.forEach((s,k)=>{ if(fmCache.title&&/^# /.test(s.raw)&&renderedUpto+k===0)return; // title already in header
     const el=renderSegment(s); main.appendChild(el); if(r.reset&&!streaming)return; animate(el);});
   renderedUpto=segs.length;
-  imageCredits(b);
+  imageCredits(b); srcFiles();
   wire(); endCard();
 }
 let renderedUpto=0, bodyStart=0, fmCache={};
@@ -2406,7 +2430,7 @@ async function loadLessonWith(r){
     }
     window.__ph=[];
   }
-  renderedUpto=segs.length; imageCredits(b); endCard(); decorate(main); wire(); inlineSvgs(); buildToc(hot);
+  renderedUpto=segs.length; imageCredits(b); srcFiles(); endCard(); decorate(main); wire(); inlineSvgs(); buildToc(hot);
   if(r.reset)restoreAnswers();
   if(place){ const bl=[...main.querySelectorAll(':scope > .blk')]; let best=null,bd=1e9; bl.forEach((x,i)=>{ if(x.textContent.slice(0,160)===place.sig&&Math.abs(i-place.i)<bd){bd=Math.abs(i-place.i);best=x;} });
     if(best) window.scrollTo(0,window.scrollY+best.getBoundingClientRect().top-place.top); main.style.minHeight=''; }
@@ -2460,7 +2484,7 @@ function chatRender(){
   } else {
     chatList.innerHTML=ms.map((m,i)=>m.role==='user'?userHtml(m.text):botHtml(m,i)).join('')+(chat.pend?`<div id="chatpend">${botHtml(chat.pend,-1)}</div>`:'')+(chat.note?`<p class="cerr">${esc(chat.note)}</p>`:'');
   }
-  chatSync(); chatFollow();
+  chatSync(); chatFollow(); chatList.querySelectorAll('.cmsg.bot[data-i] .cmd').forEach(el=>srcCites(el));
 }
 function chatPaint(){ if(chat.frame)return; chat.frame=requestAnimationFrame(()=>{ chat.frame=0; const el=document.getElementById('chatpend'); if(!el||!chat.pend)return chatRender(); el.innerHTML=botHtml(chat.pend,-1); chatFollow(); }); }
 function chatSync(){
@@ -2494,7 +2518,7 @@ async function chatSendMsg(text){
   chat.pend={text:'',steps:[]}; chatRender(); chatFollow(true);
   chat.ctrl=new AbortController();
   try{
-    const r=await fetch('/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.assign({lesson:lessonId,text,selection},WS?{ws:WS}:{})),signal:chat.ctrl.signal});
+    const r=await fetch('/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.assign({lesson:lessonId,text,selection,viewing:srcViewing()},WS?{ws:WS}:{})),signal:chat.ctrl.signal});
     if(!r.ok){ chat.note=(await r.json().catch(()=>({}))).error||`The bridge answered ${r.status}.`; }
     else { const rd=r.body.getReader(), dec=new TextDecoder(); let buf='';
       for(;;){ const {value,done}=await rd.read(); if(done)break; buf+=dec.decode(value,{stream:true}); let k;
@@ -2562,11 +2586,88 @@ try{ if(MODE!=='grid'&&localStorage.getItem('bb-chat-open')==='1')document.docum
 function chatInit(){
   chatBtn.hidden=!chatOk(); chatBtn.title=`Chat (${CHAT_KEY})`; $('#chatclose').title=`Close (${CHAT_KEY})`;
   if(!chatOk())return document.documentElement.classList.remove('chatopen');
-  $('#chatctx').textContent=`Lesson ${lessonId}`+(chatTitle()?` · ${chatTitle()}`:'');
+  if(!(srcv&&srcv.open))$('#chatctx').textContent=`Lesson ${lessonId}`+(chatTitle()?` · ${chatTitle()}`:'');
   let on=false; try{ on=localStorage.getItem('bb-chat-open')==='1'; }catch(_){}
   if(on)chatSetOpen(true,false,false);
 }
 boot().then(chatInit).catch(e=>{window.bootError=String(e&&e.stack||e);console.error('boot',e)});
+// ---------- source viewer: every file the lesson cites opens over the lesson column, beside the chat ----------
+// The bridge lists them (/api/sources: the sources block plus each problem's <!-- source: … --> comment) and serves
+// them from the course folder only (/source/<path>). The chat learns which file is open.
+var srcv={open:null, y:0, files:null, filesFor:'', check:new Map()};
+function srcPage(f){ return f.page?`, page ${f.page}`:''; }
+async function srcOpen(f){
+  if(!f||!f.found)return;
+  if(!srcv.open)srcv.y=window.scrollY;
+  srcv.open=f;
+  const v=$('#srcview'), body=v.querySelector('.svbody'), url=f.url+(f.kind==='pdf'&&f.page?'#page='+f.page:'');
+  v.querySelector('.svname').innerHTML=`${esc(f.path||f.name)}${f.page?`<small>page ${f.page}</small>`:''}`;
+  v.querySelector('.svtab').href=url;
+  if(f.kind==='pdf')body.innerHTML=`<iframe title="${esc(f.name)}" src="${esc(url)}"></iframe>`;
+  else if(f.kind==='image')body.innerHTML=`<img alt="${esc(f.name)}" src="${esc(url)}">`;
+  else { body.innerHTML='<p class="svmiss">Loading…</p>';
+    try{ const r=await fetch(f.url); if(!r.ok)throw 0; const t=await r.text(); if(srcv.open!==f)return;
+      body.innerHTML=/\.md$/i.test(f.name)?`<div class="svmd">${chatMd(t)}</div>`:`<pre>${esc(t)}</pre>`; }
+    catch(_){ body.innerHTML='<p class="svmiss">Not found on this Mac.</p>'; } }
+  document.documentElement.classList.add('srcopen'); v.setAttribute('aria-hidden','false');
+  v.querySelector('.svback').focus({preventScroll:true});
+  $('#chatq').placeholder=`Ask about ${f.name}${srcPage(f)}`;
+  $('#chatctx').textContent=`Viewing ${f.path||f.name}${srcPage(f)}`;
+}
+function srcClose(){
+  if(!srcv.open)return;
+  srcv.open=null;
+  const v=$('#srcview'); v.querySelector('.svbody').innerHTML=''; v.setAttribute('aria-hidden','true');
+  document.documentElement.classList.remove('srcopen');
+  window.scrollTo(0,srcv.y);
+  $('#chatq').placeholder='Ask about this lesson';
+  $('#chatctx').textContent=`Lesson ${lessonId}`+(chatTitle()?` · ${chatTitle()}`:'');
+}
+function srcViewing(){ const f=srcv.open; return f?`${f.path||f.name}${srcPage(f)}`:''; }
+$('#srcview .svback').onclick=srcClose;
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&srcv.open&&!e.defaultPrevented){ e.preventDefault(); srcClose(); } });
+function srcLink(f,label){ return f.found?`<a class="srclink" href="${esc(f.url)}" data-src="${esc(JSON.stringify(f))}" title="Open ${esc(f.path)}${f.page?' at page '+f.page:''}">${esc(label||f.name)}</a>`:`<span class="sfmiss" title="not found on this Mac">${esc(label||f.name)} · not found on this Mac</span>`; }
+document.addEventListener('click',e=>{
+  const a=e.target.closest&&e.target.closest('a.srclink[data-src]');
+  if(!a||e.metaKey||e.ctrlKey||e.shiftKey||e.button)return;
+  e.preventDefault(); try{ srcOpen(JSON.parse(a.dataset.src)); }catch(_){}
+});
+// the Sources drop-down: its own relative links open in the viewer, then every cited file grouped by folder
+async function srcFiles(){
+  const box=main.querySelector('details.sources>div'); if(!box||!lessonId)return;
+  if(srcv.filesFor!==lessonId){ srcv.filesFor=lessonId; srcv.files=null;
+    try{ srcv.files=(await fetch(`/api/sources?id=${lessonId}${WSQ}`).then(r=>r.json())).files||[]; }catch(_){ srcv.files=[]; } }
+  const files=srcv.files||[]; if(!files.length)return;
+  const live=main.querySelector('details.sources>div'); if(!live)return;
+  for(const a of live.querySelectorAll('a[href]:not(.srclink)')){
+    const h=a.getAttribute('href'); if(/^(https?:|#|mailto:)/i.test(h))continue;
+    const rel=h.replace(/^(\.\.\/)*(sources\/)?/,'');
+    const f=files.find(x=>x.found&&(x.path===rel||x.ref===h)); if(f){ a.classList.add('srclink'); a.href=f.url; a.dataset.src=JSON.stringify(f); }
+  }
+  live.querySelector('.srcfiles')?.remove();
+  const groups={}; for(const f of files){ const k=f.found&&f.path.includes('/')?f.path.split('/')[0]:'Other'; (groups[k]=groups[k]||[]).push(f); }
+  const div=document.createElement('div'); div.className='srcfiles';
+  div.innerHTML='<h4>Files used · click to open beside the chat</h4>'+Object.entries(groups).map(([k,fs])=>`<h4>${esc(k)}</h4><div class="sfrow">${fs.map(f=>srcLink(f)).join('')}</div>`).join('');
+  const cred=live.querySelector('#imgcredits'); cred?live.insertBefore(div,cred):live.appendChild(div);
+}
+// file paths the chat cites (`exams2/fa18-kj-e2.pdf`, "page 3") become links into the same viewer
+const CITE=/(?:[\w.-]+\/)*[\w.-]+\.(?:pdf|txt|md|png|jpe?g|gif|webp|csv|tex)\b|(?:[\w.-]+\/)+[\w-]+-[es]\d\b/g;
+async function srcCites(root){
+  const nodes=[], w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT,{acceptNode:n=>n.parentElement.closest('a,.katex,pre')?NodeFilter.FILTER_REJECT:NodeFilter.FILTER_ACCEPT});
+  while(w.nextNode())if(CITE.test(w.currentNode.data)){ CITE.lastIndex=0; nodes.push(w.currentNode); }
+  CITE.lastIndex=0; if(!nodes.length)return;
+  const refs=[...new Set(nodes.flatMap(n=>n.data.match(CITE)||[]))].filter(r=>!srcv.check.has(r));
+  if(refs.length){ try{ const r=await fetch(`/api/source-check?${refs.map(x=>'p='+encodeURIComponent(x)).join('&')}${WSQ}`).then(r=>r.json()); refs.forEach(x=>srcv.check.set(x,r[x]||{found:false})); }catch(_){ return; } }
+  for(const n of nodes){ if(!n.parentNode)continue;
+    const t=n.data, frag=document.createDocumentFragment(); let at=0, hit=false;
+    for(const m of t.matchAll(CITE)){ const f=srcv.check.get(m[0]); if(!f||!f.found)continue;
+      // a page named right after the path, here or in the next text ("…e2.pdf, page 3", "p. 3")
+      const after=t.slice(m.index+m[0].length,m.index+m[0].length+40)+(n.parentElement.closest('code')?(n.parentElement.closest('code').nextSibling?.textContent||'').slice(0,40):'');
+      const pg=after.match(/^[^\w]{0,6}(?:page|p\.|pp\.|pg\.?)\s*(\d{1,3})/i);
+      frag.append(t.slice(at,m.index)); const tmp=document.createElement('span'); tmp.innerHTML=srcLink(Object.assign({},f,{page:pg?+pg[1]:null}),m[0]); frag.append(tmp.firstChild); at=m.index+m[0].length; hit=true; }
+    if(hit){ frag.append(t.slice(at)); n.replaceWith(frag); }
+  }
+}
 </script>
 </body>
 </html>

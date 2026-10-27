@@ -235,6 +235,47 @@ def anchors_ok(project_dir, config, lesson, script, timeline):
     return result
 
 
+def practice_items(lines):
+    """Spans (first, last) of 1-based lesson lines, one per practice item: each top-level bullet of a
+    `::: checkin` block and each whole `::: mcq` block. Fenced code is skipped."""
+    items, block, fence = [], None, False
+    for n, raw in enumerate(lines, 1):
+        line = raw.rstrip()
+        if line.lstrip().startswith("```"):
+            fence = not fence
+        if fence:
+            continue
+        if block is None:
+            if line.startswith("::: checkin"):
+                block = "checkin"
+            elif line.startswith("::: mcq"):
+                block = "mcq"
+                items.append([n, n])
+            continue
+        if line == ":::":
+            if block == "mcq":
+                items[-1][1] = n
+            block = None
+        elif block == "checkin" and line.startswith("- "):
+            items.append([n, n])
+        elif block == "checkin" and items and (not line or raw.startswith("  ")):
+            items[-1][1] = n
+    return [tuple(i) for i in items]
+
+
+def practice_ok(lesson, segments):
+    """Every lesson practice item needs a video segment with a pause and reveal anchored inside it."""
+    lines = lesson.read_text(encoding="utf-8").splitlines()
+    gated = [s["line"] for s in segments if s.get("practice")]
+    items = practice_items(lines)
+    missing = [a for a, b in items if not any(a <= g <= b for g in gated)]
+    if missing:
+        shown = "; ".join(f"line {a}: {lines[a - 1].strip()[:60]}" for a in missing[:8])
+        more = f" (+{len(missing) - 8} more)" if len(missing) > 8 else ""
+        raise PipelineError(f"{len(missing)} of {len(items)} lesson practice items have no pause-and-solve video segment: {shown}{more}")
+    return len(items)
+
+
 def map_data(project_dir, captions_burned_in=False):
     config, lesson, lid = project(project_dir)
     script, timeline = timing(project_dir)
@@ -323,7 +364,7 @@ def media_ok(project_dir, duration):
 
 def check(args):
     stages = {name: "blocked by an earlier stage" for name in
-              ("source", "timing", "split", "anchors", "map", "scenes", "receipts", "media")}
+              ("source", "timing", "split", "anchors", "practice", "map", "scenes", "receipts", "media")}
     cfg = lesson = timeline = split = data = None
     try:
         cfg, lesson, lid = project(args.project)
@@ -348,6 +389,12 @@ def check(args):
             stages["anchors"] = "ready"
         except PipelineError as exc:
             stages["anchors"] = str(exc)
+    if data:
+        try:
+            count = practice_ok(lesson, data["segments"])
+            stages["practice"] = f"ready ({count} lesson practice items each have a pause-and-solve segment)"
+        except PipelineError as exc:
+            stages["practice"] = str(exc)
     if data:
         target = args.project / f"video-{lid}.json"
         try:
