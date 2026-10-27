@@ -333,7 +333,9 @@
   let shown = new Set();
   window.seek = function (t) {
     t = clamp(t, 0, TL.total - 1e-3);
-    const idx = TL.scenes.findIndex(s => t >= s.start && t < s.start + s.dur);
+    let idx = TL.scenes.findIndex(s => t >= s.start && t < s.start + s.dur);
+    // a rounding gap between scenes (start + dur a millisecond short of the next start) belongs to the earlier scene
+    if (idx < 0) idx = Math.max(0, TL.scenes.findLastIndex(s => s.start <= t));
     const cur = TL.scenes[idx], prev = TL.scenes[idx - 1];
     const active = [[cur, 1]];
     const lt = t - cur.start;

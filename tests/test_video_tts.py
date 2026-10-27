@@ -117,5 +117,26 @@ class TtsEngineTest(unittest.TestCase):
         self.assertTrue((self.project / "audio" / "s00_a.wav").exists())
 
 
+class NarrationTrackTest(unittest.TestCase):
+    def test_clips_land_at_their_start_and_track_has_exact_length(self):
+        with tempfile.TemporaryDirectory() as d:
+            d = Path(d)
+            tts = load(d)
+            clips = []
+            for name, value, at in (("a", 1000, 0.5), ("b", -2000, 2.0)):
+                path = d / f"{name}.wav"
+                with wave.open(str(path), "wb") as w:
+                    w.setnchannels(1); w.setsampwidth(2); w.setframerate(24000)
+                    w.writeframes(int(value).to_bytes(2, "little", signed=True) * 12000)   # 0.5 s
+                clips.append((at, str(path)))
+            out = d / "track.wav"
+            tts.write_track(list(reversed(clips)), 3.0, str(out))
+            with wave.open(str(out)) as w:
+                self.assertEqual((w.getframerate(), w.getnframes()), (48000, 144000))
+                pcm = w.readframes(w.getnframes())
+            sample = lambda sec: int.from_bytes(pcm[2 * int(sec * 48000):2 * int(sec * 48000) + 2], "little", signed=True)
+            self.assertEqual([sample(x) for x in (0.25, 0.75, 1.5, 2.25, 2.75)], [0, 1000, 0, -2000, 0])
+
+
 if __name__ == "__main__":
     unittest.main()

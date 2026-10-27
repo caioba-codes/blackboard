@@ -396,11 +396,35 @@ def build_timeline(script, engine="elevenlabs"):
                 concat.append((t + local, p))
             local += d + GAP
         sd = local - GAP + TAIL
-        scenes.append({"id": sc["id"], "chapter": sc["chapter"], "start": round(t, 3), "dur": round(sd, 3), "cues": cues, "subs": subs})
+        scenes.append({"id": sc["id"], "chapter": sc["chapter"], "start": round(t, 3), "dur": round(round(t + sd, 3) - round(t, 3), 3), "cues": cues, "subs": subs})
         t += sd
     tl = {"title": script["title"], "subtitle": script.get("subtitle", ""), "chapters": script["chapters"],
           "total": round(t, 3), "fps": FPS, "scenes": scenes}
     return tl, concat, t
+
+
+def write_track(concat, total, out, rate=48000):
+    """Write a mono 16-bit WAV of `total` seconds with each (start seconds, audio path) clip placed at its start."""
+    import wave
+    n_total, cursor = int(round(total * rate)), 0
+    zero = bytes(2 * rate)
+    def silence(n):
+        while n > 0:
+            k = min(n, rate)
+            w.writeframes(zero[:2 * k])
+            n -= k
+    with wave.open(out, "wb") as w:
+        w.setnchannels(1); w.setsampwidth(2); w.setframerate(rate)
+        for at, path in sorted(concat):
+            pcm = subprocess.run(["ffmpeg", "-v", "error", "-i", path, "-ac", "1", "-ar", str(rate), "-f", "s16le", "-"],
+                                 capture_output=True, check=True).stdout
+            begin = int(round(at * rate))
+            if begin > cursor:
+                silence(begin - cursor); cursor = begin
+            skip = cursor - begin                      # a clip may not start before the previous one ended
+            frames = pcm[2 * skip:2 * max(skip, min(len(pcm) // 2, n_total - begin))]
+            w.writeframes(frames); cursor += len(frames) // 2
+        silence(n_total - cursor)
 
 
 def main(argv=None):
@@ -463,20 +487,11 @@ def main(argv=None):
 
     tl, concat, t = build_timeline(script, engine)
     data = json.dumps(tl, indent=1)
-    # narration track: place each clip at its absolute time
-    inputs, filt = [], []
-    if not concat:   # pause-only script: a silent track of the right length
-        inputs, filt = ["-f", "lavfi", "-i", "anullsrc=r=48000:cl=mono"], [f"[0:a]atrim=0:{t:.3f}[out]"]
-    for k, (at, p) in enumerate(concat):
-        inputs += ["-i", p]
-        filt.append(f"[{k}:a]aresample=48000,adelay={int(at*1000)}:all=1[a{k}]")
-    if concat:
-        filt.append("".join(f"[a{k}]" for k in range(len(concat))) + f"amix=inputs={len(concat)}:normalize=0,apad=whole_dur={t:.3f}[out]")
-    with open(os.path.join(ROOT, "narr_filter.txt"), "w") as f:
-        f.write(";\n".join(filt))
+    # narration track: place each clip at its absolute time. Clips never overlap (cues are sequential), so the
+    # track is written once, left to right: silence up to each clip's start, then the clip decoded to 48 kHz mono.
+    # (An ffmpeg amix of every clip padded to full length costs clips x duration and stalls on long videos.)
     tmp = os.path.join(ROOT, ".narration.tmp.wav")
-    subprocess.check_call(["ffmpeg", "-y", "-v", "error", *inputs, "-filter_complex_script", os.path.join(ROOT, "narr_filter.txt"),
-                           "-map", "[out]", "-t", f"{t:.3f}", "-c:a", "pcm_s16le", "-f", "wav", tmp])
+    write_track(concat, t, tmp)
     # publish only after the WAV is built, then fingerprint the set; a failure before this leaves the previous set
     atomic_write(os.path.join(ROOT, "timeline.json"), data.encode())
     atomic_write(os.path.join(ROOT, "timeline.js"), ("window.TIMELINE=" + data + ";\n").encode())
