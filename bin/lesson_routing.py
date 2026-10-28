@@ -111,8 +111,8 @@ def check(receipt, selected):
     reviewer = runs["reviewer"]
     if reviewer.get("fresh_agent") is not True or reviewer.get("findings_resolved") is not True:
         raise RoutingError("receipt: independent review or findings resolution missing")
-    if receipt["long_lesson"] and "tone_editor" not in runs:
-        raise RoutingError("receipt: long lesson requires a fresh tone editor")
+    if "tone_editor" not in runs:
+        raise RoutingError("receipt: every lesson requires a fresh tone editor")
     if "tone_editor" in runs:
         tone = runs["tone_editor"]
         author = runs["author"]["resolved"]

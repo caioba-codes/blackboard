@@ -113,6 +113,8 @@ fi
 
 # lint: derivations written sideways are the most common contract violation; warn loudly, never block
 [ -n "$LESSON" ] && python3 "$DIR/../bin/lint.py" "$LESSON" || true
+# prose: hard-to-read sentences and terms used before they are explained (TEMPLATES.md, Tone)
+[ -n "$LESSON" ] && python3 "$DIR/../bin/prose_lint.py" "$LESSON" || true
 
 # bridge: launchd keeps it up (bin/install.sh, run once here on macOS); nohup is the fallback elsewhere
 if [ "$(uname)" = Darwin ] && [ ! -f "$HOME/Library/LaunchAgents/com.blackboard.bridge.plist" ]; then

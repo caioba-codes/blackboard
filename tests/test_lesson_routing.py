@@ -101,6 +101,9 @@ class LessonRoutingTests(unittest.TestCase):
                        "outcome": "passed" if name == "reviewer" else "complete"}
                 for name, entry in selection["roles"].items()}
         runs["reviewer"].update(fresh_agent=True, findings_resolved=True)
+        runs["tone_editor"] = {"requested": runs["author"]["requested"],
+                               "resolved": runs["author"]["requested"],
+                               "fresh_agent": True, "outcome": "complete"}
         receipt = self.root / "receipt.json"
         self.write(receipt, {"selection": selection, "long_lesson": False, "runs": runs})
         self.assertEqual(self.call("check", "--receipt", str(receipt)).returncode, 0)
@@ -109,6 +112,7 @@ class LessonRoutingTests(unittest.TestCase):
             lambda r: r["runs"]["support"]["resolved"].update(effort="high"),
             lambda r: r["runs"]["reviewer"].update(fresh_agent=False),
             lambda r: r["runs"].pop("reviewer"),
+            lambda r: r["runs"].pop("tone_editor"),
             lambda r: r["runs"].update(tone_editor={"requested": r["runs"]["author"]["requested"],
                                                      "resolved": {"model": "other", "effort": "high"},
                                                      "fresh_agent": True, "outcome": "complete"}),
@@ -119,11 +123,6 @@ class LessonRoutingTests(unittest.TestCase):
                 self.write(receipt, data)
                 self.assertNotEqual(self.call("check", "--receipt", str(receipt)).returncode, 0)
                 self.write(receipt, {"selection": selection, "long_lesson": False, "runs": runs})
-        self.write(receipt, {"selection": selection, "long_lesson": True, "runs": runs})
-        self.assertNotEqual(self.call("check", "--receipt", str(receipt)).returncode, 0)
-        runs["tone_editor"] = {"requested": runs["author"]["requested"],
-                               "resolved": runs["author"]["resolved"],
-                               "fresh_agent": True, "outcome": "complete"}
         self.write(receipt, {"selection": selection, "long_lesson": True, "runs": runs})
         self.assertEqual(self.call("check", "--receipt", str(receipt)).returncode, 0)
         self.write(self.user, config(author="changed-policy"))

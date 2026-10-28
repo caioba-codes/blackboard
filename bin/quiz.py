@@ -118,7 +118,7 @@ Hard rules, from the skill's QUIZ.md:
 - Use supplied question sources first; preserve their difficulty and reasoning with changed parameters.
 - Self-contained: restate inside the question every expression, input value, table row or figure fact it depends on. Never write "in problem 1", "the example above", "the lesson's circuit" or an unexplained wire name; the student must answer without scrolling back.
 - Never repeat a question already in the quiz.
-- Plain and direct. No "students often", no praise, no throat-clearing, no em dashes.
+- One idea per sentence, at most 25 words. Keep "that" and "of", keep the subject next to its verb, at most two nouns in a row, no nouns used as verbs, no objects doing human actions.
 - LaTeX with $...$ is fine for symbols. Keep every string on one line.
 """
 
@@ -135,6 +135,37 @@ Every wrong option is a real, plausible mistake on this problem (a dropped sign,
 Mirror the source option style. Without a source pattern, use balanced options and avoid all/none, negatives and absolutes.
 The stem must be answerable before reading the options. The key is not the longest option.
 If the stem shows more than one statement of code, put the code in a fenced ```java block with real line breaks and indentation (use \\n in the JSON string), then the question sentence on its own line after it. Never inline a class or several statements into the sentence."""
+
+
+def readable(items):
+    """Readability gate (TEMPLATES.md, Tone): one rewrite of the text fields when they break a checkable rule.
+    Options and keys must come back unchanged, or the original items are kept."""
+    try:
+        from prose_lint import check_text
+    except Exception:
+        return items
+    issues = []
+    for n, it in enumerate(items, 1):
+        if not isinstance(it, dict):
+            return items
+        for k in ("q", "why", "answer"):
+            v = it.get(k)
+            if isinstance(v, str) and "```" not in v:
+                issues += [f"item {n} {k}: {m}" for m in check_text(v)]
+    if not issues:
+        return items
+    try:
+        fixed = json_from(run_writer(
+            "Rewrite the q, why and answer text of these quiz items so they fix every problem listed. "
+            "Keep the meaning, every number, all math and LaTeX, and every option, key, mistake and must line exactly. "
+            "Split long sentences instead of dropping words. Return only the JSON array in the same shape.\n\nProblems:\n"
+            + "\n".join("- " + i for i in issues) + "\n\nItems:\n" + json.dumps(items)))
+        same = (isinstance(fixed, list) and len(fixed) == len(items) and
+                all(isinstance(f, dict) and all(f.get(k) == i.get(k) for k in ("options", "key", "mistakes", "must"))
+                    for f, i in zip(fixed, items)))
+        return fixed if same else items
+    except Exception:
+        return items
 
 
 def do_generate():
@@ -177,6 +208,7 @@ The lesson:
         return {"error": str(items["error"])}
     if not isinstance(items, list):
         return {"error": "writer did not return a list"}
+    items = readable(items)
 
     blocks, ids = [], []
     if mode == "mcq":

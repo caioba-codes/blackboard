@@ -83,7 +83,7 @@ def block_at(s, line):
     return a, b, "\n".join(lines[a:b + 1])
 
 RULES = """You write one explanation for a student reading a lesson on a black board. It appears in an expandable callout under the selected paragraph.
-Rules: plain and direct. No "students often", no "it's important to note", no throat-clearing, no praise, no summary sentence, no em dashes, no binary contrasts ("not X but Y"). Use only terms the lesson has already introduced or define them in the same sentence.
+Rules: one idea per sentence, at most 25 words; split long sentences instead of dropping words. Keep "that" and "of", keep the subject next to its verb, at most two nouns in a row, no nouns used as verbs, no objects doing human actions ("the term dies"), no invented phrases. Use only terms the lesson has already introduced, or explain a new term before you use it.
 If the selected words name a rule, law, theorem, identity, method or technical term, the FIRST thing you write is what it is, in general form, before saying how it is used here. A name is not an explanation. Example: for "De Morgan" start with the law itself, $\\overline{{A+B}} = \\overline{{A}}\\,\\overline{{B}}$ and $\\overline{{AB}} = \\overline{{A}}+\\overline{{B}}$, then show it on this line.
 Math typesetting: symbols inline with $...$. Any equation, and especially a chain of equal signs, goes on its own line as a display block:
 
@@ -170,6 +170,19 @@ try:
     body = run_writer(prompt)
 except Exception as e:
     print(json.dumps({"error": str(e)})); sys.exit(1)
+
+# readability gate (TEMPLATES.md, Tone): one rewrite when the note breaks a checkable rule, else keep it as written
+try:
+    from prose_lint import check_text
+    issues = check_text(body)
+    if issues:
+        fixed = run_writer("Rewrite this note so it fixes every problem listed. Keep its meaning, its math and LaTeX, "
+                           "and its length. Split long sentences instead of dropping words. Output only the note.\n\nProblems:\n"
+                           + "\n".join("- " + i for i in issues) + "\n\nNote:\n" + body)
+        if fixed.strip():
+            body = fixed
+except Exception:
+    pass
 
 body = re.sub(r'^["“”\'\s]+|["“”\'\s]+$', '', body.strip())
 body = re.sub(r'^\*\*[^*]+\*\*\s*[—:-]\s*', '', body)

@@ -35,17 +35,44 @@ Lessons never show answer-verification work: no "Check:" paragraphs, no differen
 
 Do not end with a "common mistake" or "why people get this wrong" paragraph.
 
-### Tone: simple and to the point
+### Tone: easy to read top to bottom
 
-- Keep a step or instruction to 20 words or fewer, and a description to 25. Put one idea in each sentence.
-- Say the operation and its result with the actual symbols and values. Avoid roundabout or figurative phrasing such as "work it out before the OR", "the term drops out" or "B gets absorbed".
-- Use short common words: "use", not "utilize"; "before", not "prior to"; "about", not "approximately".
-- Give each thing one name and keep it. Never switch to a synonym for variety.
-- Write in the active voice and the simple present tense. Keep "the", "a" and "this".
-- Never stack more than three nouns.
+These rules come from research on why AI text is hard for people to read (Clark, Martin and Mahowald 2026, arXiv 2610.29162). Models squeeze sentences to save words: they drop small words, stack nouns and pack ideas together. People read best when information is spread out evenly. So short means one idea per sentence, never fewer words per idea. When a sentence runs long, split it into two sentences. Never squeeze it.
+
+**Sentences**
+
+- Keep a step or instruction to 20 words or fewer, and a description to 25. Put one idea in each sentence. Meet the cap by splitting, never by cutting "that", "of" or "the".
+- Keep the subject next to its verb. Never put a clause, a list or an aside between them. Write "Simplify first. Then $x = 4$.", not "The value of $x$, once you simplify both sides, is 4."
+- Put the known thing first and the new thing last. Put a short part before a long part.
+- Don't describe a thing by what someone does to it ("the term you factor out", "the value the loop prints"). Split it: "Factor out $x$. The term left inside is $x + 1$." If you keep the phrase, keep "that": "the value that the loop prints".
+- Keep the small words that show how a sentence fits together: "the", "a", "this", "that", "of", "so that", "in order to". Write "the roof of the old house", "all of the rows", "check that the sum is 1".
+
+**Words**
+
+- Use common, predictable words: "use", not "utilize"; "before", not "prior to"; "about", not "approximately".
+- Use word pairs a textbook already uses. Never coin a phrase ("reader-patience budget", "gear trap", "papercut bug").
+- At most two nouns in a row. "The loop counter update line" becomes "the line that updates the counter".
+- Use a noun as a noun. Don't turn it into a verb: "put it on your calendar", not "calendar it".
+- Only people do human actions. A method, term or rule never "swallows", "bites", "promises", "wants", "fires", "dies" or "eats" anything. Say what actually happens: "the method catches the error and returns `false`".
+
+**Hard-to-read patterns.** Each one saves a word or two and costs the reader time. The tone editor checks every sentence for them.
+
+| Pattern | Hard | Easy |
+|---|---|---|
+| Subject far from its verb | The value of $x$, once you simplify both sides, is 4. | Simplify both sides. Then $x = 4$. |
+| Thing described by what someone does to it | Plug in the root you found. | You found the root $x = 2$. Plug it in. |
+| Dropped "that" or "of" | You know the sum is 1. | You know that the sum is 1. |
+| Three or more nouns in a row | the carry bit output wire | the wire that outputs the carry bit |
+| Noun used as a verb | Table the cases. | Put the cases in a table. |
+| Object doing a human action | The minus sign bites here. | The minus sign flips both terms. |
+| Invented word pair | It is a sign-flip trap. | The sign flips. |
+
+`bin/prose_lint.py` (run by `render.sh`) flags long sentences, objects doing human actions, "the root you found" phrases, noun stacks (when spaCy is installed) and terms used before they are explained. Fix every warning before the render counts as done. The tone editor handles what a script cannot judge.
+
+### What a lesson leaves out
+
 - No chapter-opening preview or summary paragraph ("this chapter covers…", "you know this from…", "the X is for…, the Y is for…"). A chapter opens directly with its prerequisites, if any, or its first step. A decision rule the student needs ("use parts when no $u$-substitution works") goes where the choice is made, usually the Which Technique table.
-- Prefer the literal mechanism to a metaphor. If an analogy really helps, use one and say where it stops matching.
-- No "students often…", no "why people get this wrong", no "it's important to note", no throat-clearing, no summary endings, no praise, no em dashes, no binary contrasts ("it's not X, it's Y"). No trap or "common mistake" lines. The one exception: something the grader actually takes points off for, as stated by the instructor or the rubric, gets one **On the test** callout: a `::: callout` block with a `wrong:` line (the form that loses points), a `right:` line (the form the grader wants) and at most one short text line. The board renders it as an amber card with the wrong form struck through next to the right one; a plain `⚠️` line still renders as the same card with only its text.
+- No trap or "common mistake" lines. The one exception: something the grader actually takes points off for, as stated by the instructor or the rubric, gets one **On the test** callout: a `::: callout` block with a `wrong:` line (the form that loses points), a `right:` line (the form the grader wants) and at most one short text line. The board renders it as an amber card with the wrong form struck through next to the right one; a plain `⚠️` line still renders as the same card with only its text.
 
   ```md
   ::: callout
@@ -55,14 +82,9 @@ Do not end with a "common mistake" or "why people get this wrong" paragraph.
   :::
   ```
 
-Tone target. Write like this:
-
-> You'll need to simplify $A + AB$. First, the symbols. $A$ and $B$ are each 0 or 1. $+$ is OR: the result is 1 if either side is 1. $AB$ is AND: the result is 1 only if both are 1. Now try both values of $A$. If $A = 1$: $1 + AB = 1$, because OR with a 1 is always 1. If $A = 0$: $AB = 0$, so $0 + 0 = 0$. Both times the answer is $A$. So $A + AB = A$. This is called absorption.
-
-Not like this: "AB is one piece, so work it out before the OR."
-
 ### Sequence meaning before use
 
+- **Top to bottom, hard rule.** The student reads once, from the top. Never use a term, symbol or abbreviation before the paragraph that explains it. When one shows up early, move its explanation up to before that first use. Never leave a forward pointer ("see below", "more on this later"). Write each term in **bold** at the place that explains it, so `bin/prose_lint.py` can see where it is explained and flag any earlier use.
 - Start with the task the learner will be able to perform. Name the actual homework or exam skill; keep enrichment off the main path.
 - Establish only the prerequisites that task needs. Define a new concept in familiar words, introduce its notation, explain what that notation means, then use it. Do not define one unknown term through another unknown term.
 - Introduce symbols beside their first use, including overloaded operators, bars, parentheses, subscripts, abbreviations, and implicit multiplication when relevant. Read an unfamiliar expression aloud in prose before manipulating it.
@@ -84,9 +106,8 @@ Not like this: "AB is one piece, so work it out before the OR."
 
 ### Language and visual conventions
 
-- Follow **Tone: simple and to the point** above. Prefer concrete verbs such as “flip,” “factor out,” “replace,” and “feed into” over shorthand such as “fires,” “dies,” “shadows,” or “collapses.”
+- Follow **Tone: easy to read top to bottom** above, including the **Hard-to-read patterns** table.
 - Explain the meaning in plain words before giving its technical name when that helps. Keep the course's technical vocabulary available so the student can recognize it on the assignment.
-- Avoid clever commentary, rhetorical flourishes, “obvious,” “clearly,” “just,” and “as you know” when they hide a missing explanation. Follow the shared bans on praise, throat-clearing, em dashes, and artificial binary contrasts.
 - One idea per paragraph. Use headings that name the action or decision. Do not compress several new concepts into a dense paragraph merely to meet a word cap.
 - Keep the reasoning needed for the task visible. The Prerequisites toggle lists expected prior knowledge only. Toggles may hide predictions, retrieval answers, and optional detail; explanations needed to follow the next line stay visible.
 - Use tables for repeated comparisons after explaining one representative case. Give columns operational labels such as “NOT Q” or “previous column OR R”; avoid unexplained shorthand.
@@ -102,7 +123,7 @@ Diagrams: when one helps and how to draw it are in FIGURES.md (**When to illustr
 - Ask a small prediction after teaching the prerequisite and before revealing the outcome. The reveal explains the causal step.
 - Cover the taught skills with 1–2 checkpoint MCQs after each chapter and 2–3 fresh mixed MCQs at the end, grounded in relevant supplied questions, following QUIZ.md Source fidelity. Match source difficulty, reasoning and alternatives; change parameters or adapt free-response questions to MCQ. Do not replace exam-level questions with easy recall or quiz an untaught prerequisite.
 - Write explanations that connect the answer to the rule and identify the actual mistaken operation. Verify every option; mathematically equivalent alternatives cannot be marked wrong merely because one uses more steps.
-- Before the final render, read top to bottom as a learner. Does every term and symbol appear after its plain explanation? Is every rule explained before it is applied? Is every transition supported by a visible intermediate step? Is every check correct? Does each explanation follow the Shape order? Does every sentence follow the Tone rules?
+- Before the final render, read top to bottom as a learner. Does every term and symbol appear after its plain explanation? Is every rule explained before it is applied? Is every transition supported by a visible intermediate step? Is every check correct? Does each explanation follow the Shape order? Does every sentence follow the Tone rules? Is `bin/prose_lint.py` clean?
 - Verify section order, the full author byline, rendered math, figure labels, and quiz keys. Fix rendering or ambiguous questions before declaring the lesson ready. Do not infer mastery or completion from having rewritten or displayed material.
 
 ## STEM lessons (math, physics, engineering, CS)
@@ -127,7 +148,7 @@ The model is an exam-prep lesson for a calculus test: Prerequisites, Contents, a
   At most two short sentences of prose around all of it.
 - **Solutions open one step at a time.** The board steps every worked solution the student solves themselves (a `::: checkin` answer, an `::: mcq` `why:` with display math): the lead sentence and the first piece (the boxed setup, else row 1 with its reason), then **Next step** adds one aligned row with its reason and the last press shows the boxed answer; **Show all** opens everything. A wrong pick shows the verdict and the lead sentence as its hint first. Taught worked examples are never stepped. No markup is needed: write the solution in the format above and the steps come from its rows, so keep one operation per row and the boxed answer on the last row.
 - **No opening hook.** No "Question first" line under the Contents.
-- **No exam logistics.** No date, time, room, closed-book or grading-policy paragraph. The topic scope is the breakdown table. A rule the grader takes points off for becomes one `::: callout` instead (see **Tone**).
+- **No exam logistics.** No date, time, room, closed-book or grading-policy paragraph. The topic scope is the breakdown table. A rule the grader takes points off for becomes one `::: callout` instead (see **What a lesson leaves out**).
 - **No inline provenance.** No `→ Exam:`, `→ background` or "officially stated" tags in the body. Where things came from goes in the `::: sources` drop-down under Contents.
 - **Cheat sheet chapters are formulas to memorize, never prose.** Wrap the chapter in `::: sheet`, one `::: group <Method>` card per method in chapter order (the board lays the cards out as a two-column sheet when there is room). Inside a card: its formulas as display math, one per line, aligned on `=` where useful, each with a muted 1–4 word tag after `&&` ("Pythagorean", "p-rule"); level 2 (`::: key`) for the key formulas; a small board table where the content is tabular (the trig-power cases); at most one small `::: callout` per card and two or three in the whole sheet, only for a real grading trap. No sentences, no bold-label paragraphs.
 
@@ -261,7 +282,7 @@ Block syntax the renderer understands:
 - `\why{math}{rule}` inside any `$…$` → the math with a dotted underline; a tap shows the rule (STEM lessons, see above).
 - `::: sheet` / `::: group <label>` cards / `:::` → a cheat-sheet chapter: cards of formulas with small-caps labels, two columns when there is room (see **STEM lessons**).
 - `::: big` / a display or table / `:::` → size level 1 (the chapter's fundamental rule); `::: key` → level 2 (a tool formula). See **STEM lessons**.
-- `::: callout` / `wrong: …` / `right: …` / optional short text / `:::` → the amber **On the test** card for a grader deduction (see **Tone**). A line starting `⚠️` renders as the same card with just its text.
+- `::: callout` / `wrong: …` / `right: …` / optional short text / `:::` → the amber **On the test** card for a grader deduction (see **What a lesson leaves out**). A line starting `⚠️` renders as the same card with just its text.
 - `::: exp e12 [folded] … :::` → an expandable callout. Written only after an Explain request, not prefilled in a fresh lesson.
 - `::: fig <template>` / JSON spec / `:::` → inline chalk SVG (taccounts, bars, flow, timeline, table, kmap, vectors, wave, raw). Specs in [FIGURES.md](./FIGURES.md). `caption` in the spec becomes the figcaption.
 - `::: photo [side|wide]` / `query: <what to fetch>` / `caption: <short description>` / `:::` → a real photograph of the thing being discussed, fetched by `bin/photos.py` from licensed sources and saved under `assets/`; `src: https://…` skips the fetch when a specific image (a maker's press photo) is the only good one. `side` floats it right at 44% width with the text flowing on the left; `wide` spans the column. Rules in **Photos** below.
