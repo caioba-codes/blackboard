@@ -135,21 +135,24 @@ def _variants(term):
 
 def order_warnings(pl):
     """A **bold** term marks where the lesson explains it. An ALL-CAPS abbreviation is explained where
-    it is bold, spelled out in parentheses, or followed by "is", "means" or "stands for".
+    it is bold, spelled out in parentheses, or followed by "means", "stands for" or "is short for".
     Warn when either appears in prose earlier than that point."""
     w = []
     intro = {}   # term(lower) -> (line, shown)
     for ln, t in pl:
         for m in re.finditer(r"\*\*([^*]{2,40}?)\*\*", t):
-            term = m.group(1).strip().rstrip(".:")
-            if not term or term.endswith(("?", "!")) or len(term.split()) > 4 or re.search(r"[0-9=$]", term):
+            raw = m.group(1).strip()
+            if raw.endswith((".", ":")):
+                continue    # a bold label: "**Your turn.**", "**B.**", "**Setup:**"
+            term = raw
+            if len(term) < 2 or term.endswith(("?", "!")) or len(term.split()) > 4 or re.search(r"[0-9=$]", term):
                 continue
             if m.start() <= 1 and re.match(r"\s*[.:—-]", t[m.end():m.end() + 2] + " "):
                 continue    # a bold label such as "**Your turn.**" or "**Setup:**"
             if term.lower() in ("your turn", "setup", "answer", "next step", "note", "tip", "step"):
                 continue
             intro.setdefault(term.lower(), (ln, term))
-        for m in re.finditer(r"\b([A-Z]{2,6})\b(?:\s*\(([^)]+)\)|\s+(?:is|means|stands for)\b)", t):
+        for m in re.finditer(r"\b([A-Z]{2,6})\b(?:\s*\(([a-z][^)]+)\)|\s+(?:means|stands for|is short for)\b)", t):
             ab = m.group(1)
             if ab not in STOP_CAPS:
                 intro.setdefault(ab.lower(), (ln, ab))
