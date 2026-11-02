@@ -51,10 +51,10 @@ class VideoPipelineTest(unittest.TestCase):
         self.init()
         script = {"title": "Motion", "subtitle": "Example", "voice": "sample", "chapters": ["Intro"], "scenes": [
             {"id": "s00", "chapter": 0, "visual": "two questions", "cues": [
-                {"id": "a", "say": "Question one"}, {"id": "think1", "pause": 1},
-                {"id": "b", "say": "Answer one"}, {"id": "c", "say": "Question two"},
-                {"id": "think2", "pause": 1}, {"id": "d", "say": "Answer two"}]},
-            {"id": "s01", "chapter": 0, "visual": "recap", "cues": [{"id": "a", "say": "Summary"}]}]}
+                {"id": "a", "say": "Question one", "show": "Question 1"}, {"id": "think1", "pause": 1},
+                {"id": "b", "say": "Answer one", "show": "Answer 1"}, {"id": "c", "say": "Question two", "show": "Question 2"},
+                {"id": "think2", "pause": 1}, {"id": "d", "say": "Answer two", "show": "Answer 2"}]},
+            {"id": "s01", "chapter": 0, "visual": "recap", "cues": [{"id": "a", "say": "Summary", "show": "Summary"}]}]}
         timeline = {"title": "Motion", "total": 15, "fps": 30, "scenes": [
             {"id": "s00", "start": 0, "dur": 10, "cues": {
                 "a": {"s": .5, "e": 1}, "think1": {"s": 1, "e": 2, "pause": True},

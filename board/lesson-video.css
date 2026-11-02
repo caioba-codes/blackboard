@@ -70,6 +70,21 @@ html.lv-on .mcqi{position:relative}
 .lv-btn:focus-visible{outline:2px solid var(--lv-acc);outline-offset:2px}
 @media (max-width:520px){.lv-card{padding:10px 12px 12px}.lv-ck{font-size:22px}.lv-ct{font-size:15px;margin-bottom:8px}.lv-btn{height:34px;font-size:15px;padding:0 12px}}
 
+/* captions: an overlay on the picture (the frames carry none), sized and placed like the renderer's old caption box:
+   bottom centre, 40/1080 of the picture above its foot, 36/1080 type, a translucent dark box, the lesson's font and
+   KaTeX math. They rise above the control bar while it shows. --lv-cx/cy/cw/ch: the picture inside the stage. */
+.lv-cc{position:absolute;z-index:1;left:var(--lv-cx,0px);width:var(--lv-cw,100%);bottom:max(calc(var(--lv-cy,0px) + var(--lv-ch,0px) * .037),var(--lv-cy,0px));display:flex;justify-content:center;pointer-events:none;transition:bottom .2s}
+.lv-panel:not(.lv-idle) .lv-cc{bottom:max(calc(var(--lv-cy,0px) + var(--lv-ch,0px) * .037),calc(var(--lv-barh,0px) + 4px))}
+.lv-cct{display:inline-block;max-width:78%;box-sizing:border-box;padding:.28em .72em;border-radius:.28em;background:rgba(0,0,0,.62);color:#f4f1ea;font-family:var(--body);font-size:max(13px,calc(var(--lv-ch,0px) * .0333));line-height:1.3;text-align:center;box-shadow:inset 0 -2px 0 color-mix(in srgb,var(--acc) 55%,transparent)}
+.lv-cct .katex{font-size:1.06em;color:#fff}
+/* over a video whose captions are burned in: an opaque band the size of the burned box (two lines), in the frame's own
+   dark and feathered at its edge, hides it */
+.lv-ccband{position:absolute;z-index:1;left:calc(var(--lv-cx,0px) + var(--lv-cw,0px) * .095);width:calc(var(--lv-cw,0px) * .81);bottom:calc(var(--lv-cy,0px) + var(--lv-ch,0px) * .028);height:calc(var(--lv-ch,0px) * .118);border-radius:999px;background:var(--lv-frame,#101413);box-shadow:0 0 calc(var(--lv-ch,0px) * .03) calc(var(--lv-ch,0px) * .02) var(--lv-frame,#101413);pointer-events:none}
+/* the old in-frame progress strip (6/1080 at the foot of the picture, its chapter ticks 10/1080), hidden on videos rendered with one */
+.lv-mask{position:absolute;z-index:1;left:var(--lv-cx,0px);width:var(--lv-cw,100%);bottom:var(--lv-cy,0px);height:max(3px,calc(var(--lv-ch,0px) * .0105));background:var(--lv-frame,#101413);pointer-events:none}
+.lv-ccb[aria-pressed="true"]{color:var(--chalk);box-shadow:inset 0 -2px 0 var(--lv-acc)}
+.lv-ccb[aria-pressed="false"]{color:#8d897f}
+
 /* the control bar lies on the bottom of the video and fades while it plays */
 .lv-bar{position:absolute;left:0;right:0;bottom:0;z-index:2;padding:28px 10px 4px;background:linear-gradient(transparent,rgba(0,0,0,.55) 45%,rgba(0,0,0,.82));cursor:default;transition:opacity .25s;container:lvbar/inline-size}
 .lv-panel.lv-idle .lv-bar{opacity:0;pointer-events:none}

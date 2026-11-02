@@ -9,7 +9,16 @@
    Segment `step` (1-based) never reveals anything by itself: in a check-in answer opened after the practice gate it
    advances the step-by-step reveal to that step (never backwards); otherwise it marks that row of the block's single
    aligned derivation when the row is already on screen. Anything put inside a lesson block is textless and appended
-   last, so block text signatures (definitions, pending Explain notes, place restore) never change. */
+   last, so block text signatures (definitions, pending Explain notes, place restore) never change.
+
+   Captions: the video frames carry no captions; the player overlays the caption track installed beside the MP4
+   (NNNN-lecture.captions.json, the narration in the lesson's notation with KaTeX math), synced to the video's time.
+   CC turns them on or off (remembered in this browser). A video rendered with its captions burned in
+   (captionsBurnedIn) starts with CC off; turned on, an opaque band hides the burned caption box under the overlay. A track that says
+   progressBarBurnedIn hides the old in-frame progress strip at the bottom of the picture.
+
+   LessonVideo.context(): what the reader is looking at in the video, for the chat (null until the video is played or
+   seeked on this page); a `lessonvideo:context` event on window carries the same object whenever it changes. */
 (function(){
 'use strict';
 const SPEEDS=[.5,.75,1,1.25,1.5,2], SKIP=10, WIDE=1080, TOPBAR=70;
@@ -33,6 +42,7 @@ const I={
   read:svg('<path d="M2.5 3.5c2-.6 3.9-.4 5.5.8 1.6-1.2 3.5-1.4 5.5-.8v9c-2-.6-3.9-.4-5.5.8-1.6-1.2-3.5-1.4-5.5-.8z"/><path d="M8 4.3v9"/>',STROKE),
   watch:svg('<rect x="1.8" y="3.2" width="12.4" height="9.6" rx="1.6"/><path d="M6.6 6v4l3.4-2z" fill="currentColor" stroke="none"/>',STROKE),
   both:svg('<rect x="1.8" y="3.2" width="12.4" height="9.6" rx="1.6"/><path d="M8.2 3.2v9.6"/><path d="M3.8 6.4v3.2l2.5-1.6z" fill="currentColor" stroke="none"/><path d="M10 6.2h2.4M10 8h2.4M10 9.8h1.6"/>',STROKE),
+  cc:svg('<rect x="1.6" y="3.4" width="12.8" height="9.2" rx="1.8" fill="none" stroke="currentColor" stroke-width="1.4"/><text x="8" y="10.4" font-size="5.4" font-weight="700" text-anchor="middle" fill="currentColor" font-family="inherit">CC</text>'),
   wfh:svg('<circle cx="8" cy="8" r="6.4" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M6.5 5.3v5.4L10.9 8z" fill="currentColor"/>')
 };
 let ctx=null, S=null, probe=null;
@@ -87,6 +97,92 @@ function mount(m){
   wire();
   setMode(['read','watch','both'].includes(saved.mode)?saved.mode:'read',{init:true});
   paintTime(S.pendingT,true); setSeg(segAt(S.pendingT),'init'); paintPlay(); paintMenu(); paintCards(); paintFoot();
+  loadCaptions();
+}
+
+// ---------- captions: an overlay in the lesson's notation, synced to the video ----------
+const CC_KEY=burned=>burned?'bb-video:cc-burned':'bb-video:cc';
+function capsUrl(u){ return u.replace(/\.mp4(?=$|[?#])/i,'.captions.json'); }
+function usableCaps(d){
+  if(!d||!Array.isArray(d.cues)||!d.cues.length)return null;
+  const cues=d.cues.filter(c=>c&&num(c.s)&&num(c.e)&&c.e>c.s&&typeof c.text==='string'&&c.text.trim()).sort((a,b)=>a.s-b.s);
+  return cues.length?cues:null;
+}
+function loadCaptions(){
+  return fetch(capsUrl(S.m.videoUrl),{cache:'no-store'}).then(r=>r.ok?r.json():null).catch(()=>null).then(d=>{
+    const cues=usableCaps(d); if(!S||!cues)return;
+    S.caps=cues; S.barBurned=d.progressBarBurnedIn===true;
+    let on=null; try{ on=localStorage.getItem(CC_KEY(S.m.captionsBurnedIn)); }catch(_){}
+    S.cc=on===null?!S.m.captionsBurnedIn:on==='1';
+    S.ccBtn.hidden=false; S.mask.hidden=!S.barBurned;
+    fitCaptions(); paintCC(cur(),true);
+  });
+}
+// the caption at time t: the same window the renderer used for burned captions (0.05 s early, 0.35 s late)
+function capAt(t){
+  const a=S.caps; if(!a)return null; let lo=0,hi=a.length-1,k=-1;
+  while(lo<=hi){ const m=(lo+hi)>>1; if(a[m].s-.05<=t){k=m;lo=m+1;} else hi=m-1; }
+  for(let j=k;j>=0&&j>k-3;j--)if(t<=a[j].e+.35)return a[j];
+  return null;
+}
+// text with $inline$ math rendered by the board's KaTeX; plain text escaped
+function capHtml(s){
+  const K=window.katex; let out='', last=0; const re=/\$\$([\s\S]+?)\$\$|\$([^$]+?)\$/g; let m;
+  while((m=re.exec(s))){ out+=esc(s.slice(last,m.index)); const tex=m[1]||m[2];
+    try{ out+=K?K.renderToString(tex,{displayMode:false,throwOnError:false,strict:false}):esc(tex); }catch(_){ out+=esc(tex); }
+    last=re.lastIndex; }
+  return out+esc(s.slice(last));
+}
+function paintCC(t,force){
+  if(!S||!S.capEl)return;
+  const c=S.cc&&S.caps?capAt(t):null;
+  if(c===S.capCur&&!force)return;
+  S.capCur=c;
+  // over burned-in captions an opaque band hides the burned box while the overlay shows (the text itself rises above
+  // the control bar like any caption)
+  S.capEl.hidden=!c; S.band2.hidden=!(c&&S.m.captionsBurnedIn);
+  S.capText.innerHTML=c?capHtml(c.text):'';
+}
+function setCC(on){
+  S.cc=!!on; try{ localStorage.setItem(CC_KEY(S.m.captionsBurnedIn),S.cc?'1':'0'); }catch(_){}
+  paintCCBtn(); paintCC(cur(),true); say(S.cc?'Captions on':'Captions off');
+}
+function paintCCBtn(){ if(!S.ccBtn)return; S.ccBtn.setAttribute('aria-pressed',String(!!S.cc)); const l=S.cc?'Turn captions off':'Turn captions on'; S.ccBtn.setAttribute('aria-label',l); S.ccBtn.title=l+' (C)'; }
+// the picture inside the stage (object-fit: contain): captions and the progress-strip mask are placed on it
+function fitCaptions(){
+  if(!S||!S.stage)return;
+  const w=S.stage.clientWidth, h=S.stage.clientHeight; if(!w||!h)return;
+  const vw=S.video.videoWidth||16, vh=S.video.videoHeight||9, k=Math.min(w/vw,h/vh), cw=vw*k, ch=vh*k;
+  const st=S.stage.style;
+  st.setProperty('--lv-cw',cw.toFixed(1)+'px'); st.setProperty('--lv-ch',ch.toFixed(1)+'px');
+  st.setProperty('--lv-cx',((w-cw)/2).toFixed(1)+'px'); st.setProperty('--lv-cy',((h-ch)/2).toFixed(1)+'px');
+  st.setProperty('--lv-barh',(S.bar.offsetHeight||0)+'px');
+  paintCCBtn();
+}
+
+// ---------- context for the chat: what the reader is looking at in the video ----------
+function sectionAt(line){
+  let best=null;
+  ctx.main.querySelectorAll('.blk[data-line] h2, .blk[data-line] h3').forEach(h=>{
+    const b=h.closest('.blk[data-line]'); if(!b||h.closest('.fold,.quiz,.mcqi,details'))return;
+    if(+b.dataset.line<=line&&(!best||+b.dataset.line>=best.l))best={l:+b.dataset.line,h};
+  });
+  if(!best)return null;
+  const c=best.h.cloneNode(true); c.querySelectorAll('.tag,.katex-mathml,.chalkdeco,.flagbtn,.lv-wfh').forEach(x=>x.remove());
+  return {id:best.h.id||null,heading:c.textContent.replace(/\s+/g,' ').trim()};
+}
+function context(){
+  if(!S||!S.touched)return null;
+  const t=S.gate?S.gate.p.pauseAt:cur(), s=S.segs[segAt(t)], c=S.caps?capAt(t):null;
+  const g=S.gate||(s&&s.p&&t<s.p.revealAt&&!S.granted.has(s.id)?s:null);
+  return {t:Math.round(t*100)/100,time:fmt(t),chapter:(S.chaps[chapAt(t)]||{}).title||'',segment:s?s.label:'',
+    line:s?s.line:null,section:s&&S.sync?sectionAt(s.line):null,caption:c?c.text:null,
+    paused:S.video.paused||!!S.gate||S.ended,practice:g?{label:g.label,revealed:false}:null};
+}
+function emit(){
+  if(!S||!S.touched)return;
+  clearTimeout(S.emitT);
+  S.emitT=setTimeout(()=>{ try{ window.dispatchEvent(new CustomEvent('lessonvideo:context',{detail:context()})); }catch(_){} },60);
 }
 
 // ---------- DOM ----------
@@ -99,6 +195,9 @@ function build(){
   // minimal, like a streaming player: the controls sit on the video and fade while it plays; the rest lives in More
   p.innerHTML=`<div class="lv-stage" tabindex="-1"><video playsinline preload="metadata" aria-label="Lesson video"></video>
 <button type="button" class="lv-big" data-a="play" tabindex="-1" aria-hidden="true">${I.play}</button>
+<div class="lv-mask" hidden aria-hidden="true"></div>
+<div class="lv-ccband" hidden aria-hidden="true"></div>
+<div class="lv-cc" hidden aria-hidden="true"><span class="lv-cct"></span></div>
 <div class="lv-spin" hidden aria-hidden="true"></div>
 <div class="lv-card lv-gate" role="group" aria-label="Your turn" hidden><p class="lv-ck">Your turn</p><p class="lv-ct">Pause here and work it out. The answer comes next.</p><div class="lv-cb"><button type="button" class="lv-btn pri" data-a="continue">Continue to the answer</button><button type="button" class="lv-btn" data-a="replayq">Replay the question</button></div></div>
 <div class="lv-card lv-err" role="alert" hidden><p class="lv-ck">Video unavailable</p><p class="lv-ct lv-errt"></p><div class="lv-cb"><button type="button" class="lv-btn pri" data-a="retry">Try again</button><button type="button" class="lv-btn" data-a="toread">Read the lesson</button></div></div>
@@ -110,6 +209,7 @@ function build(){
 <label class="lv-speed" title="Playback speed (Shift+&lt; and Shift+&gt;)"><span class="lv-sr">Playback speed</span><select>${SPEEDS.map(r=>`<option value="${r}">${r}×</option>`).join('')}</select></label>
 <div class="lv-more"><button type="button" class="lv-ib" data-a="more" aria-label="More video options" aria-expanded="false" aria-controls="lvmenu" title="More">${I.more}</button>
 <div class="lv-menu" id="lvmenu" hidden><button type="button" data-a="back">Back 10 seconds<kbd>←</kbd></button><button type="button" data-a="fwd">Forward 10 seconds<kbd>→</kbd></button><button type="button" data-a="prev">Previous explanation<kbd>⇧←</kbd></button><button type="button" data-a="next">Next explanation<kbd>⇧→</kbd></button><button type="button" data-a="replay">Replay this explanation<kbd>R</kbd></button><button type="button" data-a="loop" aria-pressed="false">Loop this explanation</button><button type="button" data-a="mute" aria-pressed="false">Mute</button><button type="button" data-a="pip" hidden>Picture in picture</button><button type="button" data-a="read">Read from here</button></div></div>
+<button type="button" class="lv-ib lv-ccb" data-a="cc" aria-pressed="false" aria-label="Turn captions on" title="Captions (C)" hidden>${I.cc}</button>
 <button type="button" class="lv-ib" data-a="fs" aria-label="Full screen" title="Full screen (F)">${I.fs}</button></div></div>
 </div>
 <ol class="lv-list" aria-label="Explanations in this video">${S.segs.map(s=>`<li><button type="button" data-a="seg" data-i="${s.i}"><span class="lv-lt">${fmt(s.start)}</span><span class="lv-ll">${esc(s.label)}</span>${s.p?'<span class="lv-tag">Your turn</span>':''}</button></li>`).join('')}</ol>
@@ -119,7 +219,7 @@ function build(){
   Object.assign(S,{panel:p,video:q('video'),stage:q('.lv-stage'),big:q('.lv-big'),spin:q('.lv-spin'),gateEl:q('.lv-gate'),errEl:q('.lv-err'),endEl:q('.lv-end'),
     bar:q('.lv-bar'),range:q('.lv-range'),tip:q('.lv-tip'),tl:q('.lv-tl'),zones:q('.lv-zones'),chEl:q('.lv-ch'),playBtn:q('.lv-play'),el:q('.lv-el'),speed:q('.lv-speed select'),moreBtn:q('[data-a="more"]'),menu:q('.lv-menu'),
     fsBtn:q('[data-a="fs"]'),prevBtn:q('[data-a="prev"]'),nextBtn:q('[data-a="next"]'),readBtn:q('[data-a="read"]'),followBtn:q('.lv-follow'),
-    list:q('.lv-list'),live:q('.lv-live'),gateBtn:q('[data-a="continue"]')});
+    list:q('.lv-list'),live:q('.lv-live'),gateBtn:q('[data-a="continue"]'),capEl:q('.lv-cc'),band2:q('.lv-ccband'),capText:q('.lv-cct'),ccBtn:q('.lv-ccb'),mask:q('.lv-mask')});
   S.speed.value=String(S.rate);
   if(!(document.pictureInPictureEnabled&&!S.video.disablePictureInPicture))q('[data-a="pip"]').remove(); else q('[data-a="pip"]').hidden=false;
   buildZones();
@@ -422,6 +522,7 @@ function seek(t,kind,from){
   if(kind==='nav'||kind==='replay'||kind==='scrub'||kind==='media')snapCurrent();
   else if(kind==='skip'&&S.mode==='both'&&S.sync&&S.follow&&S.targets[S.i])followTo(S.targets[S.i]);
   if(kind!=='preview')save();
+  if(kind!=='restore'&&kind!=='preview'){ S.touched=true; emit(); }
 }
 function play(){
   if(S.gate)return cont();
@@ -464,7 +565,7 @@ function setSeg(i,why){
   S.list.querySelectorAll('[aria-current]').forEach(x=>x.removeAttribute('aria-current'));
   const li=S.list.querySelector(`[data-i="${i}"]`);
   if(li){ li.setAttribute('aria-current','true'); const L=S.list, y=li.parentElement.offsetTop; if(S.mode==='watch'&&L.clientHeight&&(y<L.scrollTop||y+li.offsetHeight>L.scrollTop+L.clientHeight))L.scrollTop=Math.max(0,y-L.clientHeight/3); }
-  paintHighlight(); applyStep(i);
+  paintHighlight(); applyStep(i); emit();
   const b=S.targets[i];
   if(why==='play'&&S.mode==='both'&&S.sync&&S.follow&&b&&(b!==old||S.band))followTo(b);   // next block, or the next row of the same derivation
 }
@@ -507,6 +608,7 @@ function togglePip(){
 // ---------- paint ----------
 function paintTime(t,force){
   if(!S.scrub)S.range.value=String(t);
+  paintCC(t);
   S.tl.style.setProperty('--p',(t/S.dur*100).toFixed(3)+'%');
   const sec=Math.floor(t);
   if(sec!==S.lastSec||force){
@@ -589,6 +691,7 @@ function act(a,el){
     case 'next': closeMenu(); return navNext();
     case 'more': return S.menuOpen?closeMenu(true):openMenu();
     case 'fs': return toggleFs();
+    case 'cc': return setCC(!S.cc);
     case 'replay': closeMenu(); return replaySeg();
     case 'loop': S.loop=!S.loop; paintMenu(); save(); return say(S.loop?'Looping this explanation':'Loop off');
     case 'mute': S.video.muted=!S.video.muted; paintMenu(); return save();
@@ -614,10 +717,10 @@ function owns(e){
 }
 function wire(){
   const v=S.video, p=S.panel;
-  v.addEventListener('loadedmetadata',()=>{ S.meta=true; if(num(v.duration)&&v.duration>0)S.dur=v.duration; S.range.max=String(S.dur); buildZones(); v.defaultPlaybackRate=v.playbackRate=S.rate; seek(S.pendingT,'restore'); });
-  v.addEventListener('play',()=>{ if(S.gate)return cont(); S.ended=false; paintPlay(); loop(); wake(); });   // Play from system controls at the gate = Continue
+  v.addEventListener('loadedmetadata',()=>{ fitCaptions(); S.meta=true; if(num(v.duration)&&v.duration>0)S.dur=v.duration; S.range.max=String(S.dur); buildZones(); v.defaultPlaybackRate=v.playbackRate=S.rate; seek(S.pendingT,'restore'); });
+  v.addEventListener('play',()=>{ if(S.gate)return cont(); S.ended=false; S.touched=true; paintPlay(); loop(); wake(); emit(); });   // Play from system controls at the gate = Continue
   v.addEventListener('playing',()=>{ waiting(false); paintPlay(); });
-  v.addEventListener('pause',()=>{ wake(); paintPlay(); save(); paintIntro(); if(!S.scrub)snapCurrent(); });
+  v.addEventListener('pause',()=>{ wake(); paintPlay(); save(); paintIntro(); if(!S.scrub)snapCurrent(); emit(); });
   v.addEventListener('waiting',()=>waiting(true));
   v.addEventListener('canplay',()=>waiting(false));
   v.addEventListener('seeked',()=>{
@@ -688,6 +791,7 @@ function wire(){
     else if(k==='ArrowLeft'||k==='ArrowRight'){ const d=k==='ArrowRight'?1:-1; if(e.shiftKey)d>0?navNext():navPrev(); else skip(d*SKIP); }
     else if(k===']')navNext(); else if(k==='[')navPrev();
     else if(k==='f'||k==='F')toggleFs();
+    else if((k==='c'||k==='C')&&S.caps)setCC(!S.cc);
     else if(k==='r'||k==='R')replaySeg();
     else if(k==='>'||k==='<')stepRate(k==='>'?1:-1);
     else done=false;
@@ -713,7 +817,8 @@ function wire(){
     if(performance.now()<S.ignoreUntil){ S.autoY=window.scrollY; return; }
     if(S.follow&&Math.abs(window.scrollY-S.autoY)>160)detach('user');
   },{passive:true});
-  let rt=0; window.addEventListener('resize',()=>{ layout(); clearTimeout(rt); rt=setTimeout(()=>{ applyStep(S.i); if(S.mode==='both')S.autoY=window.scrollY; },160); });
+  if('ResizeObserver' in window)new ResizeObserver(fitCaptions).observe(S.stage);
+  let rt=0; window.addEventListener('resize',()=>{ layout(); fitCaptions(); clearTimeout(rt); rt=setTimeout(()=>{ applyStep(S.i); if(S.mode==='both')S.autoY=window.scrollY; },160); });
   window.addEventListener('pagehide',save);
   document.addEventListener('visibilitychange',()=>{ if(document.hidden)save(); });
   if('mediaSession' in navigator){
@@ -729,5 +834,5 @@ function focusMode(g,mode){
   if(b)b.focus({preventScroll:true});
 }
 
-window.LessonVideo={refresh};
+window.LessonVideo={refresh,context};
 })();

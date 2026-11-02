@@ -28,6 +28,8 @@ def check(name, ok, detail=""):
 def environ(env=None):
     e = dict(os.environ)
     e.pop("ELEVENLABS_API_KEY", None)
+    e.pop("ELEVENLABS_API_BASE", None)
+    e["BLACKBOARD_ELEVENLABS_KEY_FILE"] = "/nonexistent/blackboard-smoke-no-key"   # never the real key file or API
     e["BLACKBOARD_TTS_ENGINE"] = "elevenlabs"   # the mock exercises the ElevenLabs path, never the local Kokoro
     e.update(env or {})
     return e
@@ -196,7 +198,7 @@ def main():
     check("resume narrates only the 5 missing cues", r.returncode == 0 and len(m.requests) == 5, f"{len(m.requests)} requests\n{r.out}")
     q = m.requests[0]
     check("request carries model, voice and voice settings", q["key"] == "test-key"
-          and q["path"].startswith("/v1/text-to-speech/nPczCjzI2devNBz1zQrb/with-timestamps?output_format=mp3_44100_192")
+          and q["path"].startswith("/v1/text-to-speech/nPczCjzI2devNBz1zQrb/with-timestamps?output_format=mp3_44100_128")
           and q["body"]["model_id"] == "eleven_v4"
           and q["body"]["voice_settings"] == {"stability": 0.55, "similarity_boost": 0.8, "style": 0.15, "speed": 0.97}, json.dumps(q)[:300])
     tl = json.load(open(os.path.join(P, "timeline.json")))

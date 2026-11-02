@@ -1,6 +1,6 @@
 # Lesson video runtime
 
-Turns a narration script and a set of hand-built animated scenes into a 1920×1080, 30 fps MP4 with burned-in subtitles, plus an SRT. Each frame is a pure function of time, so a render is deterministic and can resume.
+Turns a narration script and a set of hand-built animated scenes into a 1920×1080, 30 fps MP4 and an SRT. The frames carry no captions and no progress bar: the board's player overlays the caption track (`captions.json`, the cues' `show` texts in the lesson's notation, written by `video_pipeline.py build-map`) and has its own seek bar. `VIDEO_BURN_CAPTIONS=1` burns the captions in for a standalone export. Each frame is a pure function of time, so a render is deterministic and can resume.
 
 Copy the runtime files into a new project directory. A project is self-contained, and every command below runs inside it.
 
@@ -35,13 +35,14 @@ Copy the runtime files into a new project directory. A project is self-contained
   "chapters": ["Introduction", "Chapter 1 · …", "Quiz & recap"],
   "scenes": [
     {"id": "s00", "chapter": 0, "visual": "storyboard for the scene builder",
-     "cues": [{"id": "a", "say": "Narration in words, no symbols."}, {"id": "think", "pause": 5}]}
+     "cues": [{"id": "a", "say": "Row five: I five is zero.", "show": "Row 5: $I_5 = 0$."}, {"id": "think", "pause": 5}]}
   ]
 }
 ```
 
 - `chapter` is an index into `chapters`. Chapter 0 hides the top-left chapter label.
 - Scene and cue IDs use `[A-Za-z0-9_-]`. Each cue has either `say` or `pause` (in seconds), never both.
+- `say` is spoken (math in words). `show` is its caption in the lesson's notation with `$KaTeX$` math, the same sentences as `say`; it is display-only, so editing it needs no narration or render.
 - `visual` is read only by the people or agents building scenes.
 
 `SPLIT.json` maps scene files to consecutive scene IDs, for example:
@@ -93,7 +94,7 @@ node capture.mjs all 4 && ./finish.sh
 
 - Engine (`--engine` or `BLACKBOARD_TTS_ENGINE`, default `auto`): ElevenLabs whenever a key is present (`ELEVENLABS_API_KEY`, else `~/.config/blackboard/elevenlabs.key`, which must be `chmod 600`) or every cue is already cached from it, else Kokoro-82M (Apache-2.0, runs locally, no key) as the fallback. The key is read at run time and never printed, logged or written into a project. With neither, it exits 2 with `TTS_BLOCKED` and the install line.
 - Kokoro runs in `$BLACKBOARD_TTS_HOME/tts-venv` (default `~/.cache/blackboard`) with weights in `kokoro/`, both made by the skill's `bin/setup_tts.sh`. Voice `BLACKBOARD_TTS_VOICE`, else `script.json` `kokoroVoice`, else `am_michael`; speed `BLACKBOARD_TTS_SPEED` (1.0). Each subtitle chunk is synthesized separately and its span measured, so cue durations and subtitle times come from the audio. Cues are `audio/<scene>_<cue>.wav` plus `.wav.json`, keyed on model, voice, speed and text.
-- ElevenLabs: the voice is `BLACKBOARD_ELEVENLABS_VOICE`, else `script.json` `voice` (leave it out), else Brian (`nPczCjzI2devNBz1zQrb`), the closest premade voice to Kokoro `am_michael`. Alternatives: Eric `cjVigY5qzO86Huf0OWal` (friendly, conversational), Chris `iP95p4xoKVk53GoZ742B` (casual), George `JBFqnCBsd6RMkjVDRZzb` (warm British). The model defaults to `eleven_v4`, with voice settings stability 0.55, similarity_boost 0.8, style 0.15, speed 0.97 and output format `mp3_44100_192`.
+- ElevenLabs: the voice is `BLACKBOARD_ELEVENLABS_VOICE`, else `script.json` `voice` (leave it out), else Brian (`nPczCjzI2devNBz1zQrb`), the closest premade voice to Kokoro `am_michael`. Alternatives: Eric `cjVigY5qzO86Huf0OWal` (friendly, conversational), Chris `iP95p4xoKVk53GoZ742B` (casual), George `JBFqnCBsd6RMkjVDRZzb` (warm British). The model defaults to `eleven_v4`, with voice settings stability 0.55, similarity_boost 0.8, style 0.15, speed 0.97 and output format `mp3_44100_128`, which every ElevenLabs plan allows (`ELEVENLABS_OUTPUT_FORMAT=mp3_44100_192` needs the Creator tier).
 - `ELEVENLABS_MODEL` overrides the model. `ELEVENLABS_API_BASE` overrides the endpoint (the smoke test uses a local mock). `--workers N` sets the number of parallel requests (default 3).
 - Every ElevenLabs cue is stored as `audio/<scene>_<cue>.mp3` plus `.mp3.json`, which holds the alignment and the cache key. The key is a SHA-256 of the model, voice, voice settings, output format and text. Changing any of them re-narrates only the affected cues.
 - Audio cached by the earlier pipeline (key `sha1(model+voice+text)` under the same default settings) is accepted and its metadata upgraded in place, so already-narrated lessons are not paid for twice.
@@ -150,3 +151,4 @@ Failures are injected at the real boundaries: `tts.py` killed between a cue's au
 - The output pixel format is H.264 High 4:2:0 full range (`yuvj420p`), from JPEG frames piped into x264. It is the same as the lesson videos already produced with this engine.
 - The engine preloads every KaTeX font face before any scene is built, so layouts measured at build time are stable.
 - `S.chapterCard` takes an optional `kicker` to replace the "Chapter n" tag.
+- Captions: `?burn` in a preview URL, or `VIDEO_BURN_CAPTIONS=1` for `capture.mjs`/`render.sh`, draws them into the frame from `captions.json` (else the spoken subtitle chunks); the render fingerprint then includes `captions.json`. Without it the `#subs` box stays empty.
