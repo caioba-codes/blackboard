@@ -815,6 +815,13 @@ html.chatopen #chat{display:flex}
 #chat .cctx{flex:1;min-width:0;display:flex;align-items:center;gap:6px;font-size:13px;color:var(--dim);white-space:nowrap}
 #chat .cctx svg{flex:0 0 13px;width:13px;height:13px}
 #chat .cctx span{overflow:hidden;text-overflow:ellipsis}
+/* where the chat assumes you are: the video's scene, else the section in view. Tap to leave it out of the next message */
+#chatwhere{display:flex;align-items:center;gap:6px;max-width:100%;margin:6px 0 0;padding:2px 8px 2px 6px;border:1px solid #2a2a2a;border-radius:999px;background:none;color:var(--dim);font:12.5px/1.5 var(--body);cursor:pointer;text-align:left}
+#chatwhere[hidden]{display:none}
+#chatwhere:hover,#chatwhere:focus-visible{color:var(--chalk);border-color:#3d3d3d;outline:none}
+#chatwhere .cwt{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#chatwhere .cwx{flex:0 0 auto;opacity:.7}
+#chatwhere svg{flex:0 0 11px;width:11px;height:11px}
 #chatsend{flex:0 0 32px;width:32px;height:32px;border:0;border-radius:50%;background:var(--chalk);color:#0c0c0c;display:grid;place-items:center;cursor:pointer;padding:0}
 #chatsend svg{width:15px;height:15px}
 #chatsend:disabled{opacity:.25;cursor:default}
@@ -918,7 +925,7 @@ details.flagged>summary .flcount{margin-left:10px;margin-right:auto;font:600 12p
 <div id="topbar"><a id="toplessons" href="/lessons" title="Back" aria-label="Back"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3.5 5.5 8l4.5 4.5"/></svg></a><div id="zoomctl" role="group" aria-label="Zoom"><button type="button" data-z="-1" aria-label="Zoom out (-)" title="Zoom out (-)">&minus;</button><button type="button" class="zv" data-z="0" aria-label="Reset zoom (0)" title="Reset zoom (0)">100%</button><button type="button" data-z="1" aria-label="Zoom in (+)" title="Zoom in (+)">+</button></div><div id="topsearch" role="search"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><circle cx="7" cy="7" r="4.8"/><path d="M10.6 10.6 14 14"/></svg><input id="topq" type="search" placeholder="Search every lesson" autocomplete="off" aria-label="Search every lesson" aria-controls="topresults"><kbd>/</kbd><div id="topresults" role="listbox"></div></div></div>
 <button id="chatbtn" type="button" hidden aria-label="Chat about this lesson" aria-controls="chat" aria-expanded="false"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 3.5a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v6.5a1 1 0 0 1-1 1H7l-3 2.5V11h-.5a1 1 0 0 1-1-1z"/></svg></button>
 <div id="srcview" role="dialog" aria-label="Source file" aria-hidden="true"><div class="svbar"><span class="svname"></span><a class="svtab" target="_blank" rel="noopener">Open in new tab</a><button type="button" class="svback" title="Back to lesson (Esc)">Back to lesson</button></div><div class="svbody"></div></div>
-<aside id="chat" aria-label="Study chat"><div id="chatgrip" role="separator" aria-orientation="vertical" aria-label="Drag to resize the chat. Double-click to reset." title="Drag to resize · double-click to reset"></div><div class="chead"><span class="ct">Chat</span><button type="button" class="cib" id="chatnew" title="New chat" aria-label="New chat"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg></button><button type="button" class="cib" id="chatclose" aria-label="Close chat"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg></button></div><div class="cmid"><div id="chatlist" role="log" aria-live="polite"></div><button type="button" id="chatdown" hidden aria-label="Jump to the latest message" title="Jump to the latest message"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3v10M3.5 8.5 8 13l4.5-4.5"/></svg></button></div><form id="chatform"><div id="chatsel" hidden><span class="cselt"></span><button type="button" class="cib" id="chatselx" aria-label="Remove the quoted selection" title="Remove the quoted selection"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7"/></svg></button></div><textarea id="chatq" rows="1" placeholder="Ask about this lesson" aria-label="Message"></textarea><div class="cbar"><span class="cctx"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><path d="M4 1.8h5.5L12.5 5v9.2H4z"/><path d="M9.5 1.8V5h3"/></svg><span id="chatctx"></span></span><button type="submit" id="chatsend" aria-label="Send" disabled><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 13V3M3.5 7.5 8 3l4.5 4.5"/></svg></button></div></form></aside>
+<aside id="chat" aria-label="Study chat"><div id="chatgrip" role="separator" aria-orientation="vertical" aria-label="Drag to resize the chat. Double-click to reset." title="Drag to resize · double-click to reset"></div><div class="chead"><span class="ct">Chat</span><button type="button" class="cib" id="chatnew" title="New chat" aria-label="New chat"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg></button><button type="button" class="cib" id="chatclose" aria-label="Close chat"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg></button></div><div class="cmid"><div id="chatlist" role="log" aria-live="polite"></div><button type="button" id="chatdown" hidden aria-label="Jump to the latest message" title="Jump to the latest message"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3v10M3.5 8.5 8 13l4.5-4.5"/></svg></button></div><form id="chatform"><div id="chatsel" hidden><span class="cselt"></span><button type="button" class="cib" id="chatselx" aria-label="Remove the quoted selection" title="Remove the quoted selection"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7"/></svg></button></div><textarea id="chatq" rows="1" placeholder="Ask about this lesson" aria-label="Message"></textarea><button type="button" id="chatwhere" hidden></button><div class="cbar"><span class="cctx"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><path d="M4 1.8h5.5L12.5 5v9.2H4z"/><path d="M9.5 1.8V5h3"/></svg><span id="chatctx"></span></span><button type="submit" id="chatsend" aria-label="Send" disabled><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 13V3M3.5 7.5 8 3l4.5 4.5"/></svg></button></div></form></aside>
 <div id="tocshade"></div>
 <nav id="toc" aria-label="Lesson contents: level map" aria-hidden="true" inert><div class="tochead"><b>Contents</b><kbd>t</kbd><span class="xpsum"></span></div><ol></ol></nav>
 <script>
@@ -2758,7 +2765,7 @@ async function chatSendMsg(text){
   chat.pend={text:'',steps:[]}; chatRender(); chatFollow(true);
   chat.ctrl=new AbortController();
   try{
-    const r=await fetch('/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.assign({lesson:lessonId,text,selection,viewing:srcViewing()},WS?{ws:WS}:{})),signal:chat.ctrl.signal});
+    const r=await fetch('/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.assign({lesson:lessonId,text,selection,viewing:srcViewing()},WS?{ws:WS}:{},chatWhereSend())),signal:chat.ctrl.signal});
     if(!r.ok){ chat.note=(await r.json().catch(()=>({}))).error||`The bridge answered ${r.status}.`; }
     else { const rd=r.body.getReader(), dec=new TextDecoder(); let buf='';
       for(;;){ const {value,done}=await rd.read(); if(done)break; buf+=dec.decode(value,{stream:true}); let k;
@@ -2770,6 +2777,37 @@ async function chatSendMsg(text){
   chat.ctrl=null;
   await chatLoad();
 }
+// ---------- where you are: the chat assumes a vague question ("why is that 1?") is about this spot ----------
+// The video's scene when it was played or sought this session (LessonVideo.context(), from lesson-video.js), else the
+// section in view. Sent as `where` with each message; the chip under the box shows it, and tapping it leaves it out of
+// the next message.
+function chatWhere(){
+  if(srcv&&srcv.open)return null;   // a file is open: `viewing` says what "this" is
+  let v=null; try{ v=window.LessonVideo&&typeof LessonVideo.context==='function'?LessonVideo.context():null; }catch(_){ v=null; }
+  if(v&&typeof v==='object')return Object.assign({source:'video'},v);
+  if(!tocItems.length||document.documentElement.classList.contains('lv-watch'))return null;   // Watch hides the text: no section is "in view"
+  const {cur,cur2}=tocCurrent(); const it=tocItems[cur]; if(!it)return null; const ch=tocItems[cur2];
+  return {source:'reading',section:{id:it.id,heading:it.text},chapter:ch&&ch!==it?ch.text:(it.lvl===2?it.text:''),line:+(it.h.closest('.blk')?.dataset.line)||null};
+}
+function chatWhereLabel(w){
+  if(!w)return '';
+  const ch=String(w.chapter||'').match(/^chapter\s+(\d+)/i), chs=ch?'Ch '+ch[1]:String(w.chapter||'').replace(/\s*·.*$/,'');
+  const what=(w.practice&&w.practice.label)||w.segment||(w.section&&w.section.heading)||'';
+  const parts=w.source==='video'?['Video '+(w.time||''),chs,what]:['Reading',chs,w.section&&w.section.heading!==w.chapter?w.section.heading:''];
+  return parts.filter(Boolean).join(' · ');
+}
+function chatWherePaint(){
+  const b=$('#chatwhere'); if(!b)return;
+  const w=chat.whereOff?null:chatWhere(), lbl=chatWhereLabel(w);
+  b.hidden=!lbl||!chatOk();
+  if(lbl&&b.dataset.lbl!==lbl){ b.dataset.lbl=lbl; b.innerHTML=`<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="8" cy="7" r="2.2"/><path d="M8 14.5s4.8-4.4 4.8-7.6a4.8 4.8 0 0 0-9.6 0C3.2 10.1 8 14.5 8 14.5z"/></svg><span class="cwt">${esc(lbl)}</span><span class="cwx" aria-hidden="true">×</span>`;
+    b.title=`The chat assumes you mean this spot: ${lbl}. Click to leave it out of the next message.`; b.setAttribute('aria-label',`Context for the next message: ${lbl}. Remove it`); }
+}
+function chatWhereSend(){ const off=chat.whereOff; chat.whereOff=false; const w=off?null:chatWhere(); setTimeout(chatWherePaint,0); return w?{where:w}:{}; }
+$('#chatwhere').onclick=()=>{ chat.whereOff=true; chatWherePaint(); chatQ.focus(); };
+window.addEventListener('lessonvideo:context',()=>{ if(chat.open)chatWherePaint(); });
+window.addEventListener('scroll',()=>{ if(chat.open&&!chat.whereFrame)chat.whereFrame=requestAnimationFrame(()=>{ chat.whereFrame=0; chatWherePaint(); }); },{passive:true});
+setInterval(()=>{ if(chat.open&&!document.hidden)chatWherePaint(); },1000);
 function chatStop(){ chatPost('/chat/stop',{lesson:lessonId}).catch(()=>{}).then(()=>{ if(!chat.ctrl)chatLoad(); }); }
 async function chatNew(){
   if(chat.pend)return;

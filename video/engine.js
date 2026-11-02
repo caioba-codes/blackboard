@@ -302,12 +302,8 @@
   const scenesEl = document.getElementById('scenes');
   const subsEl = document.querySelector('#subs span');
   const chapEl = document.getElementById('chap');
-  const fill = document.getElementById('prog-fill');
   const CH = TL.chapters;
-  // chapter ticks on progress bar
-  const prog = document.getElementById('prog');
-  let lastCh = 0;
-  TL.scenes.forEach(s => { if (s.chapter !== lastCh) { lastCh = s.chapter; el('i', '', null, prog, { left: (s.start / TL.total * 100) + '%' }); } });
+  // No progress bar or chapter ticks in the frame: the board's player already has a seek bar with chapter zones.
 
   function build(sc) {
     if (built[sc.id]) return built[sc.id];
@@ -353,10 +349,14 @@
     // chrome
     chapEl.innerHTML = cur.chapter ? CH[cur.chapter].replace(/^([^·]+)/, '<b>$1</b>') : '';
     chapEl.style.opacity = cur.chapter ? 1 : 0;
-    fill.style.width = (t / TL.total * 100) + '%';
-    // subtitles
-    const sub = cur.subs.find(x => lt >= x.s - 0.05 && lt <= x.e + 0.35);
-    if (sub) { subsEl.innerHTML = rich(sub.text); subsEl.style.opacity = 1; } else subsEl.style.opacity = 0;
+    // captions are drawn into the frame only when burning is asked for (?burn, VIDEO_BURN_CAPTIONS=1); by default the
+    // board overlays captions.json on the video, so a caption fix never needs a render
+    if (window.BURN_CAPTIONS) {
+      const caps = window.CAPTIONS;
+      const sub = caps ? caps.find(x => t >= x.s - 0.05 && t <= x.e + 0.35)
+        : (cur.subs || []).find(x => lt >= x.s - 0.05 && lt <= x.e + 0.35);
+      if (sub) { subsEl.innerHTML = rich(sub.text); subsEl.style.opacity = 1; } else subsEl.style.opacity = 0;
+    } else subsEl.style.opacity = 0;
     return idx;
   };
   window.TOTAL = TL.total;

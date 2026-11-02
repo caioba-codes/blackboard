@@ -11,6 +11,9 @@ import shutil
 import subprocess
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import captions  # noqa: E402  (bin/captions.py: say/show alignment, spelled-math lint, the caption track)
+
 
 ROLE = {"model": "claude-opus-5-5", "effort": "high"}
 RUNTIME = ("engine.js", "style.css", "capture.mjs", "finish.sh", "tts.py", "index.html", "package.json", "render.sh")
@@ -355,13 +358,62 @@ def map_data(project_dir, captions_burned_in=False):
     return {"version": 1, "lessonId": lid, "lessonSha256": config["lessonSha256"], "video": f"{lid}-lecture.mp4", "duration": timeline["total"], "captionsBurnedIn": captions_burned_in, "segments": segments}
 
 
+def caption_track(project_dir, lesson_id):
+    """The caption track the board overlays: each cue's `show` (lesson notation) timed by its spoken chunks."""
+    return captions.track(read(project_dir / "script.json"), read(project_dir / "timeline.json"), lesson_id)
+
+
+def write_json(path, data):
+    path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+
 def build_map(args):
     data = map_data(args.project, args.captions_burned_in)
     target = args.project / f"video-{data['lessonId']}.json"
     if target.exists() and read(target) != data and not args.replace:
         raise PipelineError(f"{target}: stale or different map; review changes, then rerun with --replace")
-    target.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-    print(f"built {target}: {len(data['segments'])} source-linked segments, {data['duration']:.3f}s")
+    write_json(target, data)
+    track = caption_track(args.project, data["lessonId"])
+    write_json(args.project / "captions.json", track)   # display only: always rebuilt from the script's show texts
+    print(f"built {target}: {len(data['segments'])} source-linked segments, {data['duration']:.3f}s; "
+          f"captions.json: {len(track['cues'])} captions")
+
+
+def captions_ok(project_dir, lesson_id):
+    """Every spoken cue has a show text in notation (no math spelled in words), and captions.json is current."""
+    missing, findings = captions.lint_script(read(project_dir / "script.json"))
+    if missing:
+        more = f" (+{len(missing) - 6} more)" if len(missing) > 6 else ""
+        raise PipelineError(f"{len(missing)} spoken cue(s) have no show caption: {', '.join(missing[:6])}{more}")
+    if findings:
+        shown = "; ".join(f"{w}: {h!r} ({r})" for w, r, h in findings[:6])
+        more = f" (+{len(findings) - 6} more)" if len(findings) > 6 else ""
+        raise PipelineError(f"{len(findings)} show caption(s) spell math in words instead of the lesson's notation: {shown}{more}")
+    path = project_dir / "captions.json"
+    if not path.is_file() or read(path) != caption_track(project_dir, lesson_id):
+        raise PipelineError("captions.json is missing or stale; rerun build-map")
+    return f"ready ({len(read(path)['cues'])} captions in lesson notation)"
+
+
+def practice_warnings(project_dir, timeline, anchors):
+    """A Your turn segment shows the problem and waits: it should not read or explain the question before its pause
+    (at most one short line such as "Your turn: pause and solve it.")."""
+    script = {s["id"]: s for s in read(project_dir / "script.json")["scenes"]}
+    scenes = {s["id"]: s for s in timeline["scenes"]}
+    out = []
+    for a in anchors.get("segments", []):
+        p = a.get("practice")
+        if not p:
+            continue
+        sc, cues = scenes[a["scene"]], script[a["scene"]]["cues"]
+        start = boundary(sc, a["from"], False) - sc["start"]
+        pause = sc["cues"][p["pause"]]["s"]
+        said = [c for c in cues if "say" in c and start - EPS <= sc["cues"][c["id"]]["s"] < pause - EPS]
+        words = sum(len(c["say"].split()) for c in said)
+        if len(said) > 1 or words > 12:
+            out.append(f"practice {a['id']}: {len(said)} spoken cue(s), {words} words before its pause; a Your turn shows "
+                       "the problem and waits (at most one short line)")
+    return out
 
 
 def receipts_ok(project_dir, split, video_role):
@@ -399,10 +451,28 @@ def media_ok(project_dir, duration):
     rendered = project_dir / "RENDERED"
     if not rendered.is_file() or rendered.read_text(encoding="utf-8").strip() != "DONE":
         raise PipelineError("RENDERED success marker is required; run render.sh to completion")
-    required = ("script.json", "timeline.json", "timeline.js", "SPLIT.json", "narration.wav",
+    # script.json counts by its spoken content: a caption (`show`) edit after the render changes captions.json only.
+    # tts.done fingerprints the spoken script; a project without one falls back to the file's time.
+    done = project_dir / "tts.done"
+    spoken = None
+    if done.is_file():
+        try:
+            spoken = read(done).get("script.json:spoken")
+        except (PipelineError, AttributeError):
+            spoken = None
+    if spoken:
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("blackboard_tts", Path(__file__).resolve().parents[1] / "video" / "tts.py")
+        tts = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(tts)   # stdlib only; spoken_sha256 is the fingerprint tts.py writes
+        if tts.spoken_sha256(str(project_dir / "script.json")) != spoken:
+            raise PipelineError("script.json's narration changed after tts.py ran; rerun tts.py, then render")
+    required = ("timeline.json", "timeline.js", "SPLIT.json", "narration.wav",
                 "engine.js", "style.css", "index.html", "capture.mjs", "finish.sh", "render.sh",
                 "tts.py", "package.json")
     inputs = [project_dir / name for name in required]
+    if not spoken:
+        inputs.append(project_dir / "script.json")
     lockfile = project_dir / "package-lock.json"
     if lockfile.is_file():
         inputs.append(lockfile)
@@ -435,7 +505,8 @@ def media_ok(project_dir, duration):
 
 def check(args):
     stages = {name: "blocked by an earlier stage" for name in
-              ("source", "timing", "split", "anchors", "practice", "pace", "map", "scenes", "receipts", "media")}
+              ("source", "timing", "split", "anchors", "practice", "pace", "map", "captions", "scenes", "receipts", "media")}
+    warnings = []
     cfg = lesson = timeline = split = data = None
     try:
         cfg, lesson, lid = project(args.project)
@@ -479,6 +550,14 @@ def check(args):
             stages["map"] = "ready"
         except PipelineError as exc:
             stages["map"] = str(exc)
+        try:
+            stages["captions"] = captions_ok(args.project, lid)
+        except (PipelineError, OSError, KeyError, TypeError) as exc:
+            stages["captions"] = str(exc)
+        try:
+            warnings = practice_warnings(args.project, timeline, read(args.project / "anchors.json"))
+        except (PipelineError, KeyError, TypeError):
+            pass
     if split:
         try:
             for name, scenes in split.items():
@@ -500,7 +579,7 @@ def check(args):
         except (PipelineError, UnicodeError) as exc:
             stages["media"] = str(exc)
     ready = all(value.startswith("ready") for value in stages.values())
-    print(json.dumps({"ready": ready, "stages": stages}, indent=2))
+    print(json.dumps({"ready": ready, "stages": stages, "warnings": warnings}, indent=2))
     return 0 if ready else 1
 
 

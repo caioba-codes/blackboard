@@ -6,7 +6,9 @@ Narrators: ElevenLabs whenever a key is present (ELEVENLABS_API_KEY, else the ch
 audio/<scene>_<cue>.wav (Kokoro) or .mp3 (ElevenLabs) + .json (timing). Re-runs skip cues whose engine, model,
 voice, settings and text did not change, so an interrupted or quota-stopped run resumes where it stopped.
 timeline.json: scenes with absolute start/dur, cues with scene-local s/e, subtitle chunks per sentence.
-tts.done: sha256 of timeline.json, timeline.js and narration.wav, written last; render refuses any other set.
+tts.done: sha256 of script.json, timeline.json, timeline.js and narration.wav, written last; render refuses any other set.
+A cue's `show` (its caption in lesson notation) is display-only: editing it keeps tts.done valid (the script is also
+fingerprinted without captions) and needs no narration or render, only video_pipeline.py build-map.
 
   python3 tts.py               narrate what is missing, then write timeline.json, timeline.js, narration.wav, tts.done
   python3 tts.py --check       report cached / missing cues without calling the API (exit 0 = all cached)
@@ -117,6 +119,8 @@ def load_script(path):
                 errs.append(f"{sid}.{cid}: needs exactly one of say / pause")
             elif "say" in c and not (isinstance(c["say"], str) and c["say"].strip()):
                 errs.append(f"{sid}.{cid}: empty say")
+            elif "show" in c and ("say" not in c or not (isinstance(c["show"], str) and c["show"].strip())):
+                errs.append(f"{sid}.{cid}: show is the caption of a say cue and must be non-empty text")
             elif "pause" in c and not (isinstance(c["pause"], (int, float)) and c["pause"] > 0):
                 errs.append(f"{sid}.{cid}: pause must be > 0 seconds")
     if errs:
@@ -186,6 +190,18 @@ def file_sha256(path):
     return h.hexdigest()
 
 
+def spoken_sha256(path):
+    """SHA-256 of script.json without the cues' `show` captions: what the narration and the frames depend on.
+    A caption edit changes the caption track only (video_pipeline.py build-map), never the narration or the render."""
+    with open(path, encoding="utf-8") as f:
+        s = json.load(f)
+    for sc in s.get("scenes", []) if isinstance(s, dict) else []:
+        for c in sc.get("cues", []) if isinstance(sc, dict) else []:
+            if isinstance(c, dict):
+                c.pop("show", None)
+    return hashlib.sha256(json.dumps(s, sort_keys=True, ensure_ascii=False, separators=(",", ":")).encode()).hexdigest()
+
+
 def verify_done():
     """None when the current script and published timing/audio match one successful run, else why not."""
     try:
@@ -195,6 +211,12 @@ def verify_done():
         return "tts.done is missing: run python3 tts.py (cached cues make no API call)"
     for n in PUBLISHED:
         p = os.path.join(ROOT, n)
+        if n == "script.json" and os.path.exists(p) and want.get("script.json:spoken"):
+            try:
+                if spoken_sha256(p) == want["script.json:spoken"]:
+                    continue
+            except (OSError, ValueError):
+                pass
         if not os.path.exists(p) or file_sha256(p) != want.get(n):
             return f"{n} is not the file tts.done fingerprints (a tts.py run failed or was interrupted): rerun python3 tts.py"
     return None
@@ -516,7 +538,9 @@ def main(argv=None):
     atomic_write(os.path.join(ROOT, "timeline.json"), data.encode())
     atomic_write(os.path.join(ROOT, "timeline.js"), ("window.TIMELINE=" + data + ";\n").encode())
     os.replace(tmp, os.path.join(ROOT, "narration.wav"))
-    atomic_write(DONE, json.dumps({n: file_sha256(os.path.join(ROOT, n)) for n in PUBLISHED}, indent=1).encode())
+    done = {n: file_sha256(os.path.join(ROOT, n)) for n in PUBLISHED}
+    done["script.json:spoken"] = spoken_sha256(os.path.join(ROOT, "script.json"))
+    atomic_write(DONE, json.dumps(done, indent=1).encode())
     print(f"timeline: {len(tl['scenes'])} scenes, {t/60:.1f} min")
     return 0
 

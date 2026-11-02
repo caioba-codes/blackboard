@@ -18,12 +18,10 @@ html,body{background:#000;overflow:hidden}
 #board-tex{display:none}
 #scenes{position:absolute;inset:0}
 .scene{position:absolute;inset:0;padding:96px 120px 170px;display:none}
+/* no progress bar in the frame: the player has its own seek bar with chapter zones (Caio, 2026-11-02) */
 #chrome{position:absolute;inset:0;pointer-events:none}
 #chap{position:absolute;left:120px;top:36px;font-family:var(--body);font-size:26px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
 #chap b{color:var(--acc);font-weight:600}
-#prog{position:absolute;left:0;right:0;bottom:0;height:6px;background:#1c1c1c}
-#prog-fill{position:absolute;left:0;top:0;bottom:0;background:var(--acc);width:0}
-#prog i{position:absolute;top:-4px;width:2px;height:14px;background:#4a4a48}
 #subs{position:absolute;left:0;right:0;bottom:40px;text-align:center;pointer-events:none}
 #subs span{display:inline-block;max-width:1500px;padding:10px 26px;border-radius:10px;background:rgba(0,0,0,.55);font-family:var(--body);font-size:36px;line-height:1.3;color:#f4f1ea;opacity:0}
 

@@ -16,7 +16,6 @@
   <div id="scenes"></div>
   <div id="chrome">
     <div id="chap"></div>
-    <div id="prog"><div id="prog-fill"></div></div>
   </div>
   <div id="subs"><span></span></div>
 </div>
@@ -28,7 +27,8 @@
   // over http (`node capture.mjs serve`); browsers refuse to fetch SPLIT.json from file://.
   // ?strict (full render, `capture.mjs check`): every scene must be registered by its own file.
   // Otherwise missing files/scenes are warnings, so scene builders can preview while others work.
-  // Preview: ?t=12.5 or ?play[=start].
+  // Preview: ?t=12.5 or ?play[=start]. ?burn draws the captions into the frame (captions.json when present, else the
+  // timeline's spoken subtitle chunks); without it the frame has no captions and the board overlays them.
   (() => {
     const q = new URLSearchParams(location.search);
     const strict = q.has('strict');
@@ -41,6 +41,14 @@
       s.src = src; s.onload = () => ok(true); s.onerror = () => ok(false);
       document.body.appendChild(s);
     });
+    async function loadCaptions() {
+      window.BURN_CAPTIONS = q.has('burn');
+      if (!window.BURN_CAPTIONS) return;
+      try {
+        const r = await fetch('captions.json', { cache: 'no-store' });
+        if (r.ok) window.CAPTIONS = (await r.json()).cues;
+      } catch (e) { warnings.push(`captions.json unreadable (${e.message}); burning the spoken subtitles`); }
+    }
     async function loadScenes() {
       if (!TL || !Array.isArray(TL.scenes)) throw new Error('timeline.js missing or invalid: run tts.py first');
       let split;
@@ -86,7 +94,7 @@
       document.getElementById('stage').appendChild(box);
     }
     window.VIDEO_READY = (async () => {
-      try { await loadScenes(); } catch (e) { errors.push(e.message); }
+      try { await loadScenes(); await loadCaptions(); } catch (e) { errors.push(e.message); }
       await window.ENGINE_READY;
       if (errors.length) { showErrors(); return false; }
       if (q.has('play')) {

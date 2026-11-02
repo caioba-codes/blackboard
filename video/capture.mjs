@@ -4,6 +4,8 @@
 // node capture.mjs all [workers]         → render every frame into chunks/*.mp4 (resumable) + chunks/list.txt
 // node capture.mjs serve [port]          → serve this directory for preview: http://127.0.0.1:<port>/index.html?t=12
 // Workers: argument, else VIDEO_WORKERS, else min(4, cpus). VIDEO_CHUNK_SECONDS (default 60) sets the resume unit.
+// Captions are not drawn into frames: the board overlays captions.json on the video. VIDEO_BURN_CAPTIONS=1 burns them in
+// (from captions.json when present, else the timeline's spoken subtitle chunks); then build-map --captions-burned-in.
 import { chromium } from 'playwright';
 import { spawn, spawnSync } from 'node:child_process';
 import crypto from 'node:crypto';
@@ -15,6 +17,7 @@ import url from 'node:url';
 
 const ROOT = path.dirname(url.fileURLToPath(import.meta.url));
 const W = 1920, H = 1080;
+const BURN = process.env.VIDEO_BURN_CAPTIONS === '1';
 const [mode, ...args] = process.argv.slice(2);
 const die = msg => { console.error(msg); process.exit(1); };
 const MODES = ['check', 'qa', 'scene', 'all', 'serve'];
@@ -59,7 +62,8 @@ if (mode === 'serve') {
     const errs = [], fatal = [];
     page.on('pageerror', e => { errs.push(String(e)); fatal.push(String(e)); });
     page.on('console', m => { if (m.type() === 'error') errs.push(m.text()); });
-    await page.goto(BASE + (strict ? '?strict' : ''), { waitUntil: 'networkidle' });
+    const q = [strict && 'strict', BURN && 'burn'].filter(Boolean);
+    await page.goto(BASE + (q.length ? '?' + q.join('&') : ''), { waitUntil: 'networkidle' });
     await page.waitForFunction(() => window.VIDEO_OK !== undefined, null, { timeout: 60000 });
     const st = await page.evaluate(() => ({ ok: window.VIDEO_OK, errors: window.VIDEO_ERRORS, warnings: window.VIDEO_WARNINGS }));
     return { page, errs, fatal, ...st };
@@ -133,10 +137,12 @@ async function renderAll(TL, FPS, browser, open, shot, loadOrDie) {
   const files = d => fs.existsSync(path.join(ROOT, d)) ? fs.readdirSync(path.join(ROOT, d), { withFileTypes: true })
     .flatMap(e => e.isDirectory() ? files(path.join(d, e.name)) : e.isFile() ? [path.join(d, e.name)] : []).sort() : [];
   const inputs = ['timeline.json', 'timeline.js', 'engine.js', 'style.css', 'index.html', 'capture.mjs', 'SPLIT.json',
-    ...Object.keys(split).filter(f => split[f].length).map(f => `scenes/${f}.js`), ...files('assets')];
+    ...Object.keys(split).filter(f => split[f].length).map(f => `scenes/${f}.js`), ...files('assets'),
+    ...(BURN && fs.existsSync(path.join(ROOT, 'captions.json')) ? ['captions.json'] : [])];
   const h = crypto.createHash('sha256');
   for (const f of inputs) { h.update(f + '\0'); h.update(fs.readFileSync(path.join(ROOT, f))); }
   const plan = { fingerprint: h.digest('hex'), fps: FPS, total, chunkFrames, encoder: 'libx264 medium crf17 yuv420p' };
+  if (BURN) plan.captions = 'burned';
   const planFile = path.join(CH, 'plan.json');
   let old = null;
   try { old = JSON.parse(fs.readFileSync(planFile)); } catch {}

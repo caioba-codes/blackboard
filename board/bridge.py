@@ -1200,7 +1200,53 @@ def cited_files(wsp, lpath, slug):
     return out[:200]
 
 
-def chat_prompt(lid, lpath, wsp, text, viewing=None):
+def _say(v, n):
+    """One untrusted page string for the prompt: no control characters or brackets, one line, at most n characters."""
+    if not isinstance(v, (str, int, float)) or isinstance(v, bool):
+        return ""
+    t = re.sub(r"[\x00-\x1f\x7f\[\]]", " ", str(v))
+    t = re.sub(r"\s+", " ", t).strip()
+    return t if len(t) <= n else t[:n - 1].rstrip() + "…"
+
+
+def where_line(where):
+    """The [Looking at: …] line for a chat turn: the video's scene (the page's LessonVideo.context()) or the lesson
+    section in view. `where` comes from the page, so every field is checked and capped; anything else is dropped."""
+    if not isinstance(where, dict):
+        return ""
+    sec = where.get("section") if isinstance(where.get("section"), dict) else {}
+    prac = where.get("practice") if isinstance(where.get("practice"), dict) else {}
+    line = where.get("line")
+    line = line if isinstance(line, int) and not isinstance(line, bool) and 0 < line < 10 ** 6 else None
+    heading, chapter = _say(sec.get("heading"), 160), _say(where.get("chapter"), 160)
+    loc = (f"lesson line {line}" if line else "") + (f" (section “{heading}”)" if heading else "")
+    if where.get("source") == "video":
+        time_ = _say(where.get("time"), 16)
+        if not re.fullmatch(r"\d{1,2}(:\d{2}){1,2}", time_):
+            t = where.get("t")
+            time_ = (f"{int(t) // 3600}:{int(t) % 3600 // 60:02d}:{int(t) % 60:02d}" if isinstance(t, (int, float))
+                     and not isinstance(t, bool) and 0 <= t < 360000 else "")
+        parts = ["video " + time_ if time_ else "the video", chapter, _say(where.get("segment"), 160), loc.strip()]
+        cap = _say(where.get("caption"), 300)
+        if cap:
+            parts.append(f"caption: “{cap}”")
+        label = _say(prac.get("label"), 160)
+        if label:
+            parts.append(("paused at" if where.get("paused") is True else "at") + f" the practice “{label}”, solution "
+                         + ("revealed" if prac.get("revealed") is True else "not revealed"))
+        elif where.get("paused") is True:
+            parts.append("paused")
+    elif where.get("source") == "reading":
+        if not (chapter or loc):
+            return ""
+        parts = ["reading", chapter if chapter != heading else "", loc.strip()]
+    else:
+        return ""
+    body = " · ".join(p for p in parts if p)
+    return f"[Looking at: {body}. A vague question (“why is that 1?”, “how did he get this?”) is about this spot.]" if body else ""
+
+
+def chat_prompt(lid, lpath, wsp, text, viewing=None, where=None):
     """The turn as the model sees it: where the user is on the board, the lesson's sources, then the message."""
     with open(lpath, encoding="utf-8") as f:
         src = f.read()
@@ -1216,6 +1262,9 @@ def chat_prompt(lid, lpath, wsp, text, viewing=None):
         ctx.append("The lesson's own Sources section:\n" + cited)
     if viewing:
         ctx.append(f"[Viewing: the user has {viewing} open beside this chat. A question like \"this problem\" is about that file: read it first.]")
+    looking = where_line(where)
+    if looking:
+        ctx.append(looking)
     return "\n\n".join(ctx) + "\n\n---\n\n" + text
 
 
@@ -1703,7 +1752,7 @@ class H(BaseHTTPRequestHandler):
             return self.send(503, {"error": "Claude Code (claude) is not installed"})
         said = ("> " + selection.replace("\n", "\n> ") + "\n\n" if selection else "") + text
         viewing = re.sub(r"[\x00-\x1f\[\]]", " ", str(req.get("viewing") or ""))[:300].strip()
-        prompt = chat_prompt(lid, lesson_path(lid, wsp), wsp, said, viewing)
+        prompt = chat_prompt(lid, lesson_path(lid, wsp), wsp, said, viewing, req.get("where"))
         with TURNS_LOCK:
             if key in TURNS:
                 return self.send(409, {"error": "a reply is already running for this lesson"})
