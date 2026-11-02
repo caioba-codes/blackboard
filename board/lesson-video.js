@@ -186,6 +186,7 @@ function buildIntro(){
 // ---------- lesson decoration (every render) ----------
 function decorate(){
   const main=ctx.main; if(!main)return;
+  if(ctx.src!==S.srcSeen)buildZones();
   intro();
   const blks=[...main.querySelectorAll('.blk[data-line]')].filter(b=>!b.parentElement.closest('.blk')).map(b=>({b,line:+b.dataset.line})).sort((a,b)=>a.line-b.line);
   const title=main.querySelector('#title'), last=blks.length?blks[blks.length-1].line:0;
@@ -459,7 +460,7 @@ function tick(){
 function setSeg(i,why){
   if(i===S.i||!S.segs[i])return;
   const old=S.targets[S.i]; S.i=i; const s=S.segs[i];
-  S.lbl.textContent=s.label; S.cnt.textContent=`${i+1} / ${S.segs.length}`; S.nextBtn.disabled=i>=S.segs.length-1;
+  S.nextBtn.disabled=i>=S.segs.length-1;
   S.list.querySelectorAll('[aria-current]').forEach(x=>x.removeAttribute('aria-current'));
   const li=S.list.querySelector(`[data-i="${i}"]`);
   if(li){ li.setAttribute('aria-current','true'); const L=S.list, y=li.parentElement.offsetTop; if(S.mode==='watch'&&L.clientHeight&&(y<L.scrollTop||y+li.offsetHeight>L.scrollTop+L.clientHeight))L.scrollTop=Math.max(0,y-L.clientHeight/3); }
@@ -476,14 +477,27 @@ function onError(){
   if(S.mode==='watch'){ setMode('read',{persist:false}); toast('The video could not be played, so the lesson text is back.'); }
 }
 function waiting(on){ clearTimeout(S.waitT); if(on)S.waitT=setTimeout(()=>{ S.spin.hidden=false; },350); else S.spin.hidden=true; }
-function exitFs(){ const d=document; if(d.fullscreenElement===S.panel&&d.exitFullscreen)d.exitFullscreen().catch(()=>{}); else if(d.webkitFullscreenElement===S.panel&&d.webkitExitFullscreen)d.webkitExitFullscreen(); }
+// Full screen is the whole board page with the player filling it (html.lv-fsmode), so the chat button stays on screen
+// and the chat opens on the right with the video beside it. Where the browser refuses page full screen the same layout
+// fills the window instead; an iPhone, which has no page full screen, gets the system player.
+const fsEl=()=>document.fullscreenElement||document.webkitFullscreenElement||null;
+const fsOn=()=>root.classList.contains('lv-fsmode');
+function setFsMode(on){ root.classList.toggle('lv-fsmode',on); paintFs(); layout(); wake(); }
+function exitFs(){
+  if(!fsOn())return;
+  const d=document;
+  if(fsEl()===root){ if(d.exitFullscreen)d.exitFullscreen().catch(()=>{}); else if(d.webkitExitFullscreen)d.webkitExitFullscreen(); }
+  setFsMode(false);
+}
 function toggleFs(){
-  const d=document, on=d.fullscreenElement||d.webkitFullscreenElement;
-  if(on){ (d.exitFullscreen?d.exitFullscreen():d.webkitExitFullscreen&&d.webkitExitFullscreen()); return; }
-  const p=S.panel;
-  if(p.requestFullscreen)p.requestFullscreen().catch(()=>{});
-  else if(p.webkitRequestFullscreen)p.webkitRequestFullscreen();
-  else if(S.video.webkitEnterFullscreen)S.video.webkitEnterFullscreen();   // iPhone: the system player
+  if(fsOn())return exitFs();
+  if(S.mode==='read')return;
+  if(!root.requestFullscreen&&!root.webkitRequestFullscreen&&S.video.webkitEnterFullscreen&&/iPhone|iPod/.test(navigator.userAgent))return S.video.webkitEnterFullscreen();
+  setFsMode(true);
+  try{
+    const r=root.requestFullscreen?root.requestFullscreen({navigationUI:'hide'}):root.webkitRequestFullscreen&&root.webkitRequestFullscreen();
+    if(r&&r.catch)r.catch(()=>{});
+  }catch(_){}
 }
 function togglePip(){
   if(document.pictureInPictureElement)document.exitPictureInPicture().catch(()=>{});
@@ -493,14 +507,19 @@ function togglePip(){
 // ---------- paint ----------
 function paintTime(t,force){
   if(!S.scrub)S.range.value=String(t);
-  S.range.style.setProperty('--p',(t/S.dur*100).toFixed(3)+'%');
+  S.tl.style.setProperty('--p',(t/S.dur*100).toFixed(3)+'%');
   const sec=Math.floor(t);
-  if(sec!==S.lastSec||force){ S.lastSec=sec; S.el.textContent=fmt(t); const s=S.segs[segAt(t)]; S.range.setAttribute('aria-valuetext',`${fmt(t)} of ${fmt(S.dur)}${s?', '+s.label:''}`); }
+  if(sec!==S.lastSec||force){
+    S.lastSec=sec; S.el.textContent=fmt(t);
+    const s=S.segs[segAt(t)], j=chapAt(t), c=S.chaps[j].title;
+    if(j!==S.chapI){ S.chapI=j; S.chEl.textContent=c; S.chEl.hidden=!c; S.chEl.title=c; [...S.zones.children].forEach((z,k)=>z.classList.toggle('cur',k===j)); }
+    S.range.setAttribute('aria-valuetext',`${fmt(t)} of ${fmt(S.dur)}${c?', '+c:''}${s&&s.label!==c?', '+s.label:''}`);
+  }
 }
 function paintBuffered(){
   const b=S.video.buffered, t=S.video.currentTime; let end=0;
   for(let k=0;k<b.length;k++)if(b.start(k)<=t+.5&&b.end(k)>=t){ end=b.end(k); break; }
-  S.range.style.setProperty('--b',(end/S.dur*100).toFixed(3)+'%');
+  S.tl.style.setProperty('--b',(end/S.dur*100).toFixed(3)+'%');
 }
 function paintPlay(){
   const playing=!S.video.paused&&!S.ended;
@@ -526,23 +545,39 @@ function paintFoot(){
   if(!S.readBtn)return;
   S.readBtn.hidden=!S.sync;
   S.followBtn.hidden=!(S.sync&&S.mode==='both'&&!S.follow);
-  S.stale.hidden=S.sync;
 }
 function paintFs(){
-  const on=(document.fullscreenElement||document.webkitFullscreenElement)===S.panel;
+  const on=fsOn();
   S.fsBtn.innerHTML=on?I.fsx:I.fs; const lab=on?'Exit full screen':'Full screen'; S.fsBtn.setAttribute('aria-label',lab); S.fsBtn.title=lab+' (F)';
   S.panel.classList.toggle('lv-fs',on);
 }
-function openMenu(){ S.menuOpen=true; S.menu.hidden=false; S.moreBtn.setAttribute('aria-expanded','true'); paintMenu(); S.menu.querySelector('button')?.focus({preventScroll:true}); }
+// controls fade while the video plays and come back on any pointer move, tap or key
+function wake(){
+  if(!S||!S.panel)return;
+  S.panel.classList.remove('lv-idle'); clearTimeout(S.idleT);
+  if(!S.video.paused)S.idleT=setTimeout(idle,2600);
+}
+function idle(){
+  if(S.video.paused||S.menuOpen||S.scrub||S.gate||S.ended||S.bar.matches(':hover')||S.bar.querySelector(':focus-visible'))return wake();
+  S.panel.classList.add('lv-idle'); hideTip();
+}
+function openMenu(){ S.menuOpen=true; S.menu.hidden=false; S.menu.style.maxHeight=Math.max(120,S.stage.clientHeight-64)+'px'; S.moreBtn.setAttribute('aria-expanded','true'); paintMenu(); S.menu.querySelector('button')?.focus({preventScroll:true}); }
 function closeMenu(focus){ if(!S.menuOpen)return; S.menuOpen=false; S.menu.hidden=true; S.moreBtn.setAttribute('aria-expanded','false'); if(focus)S.moreBtn.focus({preventScroll:true}); }
 function say(t){ S.live.textContent=''; setTimeout(()=>{ S.live.textContent=t; },30); }
 function toast(t){ const el=document.getElementById('toast'); if(!el)return say(t); el.textContent=t; el.style.display='block'; clearTimeout(S.toastT); S.toastT=setTimeout(()=>{ el.style.display='none'; },4200); }
-function tipAt(x){
-  const r=S.range.getBoundingClientRect(), f=clamp((x-r.left-7)/Math.max(1,r.width-14),0,1), t=f*S.dur, s=S.segs[segAt(t)];
-  S.tip.textContent=`${fmt(t)} · ${s?s.label:''}`; S.tip.hidden=false;
-  const w=S.tip.offsetWidth, tr=S.tl.getBoundingClientRect(), sc=S.tl.offsetWidth/(tr.width||1);
+// hover (or a touch drag): the chapter under the pointer grows, and a tip names it with the time there
+function tipAt(x,t){
+  const r=S.range.getBoundingClientRect();
+  if(t===undefined)t=clamp((x-r.left-7)/Math.max(1,r.width-14),0,1)*S.dur;
+  else x=r.left+7+t/S.dur*(r.width-14);
+  const j=chapAt(t), c=S.chaps[j].title||(S.segs[segAt(t)]||{}).label||'';
+  S.tip.querySelector('.lv-tipc').textContent=c; S.tip.querySelector('.lv-tipt').textContent=fmt(t); S.tip.hidden=false;
+  if(j!==S.hoverZ){ const zs=S.zones.children; if(zs[S.hoverZ])zs[S.hoverZ].classList.remove('hov'); if(zs[j])zs[j].classList.add('hov'); S.hoverZ=j; }
+  const tr=S.tl.getBoundingClientRect(), sc=S.tl.offsetWidth/(tr.width||1), w=S.tip.offsetWidth;
+  S.tl.style.setProperty('--h',(t/S.dur*100).toFixed(3)+'%');
   S.tip.style.left=clamp((x-tr.left)*sc-w/2,0,Math.max(0,S.tl.offsetWidth-w))+'px';
 }
+function hideTip(){ if(!S.tip)return; S.tip.hidden=true; const z=S.zones.children[S.hoverZ]; if(z)z.classList.remove('hov'); S.hoverZ=-1; S.tl.style.setProperty('--h','0%'); }
 
 // ---------- events ----------
 function act(a,el){
@@ -550,20 +585,20 @@ function act(a,el){
     case 'play': return toggle();
     case 'back': return skip(-SKIP);
     case 'fwd': return skip(SKIP);
-    case 'prev': return navPrev();
-    case 'next': return navNext();
+    case 'prev': closeMenu(); return navPrev();
+    case 'next': closeMenu(); return navNext();
     case 'more': return S.menuOpen?closeMenu(true):openMenu();
     case 'fs': return toggleFs();
     case 'replay': closeMenu(); return replaySeg();
     case 'loop': S.loop=!S.loop; paintMenu(); save(); return say(S.loop?'Looping this explanation':'Loop off');
     case 'mute': S.video.muted=!S.video.muted; paintMenu(); return save();
     case 'pip': closeMenu(); return togglePip();
-    case 'read': return readFrom();
+    case 'read': closeMenu(); exitFs(); return readFrom();
     case 'follow': attach(); return snapCurrent(true);
     case 'continue': return cont();
     case 'replayq': return replayQ();
     case 'retry': return retry();
-    case 'toread': return setMode('read');
+    case 'toread': exitFs(); return setMode('read');
     case 'restart': S.ended=false; attach(); seek(0,'nav'); return play();
     case 'seg': attach(); seek(S.segs[+el.dataset.i].start,'nav'); return play();
   }
@@ -572,17 +607,17 @@ function owns(e){
   if(!S||S.mode==='read'||e.defaultPrevented||e.metaKey||e.ctrlKey||e.altKey||e.isComposing)return false;
   const t=e.target instanceof Element?e.target:document.body;
   if(t.closest('input:not(.lv-range),textarea,select,[contenteditable]:not([contenteditable="false"]),#chat'))return false;
-  const fs=document.fullscreenElement||document.webkitFullscreenElement;
-  if(fs)return fs===S.panel;
+  if(fsOn())return !t.closest('#chat');
+  const fs=fsEl(); if(fs)return false;
   if(S.panel.contains(t))return true;
   return S.mode==='watch'&&!t.closest('#toc,#topresults,.lv-modes');
 }
 function wire(){
   const v=S.video, p=S.panel;
-  v.addEventListener('loadedmetadata',()=>{ S.meta=true; if(num(v.duration)&&v.duration>0)S.dur=v.duration; S.range.max=String(S.dur); v.defaultPlaybackRate=v.playbackRate=S.rate; seek(S.pendingT,'restore'); });
-  v.addEventListener('play',()=>{ if(S.gate)return cont(); S.ended=false; paintPlay(); loop(); });   // Play from system controls at the gate = Continue
+  v.addEventListener('loadedmetadata',()=>{ S.meta=true; if(num(v.duration)&&v.duration>0)S.dur=v.duration; S.range.max=String(S.dur); buildZones(); v.defaultPlaybackRate=v.playbackRate=S.rate; seek(S.pendingT,'restore'); });
+  v.addEventListener('play',()=>{ if(S.gate)return cont(); S.ended=false; paintPlay(); loop(); wake(); });   // Play from system controls at the gate = Continue
   v.addEventListener('playing',()=>{ waiting(false); paintPlay(); });
-  v.addEventListener('pause',()=>{ paintPlay(); save(); paintIntro(); if(!S.scrub)snapCurrent(); });
+  v.addEventListener('pause',()=>{ wake(); paintPlay(); save(); paintIntro(); if(!S.scrub)snapCurrent(); });
   v.addEventListener('waiting',()=>waiting(true));
   v.addEventListener('canplay',()=>waiting(false));
   v.addEventListener('seeked',()=>{
@@ -599,8 +634,12 @@ function wire(){
   // the board's text-selection drag must not start on the player (a timeline drag would select the math beside it)
   p.addEventListener('mousedown',e=>e.stopPropagation());
   // touching the player gives it the keyboard (Safari does not focus a clicked button)
-  p.addEventListener('pointerdown',()=>setTimeout(()=>{ if(!p.contains(document.activeElement))p.focus({preventScroll:true}); },0));
+  p.addEventListener('pointerdown',e=>{ S.ptr=e.pointerType; S.tapWoke=p.classList.contains('lv-idle'); wake(); setTimeout(()=>{ if(!p.contains(document.activeElement))p.focus({preventScroll:true}); },0); });
+  p.addEventListener('pointermove',e=>{ if(e.pointerType!=='touch')wake(); });
+  S.stage.addEventListener('pointerleave',e=>{ if(e.pointerType==='touch'||S.video.paused)return; clearTimeout(S.idleT); S.idleT=setTimeout(idle,700); });
+  p.addEventListener('keydown',wake);
   p.addEventListener('click',e=>{
+    if(S.tapWoke&&S.ptr==='touch'&&(e.target===v||e.target===S.stage)){ S.tapWoke=false; return; }   // a tap on faded controls only brings them back
     const b=e.target.closest('[data-a]');
     if(b&&p.contains(b)){ e.stopPropagation(); return act(b.dataset.a,b); }
     if(S.menuOpen&&!e.target.closest('.lv-more'))closeMenu();
@@ -609,17 +648,20 @@ function wire(){
   S.stage.addEventListener('dblclick',e=>{ if(e.target===v||e.target===S.stage)toggleFs(); });
   S.speed.addEventListener('change',()=>setRate(+S.speed.value));
   const r=S.range;
-  r.addEventListener('pointerdown',()=>{ S.scrub=true; });
+  r.addEventListener('pointerdown',e=>{ S.scrub=true; S.scrubPtr=e.pointerType; });
   r.addEventListener('input',()=>{
     S.scrub=true; S.scrubT=+r.value; paintTime(S.scrubT,true);
+    if(S.scrubPtr==='touch')tipAt(0,S.scrubT);
     if(!S.scrubRaf)S.scrubRaf=requestAnimationFrame(()=>{ S.scrubRaf=0; seek(S.scrubT,'preview'); });
   });
   r.addEventListener('change',()=>{ S.scrub=false; seek(+r.value,'scrub'); });
-  const endScrub=()=>setTimeout(()=>{ if(S.scrub){ S.scrub=false; paintTime(cur(),true); } },0);
+  const endScrub=()=>setTimeout(()=>{ if(S.scrubPtr==='touch')hideTip(); S.scrubPtr=''; if(S.scrub){ S.scrub=false; paintTime(cur(),true); } },0);
   r.addEventListener('pointerup',endScrub); r.addEventListener('pointercancel',endScrub);
   S.tl.addEventListener('pointermove',e=>{ if(e.pointerType!=='touch')tipAt(e.clientX); });
-  S.tl.addEventListener('pointerleave',()=>{ S.tip.hidden=true; });
-  document.addEventListener('fullscreenchange',paintFs); document.addEventListener('webkitfullscreenchange',paintFs);
+  S.tl.addEventListener('pointerleave',e=>{ if(e.pointerType!=='touch')hideTip(); });
+  // leaving page full screen (Esc, the browser's own control) leaves the player's full screen too
+  const fsChange=()=>{ if(fsEl()===root)S.fsReal=true; else if(S.fsReal){ S.fsReal=false; if(fsOn())setFsMode(false); } paintFs(); };
+  document.addEventListener('fullscreenchange',fsChange); document.addEventListener('webkitfullscreenchange',fsChange);
   document.addEventListener('pointerdown',e=>{ if(S.menuOpen&&!e.target.closest('.lv-more'))closeMenu(); });
   // Watch from here (beside lesson blocks)
   ctx.main.addEventListener('click',e=>{ const b=e.target.closest('.lv-wfh'); if(!b)return; e.preventDefault(); e.stopPropagation(); watchFrom(+b.dataset.seg); });
@@ -638,6 +680,7 @@ function wire(){
   // keyboard: only when the player has focus, in Watch, or in full screen; never while typing
   document.addEventListener('keydown',e=>{
     if(e.key==='Escape'&&S.menuOpen){ e.preventDefault(); return closeMenu(true); }
+    if(e.key==='Escape'&&fsOn()&&!fsEl()&&!(e.target instanceof Element&&e.target.closest('#chat'))){ e.preventDefault(); return exitFs(); }
     if(!owns(e))return;
     const k=e.key, onCtl=e.target instanceof Element&&e.target.closest('button,a,summary');
     let done=true;
