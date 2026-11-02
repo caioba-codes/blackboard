@@ -2466,7 +2466,7 @@ function flagPaint(){
     if(!t.el.id)t.el.id=t.anchor;
     t.host.classList.add('flagt');
     let b=t.host.querySelector(':scope > .flagbtn');
-    if(!b){ b=document.createElement('button'); b.type='button'; b.className='flagbtn'; b.innerHTML=FLAG_ICON; t.host.prepend(b); }
+    if(!b){ b=document.createElement('button'); b.type='button'; b.className='flagbtn'; b.innerHTML=FLAG_ICON; t.host.append(b); }
     b.dataset.anchor=t.anchor;
     const on=by.has(t.anchor); b.setAttribute('aria-pressed',String(on));
     b.setAttribute('aria-label',(on?'Unflag ':'Flag ')+t.label); b.title=(on?'Unflag':'Flag to revisit')+' (f)';
@@ -2507,7 +2507,9 @@ async function flagToggle(t){
 }
 // f flags the item you are on: the focused one, else the first one on screen under the top bar
 function flagKey(){
-  const a=document.activeElement, own=a&&a!==document.body&&flagTargets.find(t=>t.host.contains(a)||t.el.contains(a));
+  // keyboard focus only: after a mouse click the clicked flag keeps focus, and f should still mean "what I'm reading"
+  const a=document.activeElement, kb=a&&a!==document.body&&a.matches(':focus-visible'), r=kb&&a.getBoundingClientRect();
+  const own=kb&&r.bottom>0&&r.top<innerHeight&&flagTargets.find(t=>t.host.contains(a)||t.el.contains(a));
   if(own)return flagToggle(own);
   const vis=flagTargets.filter(t=>{ const r=t.el.getBoundingClientRect(); return r.height>0&&r.bottom>78&&r.top<innerHeight; });
   if(vis.length)flagToggle(vis[0]);

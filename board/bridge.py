@@ -376,8 +376,9 @@ def flags_view(wsp, lesson=None):
         if lid not in texts:
             p = lesson_path(lid, wsp)
             try:
-                texts[lid] = open(p, encoding="utf-8", errors="replace").read() if p else None
-            except OSError:
+                with open(p, encoding="utf-8", errors="replace") as f:
+                    texts[lid] = f.read()
+            except (OSError, TypeError):
                 texts[lid] = None
         out.append(dict(fl, missing=texts[lid] is None or flag_missing(fl, texts[lid])))
     out.sort(key=lambda x: x.get("added", ""), reverse=True)
