@@ -7,7 +7,7 @@ Copy the runtime files into a new project directory. A project is self-contained
 | Runtime file | Role |
 |---|---|
 | `tts.py` | Narrates every spoken cue (local Kokoro by default, ElevenLabs with a key) and measures it. Writes `timeline.json`, `timeline.js`, `narration.wav` and their fingerprint `tts.done`. |
-| `engine.js`, `style.css` | Scene engine and board look (fonts, KaTeX, colors, components). |
+| `engine.js`, `style.css` | Scene engine and board look (the board's background, fonts, KaTeX, colors, components). `look.css`, written by `video_pipeline.py init` (or `look`), sets the lesson's own accent and, for `board: slate`, the slate surface. |
 | `index.html` | Loads `timeline.js`, `engine.js`, then the scene files named in `SPLIT.json`, and checks every registration. |
 | `capture.mjs` | Strict check, QA stills, preview server, and the resumable full frame render. |
 | `finish.sh` | Joins the chunks, normalizes the narration and muxes `final.mp4`, then writes `final.srt`. |
@@ -22,7 +22,7 @@ Copy the runtime files into a new project directory. A project is self-contained
 - Python 3.9+ (stdlib only), Node 18+, `ffmpeg`/`ffprobe` built with libx264, libmp3lame and aac.
 - Playwright Chromium: run `npm install` and `npx playwright install chromium` once per project.
 - Network access during capture, because `index.html` loads Playfair Display, Crimson Pro and Patrick Hand from Google Fonts and KaTeX 0.16.11 from cdnjs.
-- A narrator, needed only when a cue still has to be narrated: local Kokoro (`sh <skill>/bin/setup_tts.sh` once per machine) or `ELEVENLABS_API_KEY` in the environment.
+- A narrator, needed only when a cue still has to be narrated: an ElevenLabs key (`ELEVENLABS_API_KEY`, or the one-line file `~/.config/blackboard/elevenlabs.key` with `chmod 600`), else local Kokoro (`sh <skill>/bin/setup_tts.sh` once per machine).
 
 ## Project files you write
 
@@ -32,7 +32,6 @@ Copy the runtime files into a new project directory. A project is self-contained
 {
   "title": "Lesson title",
   "subtitle": "Course line · Lesson 0001",
-  "voice": "XrExE9yKIg1WjnnlVkGX",
   "chapters": ["Introduction", "Chapter 1 · …", "Quiz & recap"],
   "scenes": [
     {"id": "s00", "chapter": 0, "visual": "storyboard for the scene builder",
@@ -92,9 +91,9 @@ node capture.mjs all 4 && ./finish.sh
 
 ### tts.py
 
-- Engine (`--engine` or `BLACKBOARD_TTS_ENGINE`, default `auto`): ElevenLabs when `ELEVENLABS_API_KEY` is set or every cue is already cached from it, else Kokoro-82M (Apache-2.0, runs locally, no key). With neither, it exits 2 with `TTS_BLOCKED` and the install line.
+- Engine (`--engine` or `BLACKBOARD_TTS_ENGINE`, default `auto`): ElevenLabs whenever a key is present (`ELEVENLABS_API_KEY`, else `~/.config/blackboard/elevenlabs.key`, which must be `chmod 600`) or every cue is already cached from it, else Kokoro-82M (Apache-2.0, runs locally, no key) as the fallback. The key is read at run time and never printed, logged or written into a project. With neither, it exits 2 with `TTS_BLOCKED` and the install line.
 - Kokoro runs in `$BLACKBOARD_TTS_HOME/tts-venv` (default `~/.cache/blackboard`) with weights in `kokoro/`, both made by the skill's `bin/setup_tts.sh`. Voice `BLACKBOARD_TTS_VOICE`, else `script.json` `kokoroVoice`, else `am_michael`; speed `BLACKBOARD_TTS_SPEED` (1.0). Each subtitle chunk is synthesized separately and its span measured, so cue durations and subtitle times come from the audio. Cues are `audio/<scene>_<cue>.wav` plus `.wav.json`, keyed on model, voice, speed and text.
-- ElevenLabs: the voice comes from `script.json` `voice` (default `XrExE9yKIg1WjnnlVkGX`). The model defaults to `eleven_v4`, with voice settings stability 0.55, similarity_boost 0.8, style 0.15, speed 0.97 and output format `mp3_44100_192`.
+- ElevenLabs: the voice is `BLACKBOARD_ELEVENLABS_VOICE`, else `script.json` `voice` (leave it out), else Brian (`nPczCjzI2devNBz1zQrb`), the closest premade voice to Kokoro `am_michael`. Alternatives: Eric `cjVigY5qzO86Huf0OWal` (friendly, conversational), Chris `iP95p4xoKVk53GoZ742B` (casual), George `JBFqnCBsd6RMkjVDRZzb` (warm British). The model defaults to `eleven_v4`, with voice settings stability 0.55, similarity_boost 0.8, style 0.15, speed 0.97 and output format `mp3_44100_192`.
 - `ELEVENLABS_MODEL` overrides the model. `ELEVENLABS_API_BASE` overrides the endpoint (the smoke test uses a local mock). `--workers N` sets the number of parallel requests (default 3).
 - Every ElevenLabs cue is stored as `audio/<scene>_<cue>.mp3` plus `.mp3.json`, which holds the alignment and the cache key. The key is a SHA-256 of the model, voice, voice settings, output format and text. Changing any of them re-narrates only the affected cues.
 - Audio cached by the earlier pipeline (key `sha1(model+voice+text)` under the same default settings) is accepted and its metadata upgraded in place, so already-narrated lessons are not paid for twice.

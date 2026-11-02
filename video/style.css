@@ -1,10 +1,12 @@
 :root{
-  --bg:#0d0f0e; --bg2:#141816; --chalk:#ece8df; --dim:#8d8c85; --faint:#3a3d3a;
-  --acc:#c4505f;      /* wine-red accent (lesson accent, brightened for video) */
+  /* the board's palette (board/board.html.tmpl), so the video reads as part of the lesson; look.css (written by
+     video_pipeline.py from the lesson) sets this lesson's accent and, for `board: slate`, the slate surface */
+  --bg:#0c0c0c; --bg2:#151515; --chalk:#e9e6df; --dim:#8a8a84; --faint:#3a3a38; --rule:#262626;
+  --acc:#9b3a4a; --acc2:var(--acc);
   --blue:#6fa8dc;     /* x / component / second vector */
   --gold:#e3b35a;     /* highlight, y component */
-  --green:#5fbf86;    /* correct, sums */
-  --red:#d9645b;      /* wrong */
+  --green:#4ea672;    /* correct, sums (board --ok) */
+  --red:#c2564f;      /* wrong (board --no) */
   --display:'Playfair Display',Georgia,serif;
   --body:'Crimson Pro',Georgia,serif;
   --hand:'Patrick Hand','Comic Sans MS',cursive;
@@ -12,19 +14,16 @@
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{background:#000;overflow:hidden}
 #stage{position:relative;width:1920px;height:1080px;overflow:hidden;color:var(--chalk);font-family:var(--body);font-size:40px;line-height:1.35;
-  background:radial-gradient(ellipse 120% 90% at 50% 40%,#18201c 0%,#101412 55%,#0a0c0b 100%)}
-/* faint chalk-dust texture */
-#board-tex{position:absolute;inset:0;opacity:.35;pointer-events:none;
-  background-image:radial-gradient(circle at 20% 30%,rgba(255,255,255,.035) 0,transparent 40%),radial-gradient(circle at 80% 70%,rgba(255,255,255,.03) 0,transparent 45%),
-  repeating-linear-gradient(115deg,rgba(255,255,255,.012) 0 2px,transparent 2px 7px)}
+  background:var(--bg)}
+#board-tex{display:none}
 #scenes{position:absolute;inset:0}
 .scene{position:absolute;inset:0;padding:96px 120px 170px;display:none}
 #chrome{position:absolute;inset:0;pointer-events:none}
 #chap{position:absolute;left:120px;top:36px;font-family:var(--body);font-size:26px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
 #chap b{color:var(--acc);font-weight:600}
-#prog{position:absolute;left:0;right:0;bottom:0;height:6px;background:#1c201e}
+#prog{position:absolute;left:0;right:0;bottom:0;height:6px;background:#1c1c1c}
 #prog-fill{position:absolute;left:0;top:0;bottom:0;background:var(--acc);width:0}
-#prog i{position:absolute;top:-4px;width:2px;height:14px;background:#4a4f4b}
+#prog i{position:absolute;top:-4px;width:2px;height:14px;background:#4a4a48}
 #subs{position:absolute;left:0;right:0;bottom:40px;text-align:center;pointer-events:none}
 #subs span{display:inline-block;max-width:1500px;padding:10px 26px;border-radius:10px;background:rgba(0,0,0,.55);font-family:var(--body);font-size:36px;line-height:1.3;color:#f4f1ea;opacity:0}
 
@@ -35,9 +34,9 @@ html,body{background:#000;overflow:hidden}
 .dim{color:var(--dim)}
 .acc{color:var(--acc)} .blue{color:var(--blue)} .gold{color:var(--gold)} .green{color:var(--green)} .red{color:var(--red)}
 .tag{display:inline-block;font-family:var(--body);font-size:24px;letter-spacing:.18em;text-transform:uppercase;padding:6px 16px;border:2px solid currentColor;border-radius:6px}
-.card{background:rgba(255,255,255,.035);border:1.5px solid #2c322e;border-radius:18px;padding:28px 36px}
-.keybox{border:2px solid var(--acc);border-radius:14px;padding:22px 40px;background:rgba(196,80,95,.07);display:inline-block}
-.chip{display:inline-block;padding:10px 22px;border-radius:999px;background:#1d2420;border:1.5px solid #34403a;font-size:34px}
+.card{background:rgba(255,255,255,.035);border:1.5px solid #2a2a2a;border-radius:18px;padding:28px 36px}
+.keybox{border:2px solid var(--acc);border-radius:14px;padding:22px 40px;background:color-mix(in srgb,var(--acc) 8%,transparent);display:inline-block}
+.chip{display:inline-block;padding:10px 22px;border-radius:999px;background:#1c1c1c;border:1.5px solid #333333;font-size:34px}
 .katex{font-size:1.05em;color:inherit}
 .big .katex{font-size:1.5em}
 .huge .katex{font-size:2.1em}
@@ -46,12 +45,12 @@ html,body{background:#000;overflow:hidden}
 /* derivation table */
 .deriv{display:grid;grid-template-columns:auto auto 1fr;column-gap:28px;row-gap:14px;align-items:center}
 .deriv .lhs{text-align:right}
-.deriv .why{font-family:var(--hand);color:var(--gold);font-size:30px;line-height:1.15;padding-left:18px;border-left:2px solid #3a3a2c}
+.deriv .why{font-family:var(--hand);color:var(--gold);font-size:30px;line-height:1.15;padding-left:18px;border-left:2px solid #3a3a33}
 /* multiple choice */
 .mcq .q{font-size:40px;margin-bottom:30px;max-width:1500px}
 .mcq .opts{display:grid;grid-template-columns:1fr 1fr;gap:20px 40px;max-width:1560px}
-.mcq .opt{position:relative;display:flex;align-items:center;gap:22px;padding:18px 26px;border-radius:14px;border:2px solid #2f3632;background:rgba(255,255,255,.03);font-size:38px;min-height:96px}
-.mcq .opt .L{flex:none;width:52px;height:52px;border-radius:50%;display:grid;place-items:center;font-family:var(--display);font-weight:600;font-size:30px;background:#232a26}
+.mcq .opt{position:relative;display:flex;align-items:center;gap:22px;padding:18px 26px;border-radius:14px;border:2px solid #2e2e2e;background:rgba(255,255,255,.03);font-size:38px;min-height:96px}
+.mcq .opt .L{flex:none;width:52px;height:52px;border-radius:50%;display:grid;place-items:center;font-family:var(--display);font-weight:600;font-size:30px;background:#242424}
 .mcq .opt.right{border-color:var(--green);background:rgba(95,191,134,.12)}
 .mcq .opt.right .L{background:var(--green);color:#0d0f0e}
 .mcq .opts{row-gap:58px}

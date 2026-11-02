@@ -16,6 +16,13 @@ ROLE = {"model": "claude-opus-5-5", "effort": "high"}
 RUNTIME = ("engine.js", "style.css", "capture.mjs", "finish.sh", "tts.py", "index.html", "package.json", "render.sh")
 OPTIONAL_RUNTIME = ("README.md", "package-lock.json", ".gitignore")
 VIDEO_EFFORTS = frozenset(("low", "medium", "high"))
+# The pace reference is ECE 2020 lesson 0010 (2026-11-02, Caio: "this is the right length / pace"): 20,100 lesson words
+# became 41,883 spoken words, 204,456 narrated characters and 4 h 54 min of video with 83 pause-and-solve gates.
+PACE_REF = {"lesson": "ece2020 0010", "spoken_per_lesson_word": 2.08, "minutes_per_1000_lesson_words": 14.6,
+            "chars_per_spoken_word": 4.88}
+PACE_FLOOR = 0.67   # check fails below two thirds of the reference density: the video is rushing the material
+ACCENTS = {"red": "#9b3a4a", "blue": "#3f6f9b", "green": "#4a8b5f", "amber": "#a8762f", "violet": "#7a5a9b", "teal": "#3d8080"}
+ACCENT_ORDER = ("red", "blue", "green", "amber", "violet", "teal")   # the board's cycle (board.html.tmpl applyAccent)
 EPS = 0.02
 
 
@@ -97,8 +104,72 @@ def init(args):
         if not target.exists():
             shutil.copy2(src, target)
     write_new(dest / "project.json", config)
+    write_look(lesson, dest)
     print(f"initialized {dest}; lesson SHA-256 {config['lessonSha256']}; video author {ROLE['model']} {args.video_effort}")
     print("next: author script.json and anchors.json from the lesson; no model receipt was generated")
+
+
+def front_matter(text):
+    m = re.match(r"---\n(.*?)\n---\n", text, re.S)
+    return dict(re.findall(r"^([A-Za-z_]+):[ \t]*(.*?)[ \t]*$", m.group(1), re.M)) if m else {}
+
+
+def lesson_words(text):
+    """Words a reader sees: no front matter, no HTML comments."""
+    body = re.sub(r"<!--.*?-->", "", re.sub(r"\A---\n.*?\n---\n", "", text, flags=re.S), flags=re.S)
+    return len(re.findall(r"[A-Za-z0-9]+", body))
+
+
+def lesson_look(lesson):
+    """The board's look for this lesson: accent (front matter, else the board's cycle by lesson number) and surface."""
+    fm = front_matter(lesson.read_text(encoding="utf-8"))
+    def accent(value, fallback):
+        k = str(value or "").strip().lower()
+        return ACCENTS.get(k) or (k if re.fullmatch(r"#[0-9a-f]{3,8}", k) else fallback)
+    n = int(lesson.name[:4]) if lesson.name[:4].isdigit() else 1
+    acc = accent(fm.get("accent"), ACCENTS[ACCENT_ORDER[(n - 1) % len(ACCENT_ORDER)]])
+    return {"accent": acc, "accent2": accent(fm.get("accent2"), acc),
+            "board": "slate" if fm.get("board", "").strip().lower() == "slate" else "plain"}
+
+
+def write_look(lesson, dest):
+    """look.css: the lesson's board accent and surface, loaded after style.css, so the video looks like the board."""
+    look = lesson_look(lesson)
+    css = f":root{{--acc:{look['accent']};--acc2:{look['accent2']}}}\n"
+    if look["board"] == "slate":
+        slate = Path(__file__).resolve().parents[1] / "board" / "slate.jpg"
+        shutil.copy2(slate, dest / "slate.jpg")
+        css += ("#stage{background:linear-gradient(rgba(6,6,6,.42),rgba(6,6,6,.42)),url(slate.jpg) center/cover,#121212}\n"
+                "#scenes{color:#ecebe3;text-shadow:0 0 1px rgba(236,235,227,.35)}\n")
+    (dest / "look.css").write_text(css, encoding="utf-8")
+    return look
+
+
+def estimate(args):
+    lesson = args.lesson.expanduser().resolve(strict=True)
+    words = lesson_words(lesson.read_text(encoding="utf-8"))
+    minutes = words * PACE_REF["minutes_per_1000_lesson_words"] / 1000
+    spoken = words * PACE_REF["spoken_per_lesson_word"]
+    print(json.dumps({"lessonWords": words, "minutes": round(minutes), "spokenWords": round(spoken),
+                      "elevenLabsCharacters": round(spoken * PACE_REF["chars_per_spoken_word"]),
+                      "reference": PACE_REF["lesson"]}, indent=2))
+
+
+def pace_ok(lesson, project_dir):
+    """Spoken words per lesson word against the 0010 reference; a short lesson (< 300 words) is not judged."""
+    words = lesson_words(lesson.read_text(encoding="utf-8"))
+    script = read(project_dir / "script.json")
+    spoken = sum(len(str(c.get("say", "")).split()) for sc in script.get("scenes", []) for c in sc.get("cues", []))
+    ratio, ref = (spoken / words if words else 0), PACE_REF["spoken_per_lesson_word"]
+    if words >= 300 and ratio < ref * PACE_FLOOR:
+        raise PipelineError(f"too fast: {spoken} spoken words for {words} lesson words ({ratio:.2f} per word); "
+                            f"the 0010 reference is {ref} and the floor {ref * PACE_FLOOR:.2f}. Add steps, values and bridges")
+    return f"ready ({ratio:.2f} spoken words per lesson word; reference {ref})"
+
+
+def look(args):
+    cfg, lesson, _ = project(args.project)
+    print(json.dumps(write_look(lesson, args.project.expanduser().resolve())))
 
 
 def number(value, where):
@@ -364,7 +435,7 @@ def media_ok(project_dir, duration):
 
 def check(args):
     stages = {name: "blocked by an earlier stage" for name in
-              ("source", "timing", "split", "anchors", "practice", "map", "scenes", "receipts", "media")}
+              ("source", "timing", "split", "anchors", "practice", "pace", "map", "scenes", "receipts", "media")}
     cfg = lesson = timeline = split = data = None
     try:
         cfg, lesson, lid = project(args.project)
@@ -395,6 +466,10 @@ def check(args):
             stages["practice"] = f"ready ({count} lesson practice items each have a pause-and-solve segment)"
         except PipelineError as exc:
             stages["practice"] = str(exc)
+        try:
+            stages["pace"] = pace_ok(lesson, args.project)
+        except (PipelineError, OSError, AttributeError) as exc:
+            stages["pace"] = str(exc)
     if data:
         target = args.project / f"video-{lid}.json"
         try:
@@ -443,12 +518,20 @@ def main(argv=None):
     p.add_argument("--captions-burned-in", action="store_true", help="set only after visually confirming rendered captions")
     p = sub.add_parser("check", help="report each stage of project readiness")
     p.add_argument("--project", type=Path, required=True)
+    p = sub.add_parser("estimate", help="expected video length and narration characters at the 0010 pace")
+    p.add_argument("--lesson", type=Path, required=True)
+    p = sub.add_parser("look", help="rewrite look.css from the lesson's board accent and surface")
+    p.add_argument("--project", type=Path, required=True)
     args = parser.parse_args(argv)
     try:
         if args.command == "init":
             init(args)
         elif args.command == "build-map":
             build_map(args)
+        elif args.command == "estimate":
+            estimate(args)
+        elif args.command == "look":
+            look(args)
         else:
             return check(args)
     except (PipelineError, OSError, UnicodeError) as exc:

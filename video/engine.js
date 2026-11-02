@@ -98,7 +98,7 @@
     const f = {
       canvas: c, g, X, Y, sx, sy, xr, yr,
       clear() { g.setTransform(DPR, 0, 0, DPR, 0, 0); g.clearRect(0, 0, o.w, o.h); },
-      style(col = '#ece8df', w = 3, dash = null, alpha = 1) {
+      style(col = '#e9e6df', w = 3, dash = null, alpha = 1) {
         g.strokeStyle = col; g.fillStyle = col; g.lineWidth = w; g.globalAlpha = alpha;
         g.setLineDash(dash || []); g.lineCap = 'round'; g.lineJoin = 'round';
       },
@@ -107,7 +107,7 @@
         if (k <= 0) return; f.style(col, w, dash, alpha);
         g.beginPath(); g.moveTo(X(x1), Y(y1)); g.lineTo(X(lerp(x1, x2, k)), Y(lerp(y1, y2, k))); g.stroke(); g.globalAlpha = 1;
       },
-      arrow(x1, y1, x2, y2, col = '#ece8df', w = 5, k = 1, alpha = 1, head = 22) {
+      arrow(x1, y1, x2, y2, col = '#e9e6df', w = 5, k = 1, alpha = 1, head = 22) {
         if (k <= 0) return;
         const ex = lerp(x1, x2, k), ey = lerp(y1, y2, k);
         const ax = X(x1), ay = Y(y1), bx = X(ex), by = Y(ey);
@@ -121,16 +121,16 @@
         g.globalAlpha = 1;
       },
       // arrow in pixel units from a world anchor (for velocity arrows etc.)
-      dot(x, y, r = 8, col = '#ece8df', alpha = 1) { f.style(col, 1, null, alpha); g.beginPath(); g.arc(X(x), Y(y), r, 0, 7); g.fill(); g.globalAlpha = 1; },
-      ring(x, y, r = 8, col = '#ece8df', w = 3, alpha = 1) { f.style(col, w, null, alpha); g.beginPath(); g.arc(X(x), Y(y), r, 0, 7); g.stroke(); g.globalAlpha = 1; },
+      dot(x, y, r = 8, col = '#e9e6df', alpha = 1) { f.style(col, 1, null, alpha); g.beginPath(); g.arc(X(x), Y(y), r, 0, 7); g.fill(); g.globalAlpha = 1; },
+      ring(x, y, r = 8, col = '#e9e6df', w = 3, alpha = 1) { f.style(col, w, null, alpha); g.beginPath(); g.arc(X(x), Y(y), r, 0, 7); g.stroke(); g.globalAlpha = 1; },
       text(s, x, y, o2 = {}) {
-        g.globalAlpha = o2.alpha ?? 1; g.fillStyle = o2.col || '#ece8df';
+        g.globalAlpha = o2.alpha ?? 1; g.fillStyle = o2.col || '#e9e6df';
         g.font = `${o2.weight || 400} ${o2.size || 30}px ${o2.font || "'Crimson Pro'"}`;
         g.textAlign = o2.align || 'center'; g.textBaseline = o2.base || 'middle';
         g.fillText(s, X(x) + (o2.dx || 0), Y(y) + (o2.dy || 0)); g.globalAlpha = 1;
       },
       grid(alpha = 1, step = 1) {
-        f.style('#2a312d', 1.5, null, alpha);
+        f.style('#262626', 1.5, null, alpha);
         for (let x = Math.ceil(xr[0]); x <= xr[1]; x += step) { g.beginPath(); g.moveTo(X(x), Y(yr[0])); g.lineTo(X(x), Y(yr[1])); g.stroke(); }
         for (let y = Math.ceil(yr[0]); y <= yr[1]; y += step) { g.beginPath(); g.moveTo(X(xr[0]), Y(y)); g.lineTo(X(xr[1]), Y(y)); g.stroke(); }
         g.globalAlpha = 1;
@@ -149,17 +149,17 @@
           for (let x = Math.ceil(xr[0] / st) * st; x < xr[1] - 1e-9; x += st) if (Math.abs(x - x0) > 1e-9) {
             f.line(x, y0, x, y0, col, 2, 1, null, a); f.style(col, 2, null, a);
             g.beginPath(); g.moveTo(X(x), Y(y0) - 7); g.lineTo(X(x), Y(y0) + 7); g.stroke();
-            f.text(fmt(x), x, y0, { col: '#8d8c85', size: 24, dy: 26, alpha: a });
+            f.text(fmt(x), x, y0, { col: '#8a8a84', size: 24, dy: 26, alpha: a });
           }
           for (let y = Math.ceil(yr[0] / st) * st; y < yr[1] - 1e-9; y += st) if (Math.abs(y - y0) > 1e-9) {
             f.style(col, 2, null, a); g.beginPath(); g.moveTo(X(x0) - 7, Y(y)); g.lineTo(X(x0) + 7, Y(y)); g.stroke();
-            f.text(fmt(y), x0, y, { col: '#8d8c85', size: 24, dx: -24, alpha: a, align: 'right' });
+            f.text(fmt(y), x0, y, { col: '#8a8a84', size: 24, dx: -24, alpha: a, align: 'right' });
           }
         }
         g.globalAlpha = 1;
       },
       // polyline of a function y=fn(x) on [a,b], drawn to fraction k
-      plot(fn, a, b, col = '#ece8df', w = 4, k = 1, alpha = 1, dash) {
+      plot(fn, a, b, col = '#e9e6df', w = 4, k = 1, alpha = 1, dash) {
         if (k <= 0) return; f.style(col, w, dash, alpha);
         const n = 160, end = lerp(a, b, k); g.beginPath();
         for (let i = 0; i <= n; i++) { const x = lerp(a, end, i / n), y = fn(x); i ? g.lineTo(X(x), Y(y)) : g.moveTo(X(x), Y(y)); }
@@ -173,12 +173,12 @@
       poly(pts, col, alpha = 1) { f.style(col, 1, null, alpha); g.beginPath(); pts.forEach(([x, y], i) => i ? g.lineTo(X(x), Y(y)) : g.moveTo(X(x), Y(y))); g.closePath(); g.fill(); g.globalAlpha = 1; },
       // a little cart (body + wheels) centred at world x on baseline y
       cart(x, y, o2 = {}) {
-        const s = o2.scale || 1, col = o2.col || '#c4505f', a = o2.alpha ?? 1;
+        const s = o2.scale || 1, col = o2.col || (getComputedStyle(document.documentElement).getPropertyValue('--acc').trim() || '#9b3a4a'), a = o2.alpha ?? 1;
         const cx = X(x), cy = Y(y), w = 110 * s, h = 46 * s, r = 13 * s;
         g.globalAlpha = a; g.fillStyle = col;
         roundRect(g, cx - w / 2, cy - h - 2 * r + 4 * s, w, h, 10 * s); g.fill();
         g.fillStyle = 'rgba(255,255,255,.18)'; roundRect(g, cx - w / 2 + 10 * s, cy - h - 2 * r + 12 * s, w - 20 * s, 10 * s, 5 * s); g.fill();
-        g.fillStyle = '#ece8df';
+        g.fillStyle = '#e9e6df';
         for (const dx of [-w * 0.3, w * 0.3]) { g.beginPath(); g.arc(cx + dx, cy - r, r, 0, 7); g.fill(); }
         g.fillStyle = '#0d0f0e'; for (const dx of [-w * 0.3, w * 0.3]) { g.beginPath(); g.arc(cx + dx, cy - r, r * 0.4, 0, 7); g.fill(); }
         g.globalAlpha = 1;
@@ -190,9 +190,9 @@
         f.line(a - 0.6, y0, b + 0.6, y0, col, 3, o2.k ?? 1, null, al);
         for (let x = a; x <= b; x++) {
           f.style(col, 2.5, null, al); g.beginPath(); g.moveTo(X(x), Y(y0) - 12); g.lineTo(X(x), Y(y0) + 12); g.stroke();
-          f.text(fmt(x), x, y0, { col: x === 0 ? '#ece8df' : '#8d8c85', size: 28, dy: 40, alpha: al, weight: x === 0 ? 600 : 400 });
+          f.text(fmt(x), x, y0, { col: x === 0 ? '#e9e6df' : '#8a8a84', size: 28, dy: 40, alpha: al, weight: x === 0 ? 600 : 400 });
         }
-        if (o2.unit) f.text(o2.unit, b + 0.6, y0, { col: '#8d8c85', size: 28, dy: 40, alpha: al, align: 'left', dx: 10 });
+        if (o2.unit) f.text(o2.unit, b + 0.6, y0, { col: '#8a8a84', size: 28, dy: 40, alpha: al, align: 'left', dx: 10 });
         g.globalAlpha = 1;
       },
     };
@@ -279,7 +279,7 @@
         if (!on) return;
         const left = clamp(cue.e - t, 0, cue.e - cue.s), frac = left / (cue.e - cue.s);
         g.clearRect(0, 0, 150, 150); g.lineWidth = 9; g.lineCap = 'round';
-        g.strokeStyle = '#2a312d'; g.beginPath(); g.arc(75, 75, 62, 0, 7); g.stroke();
+        g.strokeStyle = '#262626'; g.beginPath(); g.arc(75, 75, 62, 0, 7); g.stroke();
         g.strokeStyle = '#e3b35a'; g.beginPath(); g.arc(75, 75, 62, -Math.PI / 2, -Math.PI / 2 + frac * Math.PI * 2); g.stroke();
         lbl.textContent = Math.ceil(left - 1e-6) || '✓';
       },

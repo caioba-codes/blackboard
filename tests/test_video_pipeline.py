@@ -81,7 +81,7 @@ class VideoPipelineTest(unittest.TestCase):
         first = self.init()
         self.assertIn("no model receipt was generated", first.stdout)
         self.assertFalse((self.project / "video-runs.json").exists())
-        self.assertEqual({p.name for p in self.project.iterdir()}, set(RUNTIME) | {"README.md", "package-lock.json", ".gitignore", "project.json"})
+        self.assertEqual({p.name for p in self.project.iterdir()}, set(RUNTIME) | {"README.md", "package-lock.json", ".gitignore", "project.json", "look.css"})
         self.assertFalse((self.project / "scenes").exists())
         self.init()
         (self.project / "engine.js").write_text("local changes", encoding="utf-8")
@@ -252,6 +252,40 @@ class VideoPipelineTest(unittest.TestCase):
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
         self.assertEqual(module.practice_items(self.lesson.read_text().splitlines()), [(3, 4), (5, 5), (7, 12)])
+
+    def test_look_matches_the_board_accent_and_surface(self):
+        spec = importlib.util.spec_from_file_location("video_pipeline", CLI)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        d = Path(self.tmp.name) if hasattr(self, "tmp") else self.project.parent
+        ten = d / "0010-test.md"
+        ten.write_text("---\ntitle: T\n---\nBody\n", encoding="utf-8")
+        self.assertEqual(module.lesson_look(ten), {"accent": "#a8762f", "accent2": "#a8762f", "board": "plain"})
+        slate = d / "0002-slate.md"
+        slate.write_text("---\naccent: teal\nboard: slate\n---\nBody\n", encoding="utf-8")
+        out = d / "proj"
+        out.mkdir()
+        self.assertEqual(module.write_look(slate, out)["accent"], "#3d8080")
+        self.assertTrue((out / "slate.jpg").is_file())
+        self.assertIn("url(slate.jpg)", (out / "look.css").read_text())
+
+    def test_pace_fails_when_the_script_rushes_the_lesson(self):
+        spec = importlib.util.spec_from_file_location("video_pipeline", CLI)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        d = self.project.parent
+        lesson = d / "0003-long.md"
+        lesson.write_text("word " * 1000, encoding="utf-8")
+        proj = d / "pace"
+        proj.mkdir()
+        (proj / "script.json").write_text(json.dumps({"scenes": [{"cues": [{"say": "word " * 1200}]}]}), encoding="utf-8")
+        with self.assertRaises(module.PipelineError) as e:
+            module.pace_ok(lesson, proj)
+        self.assertIn("too fast", str(e.exception))
+        (proj / "script.json").write_text(json.dumps({"scenes": [{"cues": [{"say": "word " * 2100}]}]}), encoding="utf-8")
+        self.assertIn("ready", module.pace_ok(lesson, proj))
+        est = self.cli("estimate", "--lesson", lesson)
+        self.assertEqual(json.loads(est.stdout)["minutes"], 15)
 
 
 if __name__ == "__main__":

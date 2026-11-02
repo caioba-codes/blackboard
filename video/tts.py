@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Narrate every cue of script.json, then build timeline.json + timeline.js from the measured audio.
 
-Narrators: Kokoro-82M (local, Apache-2.0, no key; the default) or ElevenLabs (when ELEVENLABS_API_KEY is set).
+Narrators: ElevenLabs whenever a key is present (ELEVENLABS_API_KEY, else the chmod-600 file
+~/.config/blackboard/elevenlabs.key), else Kokoro-82M (local, Apache-2.0, no key) as the fallback.
 audio/<scene>_<cue>.wav (Kokoro) or .mp3 (ElevenLabs) + .json (timing). Re-runs skip cues whose engine, model,
 voice, settings and text did not change, so an interrupted or quota-stopped run resumes where it stopped.
 timeline.json: scenes with absolute start/dur, cues with scene-local s/e, subtitle chunks per sentence.
@@ -13,11 +14,11 @@ tts.done: sha256 of timeline.json, timeline.js and narration.wav, written last; 
   python3 tts.py --workers 3   parallel ElevenLabs requests (default 3)
   python3 tts.py --engine kokoro|elevenlabs   force a narrator (default auto, or BLACKBOARD_TTS_ENGINE)
 
-auto: ElevenLabs when ELEVENLABS_API_KEY is set or every cue is already cached from it, else Kokoro.
+auto: ElevenLabs when a key is present or every cue is already cached from it, else Kokoro.
 Kokoro lives outside the project: $BLACKBOARD_TTS_HOME (default ~/.cache/blackboard)/tts-venv and kokoro/,
 installed by the skill's bin/setup_tts.sh. Voice: BLACKBOARD_TTS_VOICE, else script.json "kokoroVoice", else
-am_michael; speed BLACKBOARD_TTS_SPEED (1.0). ElevenLabs: voice from script.json "voice"; overrides
-ELEVENLABS_MODEL, ELEVENLABS_API_BASE.
+am_michael; speed BLACKBOARD_TTS_SPEED (1.0). ElevenLabs: voice BLACKBOARD_ELEVENLABS_VOICE, else script.json
+"voice", else Brian; overrides ELEVENLABS_MODEL, ELEVENLABS_API_BASE. The key is never printed or written anywhere.
 Exit codes: 0 ok, 2 usage/script error or no narrator available (TTS_BLOCKED), 3 quota or auth refused by the
 API, 4 other API or narrator failure.
 """
@@ -27,7 +28,11 @@ import urllib.error, urllib.request, wave
 ROOT = os.path.dirname(os.path.abspath(__file__))
 AUD = os.path.join(ROOT, "audio")
 MODEL = os.environ.get("ELEVENLABS_MODEL", "eleven_v4")
-VOICE = "XrExE9yKIg1WjnnlVkGX"   # default when script.json has no "voice"
+# ElevenLabs premade voices; Brian is the default, the closest to Kokoro am_michael (Caio's pick): a warm, clear,
+# mid-low American male narrator. Alternatives: Eric (cjVigY5qzO86Huf0OWal, friendly conversational American),
+# Chris (iP95p4xoKVk53GoZ742B, casual American), George (JBFqnCBsd6RMkjVDRZzb, warm British storyteller).
+VOICE = "nPczCjzI2devNBz1zQrb"
+KEY_FILE = os.path.expanduser(os.environ.get("BLACKBOARD_ELEVENLABS_KEY_FILE", "~/.config/blackboard/elevenlabs.key"))
 VOICE_SETTINGS = {"stability": 0.55, "similarity_boost": 0.8, "style": 0.15, "speed": 0.97}
 OUTPUT_FORMAT = "mp3_44100_192"
 API_BASE = os.environ.get("ELEVENLABS_API_BASE", "https://api.elevenlabs.io").rstrip("/")
@@ -47,6 +52,21 @@ KOKORO_SPEED = float(os.environ.get("BLACKBOARD_TTS_SPEED", "1.0"))
 KOKORO_GAP = {".": 0.3, "?": 0.3, "!": 0.3, ":": 0.25}   # silence after a sentence; 0.12 s after a comma split
 INSTALL_HINT = ("install the free local narrator with: sh ~/.claude/skills/blackboard/bin/setup_tts.sh "
                 "(or set ELEVENLABS_API_KEY)")
+
+
+def eleven_key():
+    """The ElevenLabs key: ELEVENLABS_API_KEY, else KEY_FILE when only its owner can read it. '' when neither."""
+    key = os.environ.get("ELEVENLABS_API_KEY", "").strip()
+    if key:
+        return key
+    try:
+        st = os.stat(KEY_FILE)
+    except OSError:
+        return ""
+    if st.st_mode & 0o077 or st.st_uid != os.getuid():
+        raise Stop(2, f"{KEY_FILE} must be readable only by you: run chmod 600 {KEY_FILE}")
+    with open(KEY_FILE, encoding="utf-8") as f:
+        return f.read().strip()
 
 
 class Stop(Exception):
@@ -354,7 +374,7 @@ def kokoro_voice(script):
 
 
 def jobs_for(script, engine="elevenlabs"):
-    voice, ext = (kokoro_voice(script), "wav") if engine == "kokoro" else (script.get("voice") or VOICE, "mp3")
+    voice, ext = (kokoro_voice(script), "wav") if engine == "kokoro" else (os.environ.get("BLACKBOARD_ELEVENLABS_VOICE", "").strip() or script.get("voice") or VOICE, "mp3")
     return [(os.path.join(AUD, f"{sc['id']}_{cue['id']}.{ext}"), voice, cue["say"])
             for sc in script["scenes"] for cue in sc["cues"] if "say" in cue]
 
@@ -366,15 +386,15 @@ def choose_engine(script, requested=None):
         raise Stop(2, f"unknown TTS engine {req!r}: use auto, kokoro or elevenlabs")
     if req != "auto":
         return req, "requested"
-    if os.environ.get("ELEVENLABS_API_KEY", "").strip():
-        return "elevenlabs", "ELEVENLABS_API_KEY is set"
+    if eleven_key():
+        return "elevenlabs", "an ElevenLabs key is present"
     for eng in ("elevenlabs", "kokoro"):
         jobs = jobs_for(script, eng)
         if jobs and all(cached(*j) for j in jobs):
             return eng, "every cue already cached"
     if kokoro_available():
         return "kokoro", "local Kokoro (no key needed)"
-    raise Stop(2, "TTS_BLOCKED: no narrator: Kokoro is not installed and ELEVENLABS_API_KEY is not set; " + INSTALL_HINT)
+    raise Stop(2, "TTS_BLOCKED: no narrator: Kokoro is not installed and no ElevenLabs key is set; " + INSTALL_HINT)
 
 
 def build_timeline(script, engine="elevenlabs"):
@@ -468,9 +488,9 @@ def main(argv=None):
         if left:
             raise Stop(4, f"TTS_FAILED: {left} of {len(jobs)} cues still missing after the Kokoro run; rerun tts.py")
     elif missing:
-        key = os.environ.get("ELEVENLABS_API_KEY", "").strip()
+        key = eleven_key()
         if not key:
-            raise Stop(2, f"ELEVENLABS_API_KEY is not set and {len(missing)} cue(s) need narration")
+            raise Stop(2, f"no ElevenLabs key (ELEVENLABS_API_KEY or {KEY_FILE}) and {len(missing)} cue(s) need narration")
         with cf.ThreadPoolExecutor(a.workers) as ex:
             futs = [ex.submit(tts, p, v, txt, key) for p, v, txt in missing]
             errs = []

@@ -1,7 +1,6 @@
 {
   "title": "Adding Two Vectors",
   "subtitle": "Sample lesson · smoke test",
-  "voice": "XrExE9yKIg1WjnnlVkGX",
   "chapters": ["Introduction", "Chapter 1 · Tip to tail", "Chapter 2 · Check yourself"],
   "scenes": [
     {"id": "s00", "chapter": 0, "visual": "Title card: kicker tag 'Sample lesson', big title 'Adding Two Vectors', italic hook 'tip to tail'.",

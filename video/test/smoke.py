@@ -183,7 +183,7 @@ def main():
     r = run([sys.executable, "tts.py", "--check"], P)
     check("tts --check reports 7 missing cues, exit 1", r.returncode == 1 and r.out.count("missing ") == 7, r.out)
     r = run([sys.executable, "tts.py"], P)
-    check("tts without ELEVENLABS_API_KEY stops with exit 2", r.returncode == 2 and "ELEVENLABS_API_KEY is not set" in r.out, r.out)
+    check("tts without ELEVENLABS_API_KEY stops with exit 2", r.returncode == 2 and "no ElevenLabs key" in r.out, r.out)
     m = Mock()
     env = {"ELEVENLABS_API_KEY": "test-key", "ELEVENLABS_API_BASE": m.base}
     m.fail_after = 2
@@ -196,7 +196,7 @@ def main():
     check("resume narrates only the 5 missing cues", r.returncode == 0 and len(m.requests) == 5, f"{len(m.requests)} requests\n{r.out}")
     q = m.requests[0]
     check("request carries model, voice and voice settings", q["key"] == "test-key"
-          and q["path"].startswith("/v1/text-to-speech/XrExE9yKIg1WjnnlVkGX/with-timestamps?output_format=mp3_44100_192")
+          and q["path"].startswith("/v1/text-to-speech/nPczCjzI2devNBz1zQrb/with-timestamps?output_format=mp3_44100_192")
           and q["body"]["model_id"] == "eleven_v4"
           and q["body"]["voice_settings"] == {"stability": 0.55, "similarity_boost": 0.8, "style": 0.15, "speed": 0.97}, json.dumps(q)[:300])
     tl = json.load(open(os.path.join(P, "timeline.json")))
@@ -226,7 +226,7 @@ def main():
     import hashlib
     meta = os.path.join(P, "audio", "s00_a.mp3.json")
     d = json.load(open(meta))
-    d["hash"] = hashlib.sha1(("eleven_v4" + "XrExE9yKIg1WjnnlVkGX" + d["text"]).encode()).hexdigest()
+    d["hash"] = hashlib.sha1(("eleven_v4" + "nPczCjzI2devNBz1zQrb" + d["text"]).encode()).hexdigest()
     json.dump(d, open(meta, "w"))
     r = run([sys.executable, "tts.py"], P, env)
     check("legacy cache entry reused and upgraded", r.returncode == 0 and not m.requests and json.load(open(meta))["hash"].startswith("v2:"), r.out)

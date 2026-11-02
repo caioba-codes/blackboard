@@ -51,8 +51,9 @@ class TtsEngineTest(unittest.TestCase):
         self.project = Path(tmp.name)
         (self.project / "script.json").write_text(json.dumps(SCRIPT))
         env = {k: v for k, v in os.environ.items()
-               if k not in ("ELEVENLABS_API_KEY", "BLACKBOARD_TTS_ENGINE", "BLACKBOARD_TTS_VOICE")}
+               if k not in ("ELEVENLABS_API_KEY", "BLACKBOARD_TTS_ENGINE", "BLACKBOARD_TTS_VOICE", "BLACKBOARD_ELEVENLABS_VOICE")}
         env["BLACKBOARD_TTS_HOME"] = str(self.project / "no-tts-home")
+        env["BLACKBOARD_ELEVENLABS_KEY_FILE"] = str(self.project / "no-key")   # never the real key file
         patcher = patch.dict(os.environ, env, clear=True)
         patcher.start()
         self.addCleanup(patcher.stop)
@@ -69,6 +70,25 @@ class TtsEngineTest(unittest.TestCase):
     def test_elevenlabs_with_key(self):
         self.assertEqual(self.choose(True, ELEVENLABS_API_KEY="k"), "elevenlabs")
         self.assertEqual(self.choose(False, ELEVENLABS_API_KEY="k"), "elevenlabs")
+
+    def test_key_file_makes_elevenlabs_the_default_only_when_private(self):
+        key = self.project / "no-key"
+        key.write_text("secret-test-key\n")
+        key.chmod(0o600)
+        self.assertEqual(self.choose(True), "elevenlabs")
+        self.assertEqual(self.tts.eleven_key(), "secret-test-key")
+        key.chmod(0o644)
+        with self.assertRaises(self.tts.Stop) as e:
+            self.choose(True)
+        self.assertIn("chmod 600", str(e.exception))
+        self.assertNotIn("secret-test-key", str(e.exception))
+
+    def test_elevenlabs_voice_defaults_to_brian(self):
+        bare = dict(SCRIPT)
+        bare.pop("voice")
+        self.assertEqual(self.tts.jobs_for(bare)[0][1], "nPczCjzI2devNBz1zQrb")
+        with patch.dict(os.environ, {"BLACKBOARD_ELEVENLABS_VOICE": "cjVigY5qzO86Huf0OWal"}):
+            self.assertEqual(self.tts.jobs_for(SCRIPT)[0][1], "cjVigY5qzO86Huf0OWal")
 
     def test_explicit_engine_wins(self):
         self.assertEqual(self.choose(True, ELEVENLABS_API_KEY="k", BLACKBOARD_TTS_ENGINE="kokoro"), "kokoro")
