@@ -96,45 +96,87 @@ function modesHtml(cls,labels){
 }
 function build(){
   const p=document.createElement('section'); p.id='lvpanel'; p.className='lv-panel'; p.setAttribute('aria-label','Video lesson'); p.tabIndex=-1; p.hidden=true;
-  const ticks=S.segs.slice(1).map(s=>`<i class="${s.p?'pr':''}" style="left:${(s.start/S.dur*100).toFixed(3)}%"></i>`).join('');
-  p.innerHTML=`<div class="lv-head"><span class="lv-kick">Video</span><span class="lv-lbl"></span><span class="lv-cnt"></span></div>
-<div class="lv-stage" tabindex="-1"><video playsinline preload="metadata" aria-label="Lesson video"></video>
+  // minimal, like a streaming player: the controls sit on the video and fade while it plays; the rest lives in More
+  p.innerHTML=`<div class="lv-stage" tabindex="-1"><video playsinline preload="metadata" aria-label="Lesson video"></video>
 <button type="button" class="lv-big" data-a="play" tabindex="-1" aria-hidden="true">${I.play}</button>
 <div class="lv-spin" hidden aria-hidden="true"></div>
 <div class="lv-card lv-gate" role="group" aria-label="Your turn" hidden><p class="lv-ck">Your turn</p><p class="lv-ct">Pause here and work it out. The answer comes next.</p><div class="lv-cb"><button type="button" class="lv-btn pri" data-a="continue">Continue to the answer</button><button type="button" class="lv-btn" data-a="replayq">Replay the question</button></div></div>
 <div class="lv-card lv-err" role="alert" hidden><p class="lv-ck">Video unavailable</p><p class="lv-ct lv-errt"></p><div class="lv-cb"><button type="button" class="lv-btn pri" data-a="retry">Try again</button><button type="button" class="lv-btn" data-a="toread">Read the lesson</button></div></div>
 <div class="lv-card lv-end" hidden><p class="lv-ck">End of the video</p><div class="lv-cb"><button type="button" class="lv-btn pri" data-a="restart">Watch again</button><button type="button" class="lv-btn" data-a="toread">Back to the lesson</button></div></div>
-</div>
-<div class="lv-bar"><div class="lv-tl"><input type="range" class="lv-range" min="0" max="${S.dur}" step="0.1" value="0" aria-label="Video position"><div class="lv-ticks" aria-hidden="true">${ticks}</div><div class="lv-tip" hidden aria-hidden="true"></div></div>
-<div class="lv-ctl"><div class="lv-grp lv-main" role="group" aria-label="Playback">
-<button type="button" class="lv-ib" data-a="prev" aria-label="Previous explanation" title="Previous explanation (Shift+←)">${I.prev}</button>
-<button type="button" class="lv-ib" data-a="back" aria-label="Back 10 seconds" title="Back 10 seconds (←)">${I.back}</button>
-<button type="button" class="lv-ib lv-play" data-a="play" aria-label="Play" title="Play (Space)">${I.play}</button>
-<button type="button" class="lv-ib" data-a="fwd" aria-label="Forward 10 seconds" title="Forward 10 seconds (→)">${I.fwd}</button>
-<button type="button" class="lv-ib" data-a="next" aria-label="Next explanation" title="Next explanation (Shift+→)">${I.next}</button>
-</div><span class="lv-time"><span class="lv-el">0:00</span><span class="lv-du"> / ${fmt(S.dur)}</span></span>
-<div class="lv-grp lv-side"><label class="lv-speed" title="Playback speed (Shift+&lt; and Shift+&gt;)"><span class="lv-sr">Playback speed</span><select>${SPEEDS.map(r=>`<option value="${r}">${r}×</option>`).join('')}</select></label>
+<div class="lv-bar"><div class="lv-tl"><div class="lv-zones" aria-hidden="true"></div><input type="range" class="lv-range" min="0" max="${S.dur}" step="0.1" value="0" aria-label="Video position"><div class="lv-tip" hidden aria-hidden="true"><b class="lv-tipc"></b><span class="lv-tipt"></span></div></div>
+<div class="lv-ctl"><button type="button" class="lv-ib lv-play" data-a="play" aria-label="Play" title="Play (Space)">${I.play}</button>
+<span class="lv-time"><span class="lv-el">0:00</span><span class="lv-du"> / ${fmt(S.dur)}</span><span class="lv-ch"></span></span>
+<button type="button" class="lv-chip lv-follow" data-a="follow" hidden title="Scroll the text back to what the video is saying">Follow</button>
+<label class="lv-speed" title="Playback speed (Shift+&lt; and Shift+&gt;)"><span class="lv-sr">Playback speed</span><select>${SPEEDS.map(r=>`<option value="${r}">${r}×</option>`).join('')}</select></label>
 <div class="lv-more"><button type="button" class="lv-ib" data-a="more" aria-label="More video options" aria-expanded="false" aria-controls="lvmenu" title="More">${I.more}</button>
-<div class="lv-menu" id="lvmenu" hidden><button type="button" data-a="replay">Replay this explanation<kbd>R</kbd></button><button type="button" data-a="loop" aria-pressed="false">Loop this explanation</button><button type="button" data-a="mute" aria-pressed="false">Mute</button><button type="button" data-a="pip" hidden>Picture in picture</button>
-<p class="lv-keys">Space play or pause · ← → 10 seconds · Shift+← → explanation · F full screen</p></div></div>
-<button type="button" class="lv-ib" data-a="fs" aria-label="Full screen" title="Full screen (F)">${I.fs}</button></div></div></div>
-<div class="lv-foot"><button type="button" class="lv-link" data-a="read">Read from here</button><button type="button" class="lv-link lv-follow" data-a="follow" hidden>Follow the video</button>${S.m.captionsBurnedIn?'<span class="lv-cc"><abbr title="Closed captions">CC</abbr> Captions are part of the video</span>':''}</div>
-<p class="lv-stale" hidden>This lesson changed after the video was made, so the video no longer follows the text. You can still watch it.</p>
+<div class="lv-menu" id="lvmenu" hidden><button type="button" data-a="back">Back 10 seconds<kbd>←</kbd></button><button type="button" data-a="fwd">Forward 10 seconds<kbd>→</kbd></button><button type="button" data-a="prev">Previous explanation<kbd>⇧←</kbd></button><button type="button" data-a="next">Next explanation<kbd>⇧→</kbd></button><button type="button" data-a="replay">Replay this explanation<kbd>R</kbd></button><button type="button" data-a="loop" aria-pressed="false">Loop this explanation</button><button type="button" data-a="mute" aria-pressed="false">Mute</button><button type="button" data-a="pip" hidden>Picture in picture</button><button type="button" data-a="read">Read from here</button></div></div>
+<button type="button" class="lv-ib" data-a="fs" aria-label="Full screen" title="Full screen (F)">${I.fs}</button></div></div>
+</div>
 <ol class="lv-list" aria-label="Explanations in this video">${S.segs.map(s=>`<li><button type="button" data-a="seg" data-i="${s.i}"><span class="lv-lt">${fmt(s.start)}</span><span class="lv-ll">${esc(s.label)}</span>${s.p?'<span class="lv-tag">Your turn</span>':''}</button></li>`).join('')}</ol>
 <div class="lv-sr lv-live" aria-live="polite"></div>`;
   document.body.insertBefore(p,ctx.main);
   const q=s=>p.querySelector(s);
   Object.assign(S,{panel:p,video:q('video'),stage:q('.lv-stage'),big:q('.lv-big'),spin:q('.lv-spin'),gateEl:q('.lv-gate'),errEl:q('.lv-err'),endEl:q('.lv-end'),
-    range:q('.lv-range'),tip:q('.lv-tip'),tl:q('.lv-tl'),playBtn:q('.lv-play'),el:q('.lv-el'),speed:q('.lv-speed select'),moreBtn:q('[data-a="more"]'),menu:q('.lv-menu'),
-    fsBtn:q('[data-a="fs"]'),prevBtn:q('[data-a="prev"]'),nextBtn:q('[data-a="next"]'),lbl:q('.lv-lbl'),cnt:q('.lv-cnt'),readBtn:q('[data-a="read"]'),followBtn:q('.lv-follow'),
-    stale:q('.lv-stale'),list:q('.lv-list'),live:q('.lv-live'),gateBtn:q('[data-a="continue"]')});
+    bar:q('.lv-bar'),range:q('.lv-range'),tip:q('.lv-tip'),tl:q('.lv-tl'),zones:q('.lv-zones'),chEl:q('.lv-ch'),playBtn:q('.lv-play'),el:q('.lv-el'),speed:q('.lv-speed select'),moreBtn:q('[data-a="more"]'),menu:q('.lv-menu'),
+    fsBtn:q('[data-a="fs"]'),prevBtn:q('[data-a="prev"]'),nextBtn:q('[data-a="next"]'),readBtn:q('[data-a="read"]'),followBtn:q('.lv-follow'),
+    list:q('.lv-list'),live:q('.lv-live'),gateBtn:q('[data-a="continue"]')});
   S.speed.value=String(S.rate);
   if(!(document.pictureInPictureEnabled&&!S.video.disablePictureInPicture))q('[data-a="pip"]').remove(); else q('[data-a="pip"]').hidden=false;
+  buildZones();
   // the same switch, compact, in the top bar: shown whenever the one in the lesson header is off screen
   const top=document.createElement('div'); top.innerHTML=modesHtml('lv-topmodes',false); S.top=top.firstElementChild; S.top.hidden=true;
   const zoom=document.getElementById('zoomctl'), bar=document.getElementById('topbar');
   if(zoom)zoom.after(S.top); else if(bar)bar.prepend(S.top);
 }
+
+// ---------- chapters: the seek bar's zones ----------
+// One zone per lesson chapter (each `## ` heading of the lesson source), like a video site's chapter markers. A segment
+// belongs to the chapter whose heading is the last one at or above its line, or to the chapter its label names
+// ("Chapter 3 card", "Practice exam intro", "Quiz 1: …"): a map made from an older lesson keeps working when the lines
+// have drifted. Chapters never go back in time (a recap pointing at its chapter's heading stays where it is), and a
+// jump forward needs a label or two segments in a row that agree. Segments before the first heading are the
+// introduction. Without the lesson source the bar is one zone.
+function headingsOf(src){
+  const out=[]; let fence=null;
+  (typeof src==='string'?src.split('\n'):[]).forEach((t,k)=>{
+    const f=t.match(/^\s*(```|~~~)/); if(f){ fence=fence===null?f[1]:fence===f[1]?null:fence; return; }
+    if(fence!==null)return;
+    const m=t.match(/^##[ \t]+(.+?)[ \t#]*$/); if(!m)return;
+    const title=m[1].replace(/\s*\{#[^}]*\}\s*$/,'').replace(/[*_`]/g,'').replace(/\[([^\]]*)\]\([^)]*\)/g,'$1').trim();
+    if(!title)return;
+    const n=title.match(/^chapter\s+(\d+)\b/i), tail=title.split(/\s+[·:—–-]\s+/).slice(1).join(' · ');
+    out.push({line:k+1,title,n:n?n[1]:null,tail:tail.toLowerCase(),full:title.toLowerCase()});
+  });
+  return out;
+}
+function chaptersOf(segs,src){
+  const hs=headingsOf(src);
+  if(!hs.length||!segs.length)return [{title:'',i0:0}];
+  const starts=(l,t)=>l.startsWith(t)&&!/[a-z0-9]/.test(l.charAt(t.length));
+  const byLabel=s=>{ const l=s.label.trim().toLowerCase(); for(let k=hs.length-1;k>=0;k--){ const h=hs[k];
+    if(h.n&&new RegExp('^chapter\\s+'+h.n+'\\b').test(l))return k;
+    if((h.tail.length>=4&&starts(l,h.tail))||starts(l,h.full))return k; } return -2; };
+  const byLine=s=>{ let a=-1; hs.forEach((h,k)=>{ if(h.line<=s.line)a=k; }); return a; };
+  // a label counts only next to its heading (at most one chapter early), so a generic title cannot pull a zone far forward
+  const raw=segs.map(s=>{ const k=byLabel(s), b=byLine(s); return k>-2&&b>=k-1?{k,lab:true}:{k:b,lab:false}; });
+  const of=[]; let cur=raw[0].k;
+  raw.forEach((r,i)=>{
+    if(r.k>cur&&(r.lab||i===raw.length-1||raw[i+1].k>=r.k))cur=r.k;
+    of.push(cur);
+  });
+  const out=[];
+  of.forEach((k,i)=>{ if(!out.length||out[out.length-1].k!==k)out.push({k,title:k<0?'Introduction':hs[k].title,i0:i}); });
+  return out.map(({title,i0})=>({title,i0}));
+}
+function buildZones(){
+  S.srcSeen=ctx.src;
+  S.chaps=chaptersOf(S.segs,ctx.src).map((c,j,a)=>({title:c.title,start:j?S.segs[c.i0].start:0,end:j<a.length-1?S.segs[a[j+1].i0].start:S.dur}));
+  S.zones.innerHTML=S.chaps.map((c,j)=>{ const zs=c.start/S.dur*100, zw=Math.max(.0001,(c.end-c.start)/S.dur*100);
+    return `<div class="lv-z${j?'':' first'}${j===S.chaps.length-1?' last':''}" style="left:${zs.toFixed(4)}%;width:${zw.toFixed(4)}%;--zs:${zs.toFixed(4)};--zw:${zw.toFixed(4)}"><i></i></div>`; }).join('');
+  S.chapI=-1; S.hoverZ=-1;
+  if(S.el)paintTime(cur(),true);
+}
+function chapAt(t){ const a=S.chaps; let j=0; while(j<a.length-1&&a[j+1].start<=t+1e-3)j++; return j; }
 function buildIntro(){
   const el=document.createElement('div'); el.className='lv-intro'; el.setAttribute('role','group'); el.setAttribute('aria-label','Video lesson');
   el.innerHTML=`<span class="lv-ic" aria-hidden="true">${I.play}</span><div class="lv-itx"><b>Video lesson</b><span class="lv-imeta">${fmt(S.dur)}${S.m.captionsBurnedIn?' · captions in the video':''}</span><span class="lv-ist" hidden></span></div>${modesHtml('lv-imodes',true)}`;

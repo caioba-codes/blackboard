@@ -36,7 +36,7 @@ photo_source: https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b1/Cornell_U
 - OpenStax Calculus Volume 2, chapter 3 · integration by parts, trig integrals, trig substitution, partial fractions, improper integrals
 - OpenStax Calculus Volume 1, section 4.8 · L'Hôpital's rule and the indeterminate forms
 - Banner photo · Jonathan Schilling, Wikimedia Commons (CC BY-SA 4.0)
-- Every worked example, drill and practice problem here is original to this lesson
+- Every worked example, drill and practice problem here is original to this lesson, labeled "Written by Claude"
 :::
 
 ## Exam Topics Breakdown
@@ -96,7 +96,7 @@ $$\begin{aligned}
 \end{aligned}$$
 
 ::: checkin
-- Your turn: $\displaystyle\int x e^{5x}\,dx$  ||  A comes before E, so $u = x$.
+- *Written by Claude* Your turn: $\displaystyle\int x e^{5x}\,dx$  ||  A comes before E, so $u = x$.
 
   $$\boxed{\begin{aligned} u &= x & dv &= e^{5x}\,dx \\ du &= \why{dx}{\tfrac{d}{dx}x = 1} & v &= \why{\tfrac{1}{5}e^{5x}}{\int e^{ax}\,dx = \tfrac{1}{a}e^{ax} + C} \end{aligned}}$$
 
@@ -171,6 +171,8 @@ $$\begin{aligned}
 
 ### Checkpoint
 
+*Written by Claude*
+
 ::: mcq c1a b
 $\displaystyle\int x e^{x/2}\,dx$ equals which of these?
 - $2xe^{x/2} + 4e^{x/2} + C$ || The minus in $uv - \int v\,du$ was dropped.
@@ -179,6 +181,8 @@ $\displaystyle\int x e^{x/2}\,dx$ equals which of these?
 - $2xe^{x/2} - 2e^{x/2} + C$ || The second integral lost its $2$: $\int e^{x/2}\,dx = 2e^{x/2}$.
 why: A comes before E, so $u = x$. $$\boxed{\begin{aligned} u &= x & dv &= e^{x/2}\,dx \\ du &= dx & v &= \why{2e^{x/2}}{\int e^{ax}\,dx = \tfrac{1}{a}e^{ax} + C} \end{aligned}}$$ $$\begin{aligned} \int x e^{x/2}\,dx &= 2xe^{x/2} - \int 2e^{x/2}\,dx &&uv - \int v\,du \\ &= \boxed{2xe^{x/2} - 4e^{x/2} + C} &&\int e^{ax}\,dx = \tfrac{1}{a}e^{ax},\ a = \tfrac{1}{2} \end{aligned}$$
 :::
+
+*Written by Claude*
 
 ::: mcq c1b c
 $\displaystyle\int x^{3}\ln x\,dx$ equals which of these?
@@ -241,7 +245,7 @@ When sine is the odd one, save $\sin x$ and keep the minus sign in $du$.
 $$\begin{aligned} u &= \cos x \\ du &= \why{-\sin x\,dx}{\tfrac{d}{dx}\cos x = -\sin x} \end{aligned}$$
 
 ::: checkin
-- Your turn: $\displaystyle\int \sin^{2}x\cos^{3}x\,dx$  ||  Cosine is odd, so save one $\cos x$.
+- *Written by Claude* Your turn: $\displaystyle\int \sin^{2}x\cos^{3}x\,dx$  ||  Cosine is odd, so save one $\cos x$.
 
   $$\begin{aligned}
   \int \sin^{2}x\cos^{3}x\,dx &= \int \sin^{2}x\cos^{2}x\cdot\cos x\,dx &&\text{save one } \cos x \\
@@ -328,6 +332,8 @@ I &= \boxed{-\tfrac{1}{2}\csc x\cot x - \tfrac{1}{2}\ln\lvert\csc x + \cot x\rve
 
 ### Checkpoint
 
+*Written by Claude*
+
 ::: mcq c2a a
 $\displaystyle\int \sin^{3}x\cos^{6}x\,dx$ equals which of these?
 - $-\dfrac{\cos^{7}x}{7} + \dfrac{\cos^{9}x}{9} + C$
@@ -336,6 +342,8 @@ $\displaystyle\int \sin^{3}x\cos^{6}x\,dx$ equals which of these?
 - $-\dfrac{\sin^{2}x\cos^{7}x}{7} + C$ || $\sin^{2}x$ was left as it is; it must become $1 - \cos^{2}x$ before substituting.
 why: Sine is odd, so save one $\sin x$. $$\begin{aligned} \int \sin^{3}x\cos^{6}x\,dx &= \int \sin^{2}x\cos^{6}x\cdot\sin x\,dx &&\text{save one } \sin x \\ &= \int (1 - \cos^{2}x)\cos^{6}x\sin x\,dx &&\sin^{2}x = 1 - \cos^{2}x \\ &= -\int (1 - u^{2})u^{6}\,du &&u = \cos x,\ du = \why{-\sin x\,dx}{\tfrac{d}{dx}\cos x = -\sin x} \\ &= -\int (u^{6} - u^{8})\,du &&\text{distribute} \\ &= -\tfrac{u^{7}}{7} + \tfrac{u^{9}}{9} + C &&\text{power rule} \\ &= \boxed{-\tfrac{\cos^{7}x}{7} + \tfrac{\cos^{9}x}{9} + C} &&u = \cos x \end{aligned}$$
 :::
+
+*Written by Claude*
 
 ::: mcq c2b c
 $\displaystyle\int \sec^{6}x\,dx$ equals which of these?
@@ -406,7 +414,7 @@ $$\begin{aligned}
 \end{aligned}$$
 
 ::: checkin
-- Your turn: $\displaystyle\int \frac{dx}{x^{2}\sqrt{36-x^{2}}}$  ||  $36 - x^{2}$ is the sine form with $a = 6$.
+- *Written by Claude* Your turn: $\displaystyle\int \frac{dx}{x^{2}\sqrt{36-x^{2}}}$  ||  $36 - x^{2}$ is the sine form with $a = 6$.
 
   $$\begin{aligned}
   x &= 6\sin\theta, \qquad dx = \why{6\cos\theta\,d\theta}{\tfrac{d}{d\theta}(a\sin\theta) = a\cos\theta} \\
@@ -524,6 +532,8 @@ $$\begin{aligned} u &= x - 3 \\ du &= dx \\ \sqrt{x^{2}-6x+5} &= \sqrt{u^{2}-4} 
 
 ### Checkpoint
 
+*Written by Claude*
+
 ::: mcq c3a d
 Which substitution turns $\displaystyle\int \frac{dx}{x^{2}\sqrt{x^{2}+1}}$ into a trig integral with no root left?
 - $x = \sin\theta$, because $\sqrt{1-\sin^{2}\theta}$ becomes $\cos\theta$ || Sine is for $1 - x^{2}$; here the root holds $x^{2} + 1$.
@@ -532,6 +542,8 @@ Which substitution turns $\displaystyle\int \frac{dx}{x^{2}\sqrt{x^{2}+1}}$ into
 - $x = \tan\theta$, because $\sqrt{\tan^{2}\theta+1}$ becomes $\sec\theta$
 why: The root holds $x^{2} + 1$, the form $a^{2} + x^{2}$ with $a = 1$, so tangent. $$\begin{aligned} x &= \tan\theta \\ \sqrt{x^{2}+1} &= \sqrt{\tan^{2}\theta + 1} &&\text{substitute} \\ &= \sqrt{\sec^{2}\theta} &&1 + \tan^{2}\theta = \sec^{2}\theta \\ &= \boxed{\sec\theta} &&\text{no root left} \end{aligned}$$
 :::
+
+*Written by Claude*
 
 ::: mcq c3b b
 $\displaystyle\int \frac{dx}{x^{2}\sqrt{49-x^{2}}}$ equals which of these?
@@ -577,7 +589,7 @@ $$\begin{aligned}
 \end{aligned}$$
 
 ::: checkin
-- Your turn: $\displaystyle\int_{2}^{10} \frac{x+3}{x^{2}+6x}\,dx$  ||  The bottom is $x(x+6)$, two linear factors.
+- *Written by Claude* Your turn: $\displaystyle\int_{2}^{10} \frac{x+3}{x^{2}+6x}\,dx$  ||  The bottom is $x(x+6)$, two linear factors.
 
   $$\frac{x+3}{x(x+6)} = \frac{A}{x} + \frac{B}{x+6}$$
 
@@ -688,6 +700,8 @@ $$\begin{aligned}
 
 ### Checkpoint
 
+*Written by Claude*
+
 ::: mcq c4a c
 Which is the correct partial-fraction form for $\dfrac{3x-2}{x^{2}(x+4)}$?
 - $\dfrac{A}{x^{2}} + \dfrac{B}{x+4}$ || The squared factor needs a term for each power, $\tfrac{A}{x}$ and $\tfrac{B}{x^{2}}$.
@@ -696,6 +710,8 @@ Which is the correct partial-fraction form for $\dfrac{3x-2}{x^{2}(x+4)}$?
 - $\dfrac{A}{x} + \dfrac{B}{x+4} + \dfrac{D}{(x+4)^{2}}$ || The repeated terms went to $x+4$, which appears once; $x$ is the squared factor.
 why: $x^{2}$ is the linear factor $x$ raised to the power 2, so it contributes two terms, over $x$ and over $x^{2}$. $$\begin{aligned} 3x - 2 &= Ax(x+4) + B(x+4) + Dx^{2} &&\text{multiply by } x^{2}(x+4) \\ -2 &= 4B &&\text{plug in } x = 0 \\ B &= -\tfrac{1}{2} \\ -14 &= 16D &&\text{plug in } x = -4 \\ D &= -\tfrac{7}{8} \\ 0 &= A + D &&\text{match } x^{2} \text{ coefficients} \\ A &= \tfrac{7}{8} \\ \frac{3x-2}{x^{2}(x+4)} &= \boxed{\frac{7/8}{x} - \frac{1/2}{x^{2}} - \frac{7/8}{x+4}} &&\text{the decomposition} \end{aligned}$$
 :::
+
+*Written by Claude*
 
 ::: mcq c4b a
 $\displaystyle\int_{1}^{3} \frac{x+4}{x^{2}+2x}\,dx$ equals which of these?
@@ -734,7 +750,7 @@ $$\begin{aligned}
 \end{aligned}$$
 
 ::: checkin
-- Your turn: $\displaystyle\lim_{x\to 0}\frac{e^{3x} - 1 - 3x}{x^{2}}$  ||  Plug in: $e^{0} - 1 - 0 = 0$ over $0$, so the form is $\tfrac{0}{0}$.
+- *Written by Claude* Your turn: $\displaystyle\lim_{x\to 0}\frac{e^{3x} - 1 - 3x}{x^{2}}$  ||  Plug in: $e^{0} - 1 - 0 = 0$ over $0$, so the form is $\tfrac{0}{0}$.
 
   $$\begin{aligned}
   \lim_{x\to 0}\frac{e^{3x} - 1 - 3x}{x^{2}} &= \lim_{x\to 0}\frac{\why{3e^{3x}}{\tfrac{d}{dx}e^{ax} = ae^{ax}} - 3}{2x} &&\text{L'Hôpital; chain rule on top} \\
@@ -853,6 +869,8 @@ Write "$\frac{0}{-2}$, not indeterminate" and stop; no derivative is taken.
 
 ### Checkpoint
 
+*Written by Claude*
+
 ::: mcq c5a d
 $\displaystyle\lim_{x\to 0}\frac{x\cos x}{e^{x} - 2}$ equals which of these?
 - $-1$ || The factor $x$ upstairs was dropped.
@@ -861,6 +879,8 @@ $\displaystyle\lim_{x\to 0}\frac{x\cos x}{e^{x} - 2}$ equals which of these?
 - $0$
 why: Plug in first: the form is $\frac{0}{-1}$, not indeterminate. $$\begin{aligned} \lim_{x\to 0}\frac{x\cos x}{e^{x} - 2} &= \frac{0\cdot 1}{1 - 2} &&\text{plug in} \\ &= \frac{0}{-1} &&\text{not indeterminate} \\ &= \boxed{0} \end{aligned}$$
 :::
+
+*Written by Claude*
 
 ::: mcq c5b b
 $\displaystyle\lim_{x\to\infty}\left(1 + \frac{4}{x}\right)^{x/2}$ equals which of these?
@@ -952,7 +972,7 @@ $$\begin{aligned}
 Write the L'Hôpital line for $\frac{b}{e^{b}}$ out; it is a graded step.
 
 ::: checkin
-- Your turn: $\displaystyle\int_0^{\infty} x e^{-3x}\,dx$  ||  A comes before E, so $u = x$.
+- *Written by Claude* Your turn: $\displaystyle\int_0^{\infty} x e^{-3x}\,dx$  ||  A comes before E, so $u = x$.
 
   $$\boxed{\begin{aligned} u &= x & dv &= e^{-3x}\,dx \\ du &= dx & v &= \why{-\tfrac{1}{3}e^{-3x}}{\int e^{ax}\,dx = \tfrac{1}{a}e^{ax} + C} \end{aligned}}$$
 
@@ -1069,6 +1089,8 @@ $$\boxed{\text{converges, by comparison with } \tfrac{2}{x^{3}}}$$
 
 ### Checkpoint
 
+*Written by Claude*
+
 ::: mcq c6a d
 Which statement about $\displaystyle\int_{-1}^{1} x^{-2/3}\,dx$ is correct?
 - It equals $0$, because the two halves cancel by symmetry || $x^{-2/3} = 1/(\sqrt[3]{x})^{2}$ is positive on both sides, so the halves add.
@@ -1077,6 +1099,8 @@ Which statement about $\displaystyle\int_{-1}^{1} x^{-2/3}\,dx$ is correct?
 - It converges to $6$, because each half is a $p$-integral at $0$ with $p = \tfrac{2}{3} < 1$
 why: An asymptote inside the interval means split at $0$ and take two limits. $$\begin{aligned} \int_0^{1} x^{-2/3}\,dx &= \lim_{t\to 0^{+}}\Big[\why{3x^{1/3}}{\int x^{n}\,dx = \tfrac{x^{n+1}}{n+1} + C}\Big]_t^{1} &&\text{power rule} \\ &= \lim_{t\to 0^{+}}\left(3 - 3t^{1/3}\right) = 3 &&\text{right half converges} \\ \int_{-1}^{0} x^{-2/3}\,dx &= \lim_{t\to 0^{-}}\Big[3x^{1/3}\Big]_{-1}^{t} &&\text{left half} \\ &= \lim_{t\to 0^{-}}\left(3t^{1/3} + 3\right) = 3 &&\sqrt[3]{-1} = -1 \\ \int_{-1}^{1} x^{-2/3}\,dx &= 3 + 3 = \boxed{6} &&\text{both halves converge} \end{aligned}$$
 :::
+
+*Written by Claude*
 
 ::: mcq c6b a
 $\displaystyle\int_{e^{3}}^{\infty}\frac{dx}{x(\ln x)^{2}}$ equals which of these?
@@ -1113,8 +1137,8 @@ Two shapes are easy to misread. $\int\frac{x\,dx}{\sqrt{16-x^{2}}}$ has the $x\,
 Cover the right column. For each integral, say the first move out loud, then open the answer.
 
 ::: checkin
-- Drill 1 $\displaystyle\int\frac{x+5}{x+2}\,dx$  ||  Top and bottom have the same degree: divide. $\frac{x+5}{x+2} = 1 + \frac{3}{x+2}$. Answer $x + 3\ln\lvert x+2\rvert + C$.
-- Drill 2 $\displaystyle\int\frac{dx}{x\sqrt{4+x^{2}}}$  ||  $\sqrt{4+x^{2}}$ with no $x\,dx$ is the tangent form, so $x = 2\tan\theta$.
+- *Written by Claude* Drill 1 $\displaystyle\int\frac{x+5}{x+2}\,dx$  ||  Top and bottom have the same degree: divide. $\frac{x+5}{x+2} = 1 + \frac{3}{x+2}$. Answer $x + 3\ln\lvert x+2\rvert + C$.
+- *Written by Claude* Drill 2 $\displaystyle\int\frac{dx}{x\sqrt{4+x^{2}}}$  ||  $\sqrt{4+x^{2}}$ with no $x\,dx$ is the tangent form, so $x = 2\tan\theta$.
 
   $$\begin{aligned}
   x &= 2\tan\theta, \qquad dx = 2\sec^{2}\theta\,d\theta \\
@@ -1128,7 +1152,7 @@ Cover the right column. For each integral, say the first move out loud, then ope
   &= -\frac{1}{2}\ln\lvert\csc\theta + \cot\theta\rvert + C &&\text{the } \int\csc \text{ row} \\
   &= \boxed{-\frac{1}{2}\ln\left\lvert\frac{\sqrt{4+x^{2}}}{x} + \frac{2}{x}\right\rvert + C} &&\text{triangle: } \csc\theta = \tfrac{\sqrt{4+x^{2}}}{x},\ \cot\theta = \tfrac{2}{x}
   \end{aligned}$$
-- Drill 3 $\displaystyle\int\frac{18\,dx}{(9x^{2}+1)^{2}}$  ||  $(3x)^{2}+1$ squared is the tangent form, with $3x = \tan\theta$.
+- *Written by Claude* Drill 3 $\displaystyle\int\frac{18\,dx}{(9x^{2}+1)^{2}}$  ||  $(3x)^{2}+1$ squared is the tangent form, with $3x = \tan\theta$.
 
   $$\begin{aligned}
   3x &= \tan\theta, \qquad dx = \tfrac{1}{3}\sec^{2}\theta\,d\theta \\
@@ -1144,7 +1168,7 @@ Cover the right column. For each integral, say the first move out loud, then ope
   &= 3\tan^{-1}(3x) + 3\cdot\frac{3x}{\sqrt{9x^{2}+1}}\cdot\frac{1}{\sqrt{9x^{2}+1}} + C &&\text{triangle: } \sin\theta = \tfrac{3x}{\sqrt{9x^{2}+1}},\ \cos\theta = \tfrac{1}{\sqrt{9x^{2}+1}} \\
   &= \boxed{3\tan^{-1}(3x) + \frac{9x}{9x^{2}+1} + C} &&\text{multiply}
   \end{aligned}$$
-- Drill 4 $\displaystyle\int x^{3}\sin(x^{2})\,dx$  ||  Substitute $t = x^{2}$ first, then use parts on $t\sin t$.
+- *Written by Claude* Drill 4 $\displaystyle\int x^{3}\sin(x^{2})\,dx$  ||  Substitute $t = x^{2}$ first, then use parts on $t\sin t$.
 
   $$\begin{aligned}
   t &= x^{2}, \qquad dt = 2x\,dx \\
@@ -1160,7 +1184,7 @@ Cover the right column. For each integral, say the first move out loud, then ope
   &= \tfrac{1}{2}(-t\cos t + \sin t) + C &&\int\cos t\,dt = \sin t \\
   &= \boxed{-\frac{1}{2}x^{2}\cos(x^{2}) + \frac{1}{2}\sin(x^{2}) + C} &&t = x^{2}
   \end{aligned}$$
-- Drill 5 $\displaystyle\int\frac{x+6}{3x^{3}-27x}\,dx$  ||  Factor the bottom: three linear factors.
+- *Written by Claude* Drill 5 $\displaystyle\int\frac{x+6}{3x^{3}-27x}\,dx$  ||  Factor the bottom: three linear factors.
 
   $$\begin{aligned}
   3x^{3} - 27x &= 3x(x-3)(x+3) &&\text{factor} \\
@@ -1181,7 +1205,7 @@ Cover the right column. For each integral, say the first move out loud, then ope
   \int\frac{x+6}{3x^{3}-27x}\,dx &= \int\left(\frac{-2/9}{x} + \frac{1/6}{x-3} + \frac{1/18}{x+3}\right)dx &&\text{the decomposition} \\
   &= \boxed{-\frac{2}{9}\ln\lvert x\rvert + \frac{1}{6}\ln\lvert x-3\rvert + \frac{1}{18}\ln\lvert x+3\rvert + C} &&\int\tfrac{1}{x} \text{ rows}
   \end{aligned}$$
-- Drill 6 $\displaystyle\int(3x+1)5^{-x}\,dx$  ||  A comes before E, so $u = 3x+1$.
+- *Written by Claude* Drill 6 $\displaystyle\int(3x+1)5^{-x}\,dx$  ||  A comes before E, so $u = 3x+1$.
 
   $$\boxed{\begin{aligned} u &= 3x+1 & dv &= 5^{-x}\,dx \\ du &= 3\,dx & v &= -\tfrac{5^{-x}}{\ln 5} \end{aligned}}$$
 
@@ -1191,7 +1215,7 @@ Cover the right column. For each integral, say the first move out loud, then ope
   &= -\frac{(3x+1)5^{-x}}{\ln 5} - \frac{3\cdot 5^{-x}}{(\ln 5)^{2}} + C &&\int a^{-x}\,dx = -\tfrac{a^{-x}}{\ln a} \\
   &= \boxed{-5^{-x}\left[\frac{3x+1}{\ln 5} + \frac{3}{(\ln 5)^{2}}\right] + C} &&\text{factor out } -5^{-x}
   \end{aligned}$$
-- Drill 7 $\displaystyle\int\frac{dx}{e^{x}\sqrt{e^{2x}-4}}$  ||  Substitute $u = e^{x}$ first; that leaves the secant form.
+- *Written by Claude* Drill 7 $\displaystyle\int\frac{dx}{e^{x}\sqrt{e^{2x}-4}}$  ||  Substitute $u = e^{x}$ first; that leaves the secant form.
 
   $$\begin{aligned}
   u &= e^{x}, \qquad du = e^{x}\,dx \\
@@ -1208,8 +1232,8 @@ Cover the right column. For each integral, say the first move out loud, then ope
   &= \frac{\sqrt{u^{2}-4}}{4u} + C &&\text{triangle: } \sin\theta = \tfrac{\sqrt{u^{2}-4}}{u} \\
   &= \boxed{\frac{\sqrt{e^{2x}-4}}{4e^{x}} + C} &&u = e^{x}
   \end{aligned}$$
-- Drill 8 $\displaystyle\int\frac{2x^{2}+x+3}{x^{3}+x}\,dx$  ||  Same shape as the irreducible-quadratic example: $\frac{3}{x} + \frac{-x+1}{x^{2}+1}$. Answer $3\ln\lvert x\rvert - \tfrac{1}{2}\ln(x^{2}+1) + \tan^{-1}x + C$.
-- Drill 9 $\displaystyle\int_0^2\frac{x^{3}}{x^{2}+2x+1}\,dx$  ||  Degree 3 over degree 2, so divide first.
+- *Written by Claude* Drill 8 $\displaystyle\int\frac{2x^{2}+x+3}{x^{3}+x}\,dx$  ||  Same shape as the irreducible-quadratic example: $\frac{3}{x} + \frac{-x+1}{x^{2}+1}$. Answer $3\ln\lvert x\rvert - \tfrac{1}{2}\ln(x^{2}+1) + \tan^{-1}x + C$.
+- *Written by Claude* Drill 9 $\displaystyle\int_0^2\frac{x^{3}}{x^{2}+2x+1}\,dx$  ||  Degree 3 over degree 2, so divide first.
 
   $$\begin{aligned}
   x^{3} &= (x-2)(x^{2}+2x+1) + (3x+2) &&\text{long division} \\
@@ -1241,8 +1265,8 @@ Work all of it on paper, without notes, before opening any answer.
 5. $\displaystyle\int_0^{\pi/2}\tan x\,dx$ is an improper integral.
 
 ::: checkin
-- A1  ||  F. $x^{2}-25$ is the form $x^{2}-a^{2}$, so $x = 5\sec\theta$. Tangent is for $a^{2}+x^{2}$.
-- A2  ||  F. The bottom factors as $(x-3)(x+3)$, so partial fractions work.
+- *Written by Claude* A1  ||  F. $x^{2}-25$ is the form $x^{2}-a^{2}$, so $x = 5\sec\theta$. Tangent is for $a^{2}+x^{2}$.
+- *Written by Claude* A2  ||  F. The bottom factors as $(x-3)(x+3)$, so partial fractions work.
 
   $$\begin{aligned}
   1 &= A(x+3) + B(x-3) &&\text{multiply by } (x-3)(x+3) \\
@@ -1252,15 +1276,15 @@ Work all of it on paper, without notes, before opening any answer.
   B &= -\tfrac{1}{6} \\
   \frac{1}{x^{2}-9} &= \boxed{\frac{1/6}{x-3} - \frac{1/6}{x+3}} &&\text{the decomposition}
   \end{aligned}$$
-- A3  ||  F. Here $p = \tfrac{3}{4} \le 1$, so the tail is too fat.
+- *Written by Claude* A3  ||  F. Here $p = \tfrac{3}{4} \le 1$, so the tail is too fat.
 
   $$\begin{aligned}
   \int_1^{\infty}\frac{dx}{x^{3/4}} &= \lim_{b\to\infty}\Big[4x^{1/4}\Big]_1^{b} &&\text{power rule} \\
   &= \lim_{b\to\infty}\left(4b^{1/4} - 4\right) &&\text{upper minus lower} \\
   &= \boxed{\infty} &&\text{diverges}
   \end{aligned}$$
-- A4  ||  T. Top at $3$ is $0$, bottom at $3$ is $9 + 6 - 15 = 0$. (The limit itself is $\tfrac{1}{8}$ after factoring or L'Hôpital.)
-- A5  ||  T. $\lim_{x\to \pi/2^{-}}\tan x = \infty$: a vertical asymptote at the endpoint $\pi/2$. (It diverges.)
+- *Written by Claude* A4  ||  T. Top at $3$ is $0$, bottom at $3$ is $9 + 6 - 15 = 0$. (The limit itself is $\tfrac{1}{8}$ after factoring or L'Hôpital.)
+- *Written by Claude* A5  ||  T. $\lim_{x\to \pi/2^{-}}\tan x = \infty$: a vertical asymptote at the endpoint $\pi/2$. (It diverges.)
 :::
 
 ### Part B: multiple choice (5 × 4)
@@ -1272,12 +1296,12 @@ Work all of it on paper, without notes, before opening any answer.
 5. $\displaystyle\lim_{x\to 0^{+}} x^{3}\ln x$ equals: (a) $0$ (b) $-\infty$ (c) $1$ (d) $-\tfrac{1}{3}$
 
 ::: checkin
-- B1  ||  (b). I comes before A, so $u = \tan^{-1}x$. (d) is $dv$, not $u$.
+- *Written by Claude* B1  ||  (b). I comes before A, so $u = \tan^{-1}x$. (d) is $dv$, not $u$.
 
   $$\boxed{\begin{aligned} u &= \tan^{-1}x & dv &= x\,dx \\ du &= \tfrac{1}{1+x^{2}}\,dx & v &= \tfrac{x^{2}}{2} \end{aligned}}$$
-- B2  ||  (b). The odd power is cosine, so one $\cos x$ is saved as $du$ for $u = \sin x$ and the rest becomes a polynomial in $\sin x$. (d) leaves no $\sin x\,dx$ for $du$.
-- B3  ||  (a). $a^{2}-x^{2}$ is sine; $\sqrt{49-49\sin^{2}\theta} = 7\cos\theta$. (d) uses $49$, which is $a^{2}$, where $a$ belongs.
-- B4  ||  (b). $x^{2}+9$ is irreducible, so it keeps a linear numerator. (c) wrongly factors $x^{2}+9$; (a) gives the quadratic a constant numerator, which cannot match the $x$ terms; (d) puts the linear top on the linear factor instead.
+- *Written by Claude* B2  ||  (b). The odd power is cosine, so one $\cos x$ is saved as $du$ for $u = \sin x$ and the rest becomes a polynomial in $\sin x$. (d) leaves no $\sin x\,dx$ for $du$.
+- *Written by Claude* B3  ||  (a). $a^{2}-x^{2}$ is sine; $\sqrt{49-49\sin^{2}\theta} = 7\cos\theta$. (d) uses $49$, which is $a^{2}$, where $a$ belongs.
+- *Written by Claude* B4  ||  (b). $x^{2}+9$ is irreducible, so it keeps a linear numerator. (c) wrongly factors $x^{2}+9$; (a) gives the quadratic a constant numerator, which cannot match the $x$ terms; (d) puts the linear top on the linear factor instead.
 
   $$\begin{aligned}
   x^{2} + 4x + 30 &= A(x^{2}+9) + (Bx+D)(x+2) &&\text{multiply by } (x+2)(x^{2}+9) \\
@@ -1289,7 +1313,7 @@ Work all of it on paper, without notes, before opening any answer.
   D &= 6 \\
   \frac{x^{2}+4x+30}{(x+2)(x^{2}+9)} &= \boxed{\frac{2}{x+2} + \frac{-x + 6}{x^{2}+9}} &&\text{the decomposition}
   \end{aligned}$$
-- B5  ||  (a). $0\cdot\infty$ form: $\frac{\ln x}{1/x^{3}}\to\frac{1/x}{-3/x^{4}}$, which simplifies to $-\frac{x^{3}}{3}\to 0$.
+- *Written by Claude* B5  ||  (a). $0\cdot\infty$ form: $\frac{\ln x}{1/x^{3}}\to\frac{1/x}{-3/x^{4}}$, which simplifies to $-\frac{x^{3}}{3}\to 0$.
 :::
 
 ### Part C: free response (70)
@@ -1308,7 +1332,7 @@ Show every step. Box the answer. Indefinite integrals need $+C$.
 The total is 105 with the bonus.
 
 ::: checkin
-- C1 $\int x\csc^{2}(2x)\,dx$  ||  A comes before T, so $u = x$.
+- *Written by Claude* C1 $\int x\csc^{2}(2x)\,dx$  ||  A comes before T, so $u = x$.
 
   $$\boxed{\begin{aligned} u &= x & dv &= \csc^{2}(2x)\,dx \\ du &= dx & v &= -\tfrac{1}{2}\cot(2x) \end{aligned}}$$
 
@@ -1320,7 +1344,7 @@ The total is 105 with the bonus.
 :::
 
 ::: checkin
-- C2 $\int\frac{x^{2}}{(9-x^{2})^{3/2}}\,dx$  ||  $9-x^{2}$ is the sine form with $a = 3$.
+- *Written by Claude* C2 $\int\frac{x^{2}}{(9-x^{2})^{3/2}}\,dx$  ||  $9-x^{2}$ is the sine form with $a = 3$.
 
   $$\begin{aligned}
   x &= 3\sin\theta, \qquad dx = 3\cos\theta\,d\theta \\
@@ -1340,7 +1364,7 @@ The total is 105 with the bonus.
 :::
 
 ::: checkin
-- C3 $\int\frac{x+8}{x^{3}+4x}\,dx$  ||  $x^{3}+4x = x(x^{2}+4)$. Form $\frac{A}{x} + \frac{Bx+D}{x^{2}+4}$.
+- *Written by Claude* C3 $\int\frac{x+8}{x^{3}+4x}\,dx$  ||  $x^{3}+4x = x(x^{2}+4)$. Form $\frac{A}{x} + \frac{Bx+D}{x^{2}+4}$.
   $$\begin{aligned}
   x + 8 &= A(x^{2}+4) + (Bx+D)x &&\text{clear denominators} \\
   8 &= 4A &&\text{plug in } x = 0 \\
@@ -1354,7 +1378,7 @@ The total is 105 with the bonus.
 :::
 
 ::: checkin
-- C4 $\int\sin^{4}x\,dx$  ||  Both-even case: power reduce twice.
+- *Written by Claude* C4 $\int\sin^{4}x\,dx$  ||  Both-even case: power reduce twice.
   $$\begin{aligned}
   \sin^{4}x &= \left(\tfrac{1}{2}(1-\cos 2x)\right)^{2} &&\text{power reducing} \\
   &= \tfrac{1}{4}\left(1 - 2\cos 2x + \cos^{2}2x\right) &&\text{expand} \\
@@ -1365,7 +1389,7 @@ The total is 105 with the bonus.
 :::
 
 ::: checkin
-- C5 $\int_1^{\infty}\frac{\ln x}{x^{3}}\,dx$  ||  Type 1. Inside, L comes before A, so $u = \ln x$.
+- *Written by Claude* C5 $\int_1^{\infty}\frac{\ln x}{x^{3}}\,dx$  ||  Type 1. Inside, L comes before A, so $u = \ln x$.
 
   $$\boxed{\begin{aligned} u &= \ln x & dv &= x^{-3}\,dx \\ du &= \tfrac{dx}{x} & v &= -\tfrac{1}{2x^{2}} \end{aligned}}$$
 
@@ -1380,7 +1404,7 @@ The total is 105 with the bonus.
 :::
 
 ::: checkin
-- C6 $\lim_{x\to 0}\frac{x^{2}+\tan x}{\cos x-3}$  ||  Plug in first. The form is $\frac{0}{-2}$, not indeterminate, so L'Hôpital does not apply.
+- *Written by Claude* C6 $\lim_{x\to 0}\frac{x^{2}+\tan x}{\cos x-3}$  ||  Plug in first. The form is $\frac{0}{-2}$, not indeterminate, so L'Hôpital does not apply.
 
   $$\begin{aligned}
   \lim_{x\to 0}\frac{x^{2}+\tan x}{\cos x-3} &= \frac{0 + 0}{1 - 3} &&\text{plug in} \\
@@ -1392,7 +1416,7 @@ The total is 105 with the bonus.
 :::
 
 ::: checkin
-- C7 for what $p$ does $\int_0^{3}\frac{dx}{x^{p}}$ converge  ||  Type 2 at $0$. For $p \ne 1$:
+- *Written by Claude* C7 for what $p$ does $\int_0^{3}\frac{dx}{x^{p}}$ converge  ||  Type 2 at $0$. For $p \ne 1$:
   $$\begin{aligned}
   \int_0^{3} x^{-p}\,dx &= \lim_{t\to 0^{+}}\Big[\frac{x^{1-p}}{1-p}\Big]_t^{3} \\
   &= \lim_{t\to 0^{+}}\frac{3^{1-p} - t^{1-p}}{1-p} &&\text{upper minus lower} \\
@@ -1410,7 +1434,7 @@ The total is 105 with the bonus.
 :::
 
 ::: checkin
-- Bonus $\int e^{2x}\sin x\,dx$  ||  The loop: two rounds of parts bring $I$ back.
+- *Written by Claude* Bonus $\int e^{2x}\sin x\,dx$  ||  The loop: two rounds of parts bring $I$ back.
 
   Round 1, with $u$ trig:
 
@@ -1561,6 +1585,8 @@ Six fresh items, mixing chapters. None says which technique to use.
 ::: quiz
 topics: integration by parts, trig integrals, trig substitution, partial fractions, L'Hôpital's rule, improper integrals
 
+*Written by Claude*
+
 ::: mcq q1 b
 $\displaystyle\int x\sin(2x)\,dx$ equals which of these?
 - $-\dfrac{x}{2}\cos(2x) - \dfrac{1}{4}\sin(2x) + C$ || One of the two minus signs was lost: $-\int\left(-\tfrac{1}{2}\cos 2x\right)dx = +\tfrac{1}{4}\sin 2x$.
@@ -1569,6 +1595,8 @@ $\displaystyle\int x\sin(2x)\,dx$ equals which of these?
 - $-2x\cos(2x) + 4\sin(2x) + C$ || This multiplies by $2$; $\int\sin(2x)\,dx = -\tfrac{1}{2}\cos(2x)$ divides by it.
 why: A comes before T, so $u = x$. $$\boxed{\begin{aligned} u &= x & dv &= \sin 2x\,dx \\ du &= dx & v &= -\tfrac{1}{2}\cos 2x \end{aligned}}$$ $$\begin{aligned} \int x\sin(2x)\,dx &= -\tfrac{x}{2}\cos 2x - \int\left(-\tfrac{1}{2}\cos 2x\right)dx &&uv - \int v\,du \\ &= \boxed{-\tfrac{x}{2}\cos 2x + \tfrac{1}{4}\sin 2x + C} &&\int\cos(ax)\,dx = \tfrac{1}{a}\sin(ax) \end{aligned}$$
 :::
+
+*Written by Claude*
 
 ::: mcq q2 d
 $\displaystyle\int \tan^{4}x\sec^{2}x\,dx$ equals which of these?
@@ -1579,6 +1607,8 @@ $\displaystyle\int \tan^{4}x\sec^{2}x\,dx$ equals which of these?
 why: $\sec^{2}x\,dx$ is already $du$ for $u = \tan x$. $$\begin{aligned} \int \tan^{4}x\sec^{2}x\,dx &= \int u^{4}\,du &&u = \tan x,\ du = \sec^{2}x\,dx \\ &= \tfrac{u^{5}}{5} + C &&\text{power rule} \\ &= \boxed{\tfrac{\tan^{5}x}{5} + C} &&u = \tan x \end{aligned}$$
 :::
 
+*Written by Claude*
+
 ::: mcq q3 c
 For $\displaystyle\int\frac{\sqrt{x^{2}-16}}{x}\,dx$, which substitution is right, and what does the root become?
 - $x = 4\tan\theta$, and $\sqrt{x^{2}-16}$ becomes $4\sec\theta$ || Tangent is for $16 + x^{2}$; here it gives $16\tan^{2}\theta - 16$, not a square.
@@ -1587,6 +1617,8 @@ For $\displaystyle\int\frac{\sqrt{x^{2}-16}}{x}\,dx$, which substitution is righ
 - $x = 16\sec\theta$, and $\sqrt{x^{2}-16}$ becomes $16\tan\theta$ || This uses $16$, which is $a^{2}$; the substitution uses $a = 4$.
 why: $x^{2}-16$ is $x^{2}-a^{2}$ with $a = 4$, so secant. $$\begin{aligned} x &= 4\sec\theta \\ \sqrt{x^{2}-16} &= \sqrt{16\sec^{2}\theta - 16} &&\text{substitute} \\ &= \sqrt{16\tan^{2}\theta} &&\sec^{2}\theta - 1 = \tan^{2}\theta \\ &= \boxed{4\tan\theta} &&\text{no root left} \end{aligned}$$
 :::
+
+*Written by Claude*
 
 ::: mcq q4 a
 $\displaystyle\int_3^{\infty}\frac{dx}{x^{2}-4}$ equals which of these?
@@ -1597,6 +1629,8 @@ $\displaystyle\int_3^{\infty}\frac{dx}{x^{2}-4}$ equals which of these?
 why: The bottom is $(x-2)(x+2)$, two linear factors. $$\begin{aligned} 1 &= A(x+2) + B(x-2) &&\text{multiply by } (x-2)(x+2) \\ 1 &= 4A &&\text{plug in } x = 2 \\ A &= \tfrac{1}{4} \\ 1 &= -4B &&\text{plug in } x = -2 \\ B &= -\tfrac{1}{4} \end{aligned}$$ $$\begin{aligned} \int_3^{\infty}\frac{dx}{x^{2}-4} &= \lim_{b\to\infty}\Big[\tfrac{1}{4}\ln\lvert x-2\rvert - \tfrac{1}{4}\ln\lvert x+2\rvert\Big]_3^{b} &&\int\tfrac{1}{x} \text{ rows} \\ &= \lim_{b\to\infty}\Big[\tfrac{1}{4}\ln\frac{x-2}{x+2}\Big]_3^{b} &&\ln a - \ln b = \ln\tfrac{a}{b} \\ &= \lim_{b\to\infty}\tfrac{1}{4}\ln\frac{b-2}{b+2} - \tfrac{1}{4}\ln\tfrac{1}{5} &&\text{upper minus lower} \\ &= 0 + \tfrac{1}{4}\ln 5 &&\lim_{b\to\infty}\tfrac{b-2}{b+2} = 1,\ -\ln\tfrac{1}{5} = \ln 5 \\ &= \boxed{\tfrac{1}{4}\ln 5} \end{aligned}$$
 :::
 
+*Written by Claude*
+
 ::: mcq q5 d
 $\displaystyle\lim_{x\to 0^{+}}(1+2x)^{1/x}$ equals which of these?
 - $1$ || $1^{\infty}$ was read as $1$; the base is above $1$ while the exponent grows.
@@ -1605,6 +1639,8 @@ $\displaystyle\lim_{x\to 0^{+}}(1+2x)^{1/x}$ equals which of these?
 - $e^{2}$
 why: $1^{\infty}$ form, so take the logarithm. $$\begin{aligned} \ln y &= \frac{\ln(1+2x)}{x} &&\ln a^{b} = b\ln a;\ \tfrac{0}{0} \\ \lim_{x\to 0^{+}}\ln y &= \lim_{x\to 0^{+}}\frac{2/(1+2x)}{1} &&\text{L'Hôpital; chain rule on top} \\ &= 2 &&\text{plug in } 0 \\ \lim_{x\to 0^{+}} y &= \boxed{e^{2}} &&y = e^{\ln y} \end{aligned}$$
 :::
+
+*Written by Claude*
 
 ::: mcq q6 b
 $\displaystyle\int_0^{3}\frac{dx}{(x-1)^{2}}$ equals which of these?

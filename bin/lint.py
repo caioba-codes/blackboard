@@ -73,4 +73,54 @@ for m in re.finditer(r"\\begin\{(array|tabular)\}\{([^}]*)\}(.*?)\\end\{\1\}", s
 for m in re.finditer(r"\\(Large|LARGE|large|Huge|huge)(?![A-Za-z])", s):
     line = s[:m.start()].count("\n") + 1
     print(f"  lint: line {line}: hand-sized math (\\{m.group(1)}). Wrap the display in ::: big (level 1) or ::: key (level 2) instead.", file=sys.stderr); warn += 1
+# official problems (TEMPLATES.md, Official problems): every problem has a label, every src: file exists, and only a
+# verbatim official multiple-choice item may have other than four (or two) options
+import os
+raw = open(sys.argv[1]).read()
+lesson_dir = os.path.dirname(os.path.abspath(sys.argv[1]))
+LABEL = re.compile(r"\[Official ·[^\]]*\]\(src:[^)]+\)|\*Written by Claude\*")
+def src_exists(ref):
+    ref = ref.split("#")[0]
+    for base in (os.path.join(lesson_dir, "..", "sources"), os.path.join(lesson_dir, ".."), lesson_dir, os.path.join(lesson_dir, "..", "..")):
+        if os.path.isfile(os.path.normpath(os.path.join(base, ref))):
+            return True
+    return False
+for m in re.finditer(r"\]\(src:([^)\s]+)\)", raw):
+    if not src_exists(m.group(1)):
+        line = raw[:m.start()].count("\n") + 1
+        print(f"  lint: line {line}: label source {m.group(1)} is not a file under sources/ or the course folder.", file=sys.stderr); warn += 1
+L = raw.split("\n")
+def label_above(i, span=14):
+    """A label in the lines just above line i (0-based), not crossing a heading or another problem block's end."""
+    for k in range(i - 1, max(-1, i - span), -1):
+        t = L[k].strip()
+        if LABEL.search(t):
+            return True
+        if t.startswith("#") or re.match(r"^::: (mcq|checkin)\b", t):
+            return False
+    return False
+i = 0
+while i < len(L):
+    m = re.match(r"^::: (mcq|checkin)\b", L[i])
+    if not m:
+        i += 1; continue
+    j = i + 1
+    while j < len(L) and not re.match(r"^:::\s*$", L[j]):
+        j += 1
+    body = L[i + 1:j]
+    above = label_above(i)
+    if m.group(1) == "mcq":
+        opts = [l for l in body if re.match(r"^\s*-", l)]
+        labeled = above or any(LABEL.search(l) for l in body if not re.match(r"^\s*-", l))
+        official = labeled and re.search(r"\[Official ·", "\n".join(L[max(0, i - 14):i] + body))
+        if not labeled:
+            print(f"  lint: line {i + 1}: a multiple-choice item without a label above it ([Official · …](src:…) or *Written by Claude*).", file=sys.stderr); warn += 1
+        elif len(opts) not in (2, 4) and not official:
+            print(f"  lint: line {i + 1}: {len(opts)} options; only a verbatim official item keeps a count other than four.", file=sys.stderr); warn += 1
+    else:
+        items = [n for n, l in enumerate(body) if re.match(r"^\s?-(\s|$)", l)]
+        for n in items:
+            if not (LABEL.search(body[n]) or (len(items) == 1 and above)):
+                print(f"  lint: line {i + 2 + n}: a check-in item without a label (put the label on the item, or above a one-item check-in).", file=sys.stderr); warn += 1
+    i = j + 1
 if warn: print(f"  lint: {warn} warning(s). TEMPLATES.md: one operation per line; tables as markdown tables.", file=sys.stderr)
