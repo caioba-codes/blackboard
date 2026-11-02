@@ -123,4 +123,16 @@ while i < len(L):
             if not (LABEL.search(body[n]) or (len(items) == 1 and above)):
                 print(f"  lint: line {i + 2 + n}: a check-in item without a label (put the label on the item, or above a one-item check-in).", file=sys.stderr); warn += 1
     i = j + 1
+# a Your turn is the exam question, nothing more: between an Official label and its problem block, only the quoted
+# text and the source's own cropped figure (::: figure); a redrawn ::: fig there is help the exam never gave
+for i, l in enumerate(L):
+    if not re.search(r"\[Official ·[^\]]*\]\(src:", l) or l.lstrip().startswith("-"):
+        continue
+    for k in range(i + 1, min(len(L), i + 40)):
+        t = L[k].strip()
+        if re.match(r"^::: (mcq|checkin)\b", t) or t.startswith("#") or LABEL.search(t):
+            break
+        if re.match(r"^::: fig\b", t):
+            print(f"  lint: line {k + 1}: a drawn ::: fig between an official problem's label and the problem. Show only the source's own figure (::: figure, cropped); move drawings into the solution.", file=sys.stderr); warn += 1
+            break
 if warn: print(f"  lint: {warn} warning(s). TEMPLATES.md: one operation per line; tables as markdown tables.", file=sys.stderr)

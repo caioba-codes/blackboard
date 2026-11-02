@@ -27,4 +27,6 @@ w=run('# T\n\n[Official · X](src:exams2/missing.pdf#page=1)\n\n::: checkin\n- Q
 assert.match(w,/is not a file/);
 w=run('# T\n\n::: checkin\n- [Official · X](src:exams2/e.pdf#page=1) Q || A\n- Q2 || A2\n:::\n');
 assert.match(w,/check-in item without a label/); assert.equal((w.match(/check-in item without/g)||[]).length,1);
+w=run('# T\n\n[Official · X](src:exams2/e.pdf#page=1)\n\n::: fig raw\n{}\n:::\n\n::: checkin\n- Q || A\n:::\n');
+assert.match(w,/drawn ::: fig between/);
 console.log('PASS: problem labels link to the source page; lint flags unlabeled problems, missing sources and non-official option counts');
