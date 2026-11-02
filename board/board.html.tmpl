@@ -981,6 +981,8 @@ function segments(text,baseLine){
   return out;
 }
 
+// markdown that may hold ::: blocks (a ::: fig drawing inside a check-in answer or a multi-line why:)
+function mdBlocks(t){ return /^::: /m.test(t)?segments(t,0).map(sg=>/^::: /.test(sg.raw)?container(sg.raw):md(sg.raw)).join(''):md(t); }
 function container(raw){
   const m=raw.match(/^::: (\w+)\s*(.*)$/m); const kind=m[1], arg=(m[2]||'').trim();
   const inner=raw.split('\n').slice(1,-1).join('\n');
@@ -1001,7 +1003,7 @@ function container(raw){
           let tick=false; for(let i=0;i<l.length-1;i++){ if(l[i]==='`')tick=!tick; else if(!tick&&l[i]==='|'&&l[i+1]==='|') return [L.slice(0,k).concat(l.slice(0,i)).join('\n'),[l.slice(i+2)].concat(L.slice(k+1)).join('\n')]; } }
         return [t,'']; };
       const blockOrInline=t=>/^\s*(```|~~~)/m.test(t)?`<div class="qblock">${md(t)}</div>`:mdInline(t);
-      return '<div class="check">'+items.map(it=>{ const [q,a]=qa(it.join('\n').trim()); return `<details><summary><span class="sq">${blockOrInline(q.trim().replace(/\\displaystyle\s*/g,''))}</span></summary><div>${md(a.trim())}</div></details>`; }).join('')+'</div>';
+      return '<div class="check">'+items.map(it=>{ const [q,a]=qa(it.join('\n').trim()); return `<details><summary><span class="sq">${blockOrInline(q.trim().replace(/\\displaystyle\s*/g,''))}</span></summary><div>${mdBlocks(a.trim())}</div></details>`; }).join('')+'</div>';
     }
     case 'prerequisites': return `<details class="prerequisites"><summary>Prerequisites</summary><div>${md(inner)}</div></details>`;
     case 'sources': return `<details class="prerequisites sources"><summary>Sources</summary><div>${md(inner)}</div></details>`;
@@ -1064,12 +1066,13 @@ function container(raw){
     }
     case 'mcq':{
       // stem lines, "- option" lines and a "why:" line; fenced code in the stem keeps its lines and indentation
-      const [item,key]=arg.split(/\s+/); const stemL=[], opts=[], miss=[]; let why='', fence=false;
+      const [item,key]=arg.split(/\s+/); const stemL=[], opts=[], miss=[]; let why='', fence=false, inWhy=false;
       for(const l of inner.split('\n')){
         if(/^\s*(```|~~~)/.test(l)){ fence=!fence; stemL.push(l); continue; }
         if(fence){ stemL.push(l); continue; }
         if(!l.trim())continue;
-        if(/^why:/.test(l)) why=l.replace(/^why:\s*/,'');
+        if(/^why:/.test(l)){ why=l.replace(/^why:\s*/,''); inWhy=true; }
+        else if(inWhy&&/^\s{2}/.test(l)) why+='\n'+l.replace(/^ {2}/,'');   // a why: may continue on indented lines (a drawn solution)
         else if(/^\s*-/.test(l)){ const o=l.replace(/^\s*-\s*/,''), k=o.indexOf(' || '); opts.push(k<0?o:o.slice(0,k)); miss.push(k<0?'':o.slice(k+4).trim()); }   // "- option || the mistake that gives it"
         else stemL.push(l);
       }
@@ -1968,8 +1971,9 @@ function rvCtl(box){
 function rvSetup(box,start){
   if(!box||box._rv||!box.isConnected)return;
   const kids=[...box.children].filter(e=>!e.classList.contains('stepctl'));
-  if(!kids.some(e=>e.classList.contains('mathrow')))return;   // one-line feedback with no derivation stays as it is
+  if(!kids.some(e=>e.classList.contains('mathrow')||e.matches('figure')))return;   // one-line feedback with no derivation stays as it is
   const items=kids.map(el=>{
+    if(el.matches('figure'))return {el,kind:'math'};   // a drawing is a step of its own (Step 1: draw the mux)
     if(!el.classList.contains('mathrow'))return {el,kind:'prose'};
     const tex=decodeURIComponent(el.dataset.tex||'');
     if(/^\s*\\boxed\s*\{/.test(tex)||!/\\begin\{(aligned|align\*?|alignedat)\}/.test(tex))return {el,kind:'math'};   // the boxed setup grid is one piece
@@ -2008,8 +2012,8 @@ function markMcq(it,choice,live){
   inp.closest('label').classList.add(ok?'right':'wrong');
   // right: the worked solution, stepped from its first piece. Wrong: the verdict and a one-line hint (the why's lead
   // sentence), then the same solution behind "Next step"; a why with no worked steps stays hidden until the right pick.
-  const why=(it.dataset.why||'').replace(/\s*(\$\$[\s\S]+?\$\$)\s*/g,'\n\n$1\n\n'), worked=/\$\$/.test(why);   // each display on its own block, so the sentences around it stay paragraphs
-  it.querySelector('.fb').innerHTML=ok?`<div class="fbc ok"><div class="fbh">✓ Correct</div>${why?`<div class="fbb">${md(why)}</div>`:''}</div>`:`<div class="fbc bad"><div class="fbh">✕ Not quite</div><div class="fbb">${inp.dataset.miss?`<p class="fbmiss">${mdInline(inp.dataset.miss)}</p>`:''}<p class="fbhint">Pick another option to try again${worked?', or step through the solution':''}.</p>${worked?md(why):''}</div></div>`;
+  const why=(it.dataset.why||'').replace(/\s*(\$\$[\s\S]+?\$\$)\s*/g,'\n\n$1\n\n'), worked=/\$\$|^::: fig/m.test(why);   // each display on its own block, so the sentences around it stay paragraphs
+  it.querySelector('.fb').innerHTML=ok?`<div class="fbc ok"><div class="fbh">✓ Correct</div>${why?`<div class="fbb">${mdBlocks(why)}</div>`:''}</div>`:`<div class="fbc bad"><div class="fbh">✕ Not quite</div><div class="fbb">${inp.dataset.miss?`<p class="fbmiss">${mdInline(inp.dataset.miss)}</p>`:''}<p class="fbhint">Pick another option to try again${worked?', or step through the solution':''}.</p>${worked?mdBlocks(why):''}</div></div>`;
   const fbb=it.querySelector('.fbb'); if(fbb&&worked){ fbb.querySelectorAll('.mathrow[data-tex]').forEach(fitMath); rvSetup(fbb,ok?1:0); }
   whyWire(it);
   const rb=it.querySelector('.mreset'); if(rb)rb.hidden=false;

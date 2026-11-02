@@ -24,6 +24,9 @@ Routes
   POST /chat             {lesson, text, selection?} -> SSE over the response: step {tool,label}, delta {text}, done {}, error {message}
   POST /chat/stop        {lesson} stops that lesson's running reply
   POST /chat/new         {lesson} archives the thread and starts an empty one
+  GET  /api/flags[?lesson=NNNN]   this workspace's flagged chapters and problems {flags:[...]}, each with `missing`
+  GET  /api/flags?all=1  every workspace's flags {folders:[{slug, name, flags}]} for the hub's All flagged view
+  POST /flags            {ws, op: add|remove|note|move, ...} -> $WS/learning-records/flags.json
   GET  /health           ok
 State lives in $BLACKBOARD_HOME/state.json (default ~/.cache/blackboard), written by render.sh: {ws, current, agent, layout, cli_surface, opened}
 """
@@ -315,6 +318,116 @@ def log_mcq(req):
             f.write(json.dumps(rec, ensure_ascii=False) + "\n")
     except Exception as e:
         sys.stderr.write(f"mcq log error: {e}\n")
+
+
+FLAGS_LOCK = threading.Lock()
+FLAG_KINDS = ("chapter", "section", "example", "question")
+
+
+def flags_file(wsp):
+    return os.path.join(wsp, "learning-records", "flags.json")
+
+
+def flags_load(wsp):
+    try:
+        with open(flags_file(wsp)) as f:
+            v = json.load(f)
+        return [x for x in (v.get("flags") if isinstance(v, dict) else v) or [] if isinstance(x, dict)]
+    except (OSError, ValueError, AttributeError):
+        return []
+
+
+def flags_save(wsp, flags):
+    d = os.path.dirname(flags_file(wsp))
+    os.makedirs(d, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(dir=d, prefix=".flags-", suffix=".json")
+    with os.fdopen(fd, "w") as f:
+        json.dump({"flags": flags}, f, ensure_ascii=False, indent=1)
+    os.replace(tmp, flags_file(wsp))
+
+
+def _norm(t):
+    """Letters and digits only, LaTeX commands dropped: a lesson's markdown and the page's rendered text compare equal."""
+    t = unicodedata.normalize("NFKD", re.sub(r"\\[a-zA-Z]+", " ", str(t or "")).lower())
+    return re.sub(r"[^a-z0-9]+", "", "".join(c for c in t if not unicodedata.combining(c)))
+
+
+def flag_missing(flag, text):
+    """True when nothing in the lesson's markdown still matches the flag: no heading with its anchor, no mcq item
+    with its id, and its needle (the label or the question's opening words) is gone. The page resolves exactly."""
+    a = flag.get("anchor", "")
+    if a.startswith("q-") and re.search(r"^::: mcq " + re.escape(a[2:]) + r"\b", text, re.M):
+        return False
+    if a.startswith("s-"):
+        heads = {_anchor(h) for h in re.findall(r"^#{2,3} (.+)$", text, re.M)}
+        if a in heads or re.sub(r"-\d+$", "", a) in heads:
+            return False
+    needle = _norm(flag.get("needle"))
+    return not (needle and needle in _norm(text))
+
+
+def flags_view(wsp, lesson=None):
+    """The workspace's flags, newest first, each marked `missing` against its lesson file."""
+    texts, out = {}, []
+    for fl in flags_load(wsp):
+        lid = str(fl.get("lesson", ""))
+        if lesson and lid != lesson:
+            continue
+        if lid not in texts:
+            p = lesson_path(lid, wsp)
+            try:
+                texts[lid] = open(p, encoding="utf-8", errors="replace").read() if p else None
+            except OSError:
+                texts[lid] = None
+        out.append(dict(fl, missing=texts[lid] is None or flag_missing(fl, texts[lid])))
+    out.sort(key=lambda x: x.get("added", ""), reverse=True)
+    return out
+
+
+def _clip(v, n):
+    return re.sub(r"[\x00-\x1f]", " ", str(v or "")).strip()[:n]
+
+
+def flag_change(wsp, req):
+    """add / remove / note / move one flag. Returns (status, body)."""
+    op, lid = req.get("op"), str(req.get("lesson") or "")
+    with FLAGS_LOCK:
+        flags = flags_load(wsp)
+        if op == "add":
+            anchor = str(req.get("anchor") or "")
+            if not re.fullmatch(r"\d{4}", lid) or not lesson_path(lid, wsp):
+                return 404, {"error": "no such lesson"}
+            if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.:-]{0,119}", anchor):
+                return 400, {"error": "bad anchor"}
+            old = next((f for f in flags if f.get("lesson") == lid and f.get("anchor") == anchor), None)
+            if old:
+                return 200, {"flag": old}
+            if len(flags) >= 2000:
+                return 400, {"error": "too many flags"}
+            fl = {"id": uuid.uuid4().hex[:10], "lesson": lid, "anchor": anchor,
+                  "kind": req.get("kind") if req.get("kind") in FLAG_KINDS else "question",
+                  "label": _clip(req.get("label"), 200), "chapter": _clip(req.get("chapter"), 200),
+                  "needle": _norm(req.get("needle"))[:48], "note": _clip(req.get("note"), 300), "added": utc_now()}
+            flags.append(fl)
+            flags_save(wsp, flags)
+            return 200, {"flag": fl}
+        fl = next((f for f in flags if f.get("id") == req.get("id")), None)
+        if not fl:
+            return 404, {"error": "no such flag"}
+        if op == "remove":
+            flags.remove(fl)
+        elif op == "note":
+            fl["note"] = _clip(req.get("note"), 300)
+        elif op == "move":
+            # the page found the item under a new anchor after a rewrite: keep the flag pointing at it
+            anchor = str(req.get("anchor") or "")
+            if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.:-]{0,119}", anchor):
+                return 400, {"error": "bad anchor"}
+            fl["anchor"] = anchor
+        else:
+            return 400, {"error": "op must be add, remove, note or move"}
+        flags_save(wsp, flags)
+        return 200, {"flag": fl, "removed": op == "remove"}
 
 
 def answers(lid, wsp=None):
@@ -1314,6 +1427,14 @@ class H(BaseHTTPRequestHandler):
                 turn = TURNS.get(key)
             thread.update(running=bool(turn), pending={"text": turn.text, "steps": turn.steps} if turn else None)
             return self.send(200, thread)
+        if path == "/api/flags":
+            if self.foreign():
+                return self.send(403, {"error": "only the board may read flags"})
+            if qs.get("all"):
+                return self.send(200, {"folders": [{"slug": s, "name": s, "flags": flags_view(w["path"])}
+                                                    for s, w in workspaces().items() if os.path.exists(flags_file(w["path"]))]})
+            lid = qs.get("lesson", [""])[0]
+            return self.send(200, {"flags": flags_view(wsp, lid if re.fullmatch(r"\d{4}", lid) else None)})
         if path == "/api/sources":
             p = lesson_path(qs.get("id", [current(slug)])[0], wsp)
             return self.send(200, {"files": cited_files(wsp, p, slug) if p else []})
@@ -1534,6 +1655,17 @@ class H(BaseHTTPRequestHandler):
             # render.sh pokes this after updating state.json; bump rev so SSE clients reload
             bump_rev(urllib.parse.parse_qs(u.query).get("ws", [None])[0])
             return self.send(200, {"ok": True})
+        if u.path == "/flags":
+            if self.foreign():
+                return self.send(403, {"error": "only the board may change flags"})
+            try:
+                req = json.loads(raw.decode() or "{}")
+            except Exception:
+                return self.send(400, {"error": "bad json"})
+            slug = str(req.get("ws") or "")
+            if slug and slug not in workspaces() and slug not in (state().get("workspaces") or {}):
+                return self.send(404, {"error": "no such workspace"})
+            return self.send(*flag_change(ws(slug or None), req))
         if u.path in ("/chat", "/chat/stop", "/chat/new"):
             if self.foreign():
                 return self.send(403, {"error": "the chat answers only the board"})
