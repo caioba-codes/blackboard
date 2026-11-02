@@ -163,7 +163,7 @@ def main():
     os.makedirs(P)
     for f in RUNTIME:
         shutil.copy2(os.path.join(VIDEO, f), P)
-    for f in ("script.json", "SPLIT.json"):
+    for f in ("script.json", "SPLIT.json", "look.css"):   # look.css: what video_pipeline.py init writes from a lesson
         shutil.copy2(os.path.join(VIDEO, "sample", f), P)
     shutil.copytree(os.path.join(VIDEO, "sample", "scenes"), os.path.join(P, "scenes"))
     os.makedirs(os.path.join(P, "assets"))   # local visual inputs are fingerprinted with the scenes

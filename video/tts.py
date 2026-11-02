@@ -149,7 +149,7 @@ def legacy_key(voice, text):
     # Projects narrated before the cache key covered the settings used sha1(model + voice + text) with exactly
     # these defaults; accept such audio only while the defaults are still in force.
     if MODEL == "eleven_v4" and VOICE_SETTINGS == {"stability": 0.55, "similarity_boost": 0.8, "style": 0.15, "speed": 0.97} \
-            and OUTPUT_FORMAT == "mp3_44100_192":
+            and OUTPUT_FORMAT in ("mp3_44100_192", "mp3_44100_128"):   # legacy audio is 192 kbps; reuse it either way
         return hashlib.sha1((MODEL + voice + text).encode()).hexdigest()
     return None
 
