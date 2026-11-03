@@ -149,6 +149,21 @@ def workspaces():
     return out
 
 
+def shipped(path):
+    """True for a workspace inside a blackboard skill folder (its example lesson, its test fixtures): reachable by URL, never a course."""
+    d = os.path.realpath(path)
+    while os.path.dirname(d) != d:
+        d = os.path.dirname(d)
+        if os.path.isfile(os.path.join(d, "SKILL.md")) and os.path.isfile(os.path.join(d, "board", "bridge.py")):
+            return True
+    return False
+
+
+def courses():
+    """workspaces() minus the skill's own example and fixtures, for the hub and search."""
+    return {slug: w for slug, w in workspaces().items() if not shipped(w["path"])}
+
+
 def ws(slug=None):
     """Workspace path: the slug's, else the last rendered one."""
     if slug:
@@ -531,7 +546,7 @@ def search(q, limit=30):
     if not words:
         return []
     hits = []
-    for slug, w in workspaces().items():
+    for slug, w in courses().items():
         for lid, _, path in lesson_files(w["path"]):
             try:
                 text = open(path, encoding="utf-8").read()
@@ -576,7 +591,7 @@ def search(q, limit=30):
 def hub():
     """Every workspace with its lessons, for the /lessons hub."""
     out = []
-    for slug, w in workspaces().items():
+    for slug, w in courses().items():
         lessons = lessons_meta(w["path"])
         if not lessons:
             continue

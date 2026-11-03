@@ -364,7 +364,7 @@ A title is a YouTube title, not a file name. Short, concrete, says what you will
 
 - No em dashes, no colons, no "Problem 1 — every step" suffixes, no "Step by Step" padding.
 - Aim for two to seven words; a longer title is fine when it names the subject clearly, as in the calculus model lesson. Lead with "How to", "How X Works", "Why X", or the thing itself.
-- Name the subject in plain words, never the course code: "How to Ace Your Second Integral Calculus Test", not "How to Ace MATH 1552 Test 2". The course stays in `course:`, which the board shows above the title.
+- Name the subject in plain words, never the course code: "How to Ace Your Second Integral Calculus Test", not "How to Ace MATH 1552 Test 2". The course stays in `course:`, which the board shows above the title and groups lessons by: write it exactly as the workspace's other lessons have it (`MATH 1552`), never the plain-words subject and never the model lesson's `Integral Calculus`.
 - The `title:` in front matter and the `# ` line are the same string. The hub and the tab show it, so it must read well at a glance next to other courses' lessons.
 
 ## Photos
