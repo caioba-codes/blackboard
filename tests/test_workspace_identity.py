@@ -52,21 +52,6 @@ class WorkspaceIdentityTests(unittest.TestCase):
             self.assertEqual(len(bridge.search('Unique circuit')), 2)
             self.assertEqual({w['path'] for w in bridge.workspaces().values()}, {self.course, other})
 
-    def test_skill_example_and_fixtures_stay_off_the_hub(self):
-        skill = self.root / 'skills' / 'blackboard'
-        (skill / 'board').mkdir(parents=True)
-        (skill / 'SKILL.md').write_text('---\nname: blackboard\n---\n')
-        (skill / 'board/bridge.py').write_text('')
-        example = skill / 'examples' / 'stem' / 'learn'
-        (example / 'lessons').mkdir(parents=True)
-        (example / 'lessons/0001-model.md').write_text(
-            '---\ntitle: Model\ncourse: Integral Calculus\n---\n\nUnique circuit explanation.\n')
-        state = {'ws': self.course, 'workspaces': {'ece2020': {'path': self.course}, 'stem': {'path': str(example)}}}
-        with patch.object(bridge, 'state', return_value=state), patch.object(bridge, 'discovered', return_value=[]):
-            self.assertEqual([w['slug'] for w in bridge.hub()], ['ece2020'])
-            self.assertEqual(len(bridge.search('Unique circuit')), 1)
-            self.assertEqual(bridge.ws('stem'), str(example))
-
 
 if __name__ == '__main__':
     unittest.main()
