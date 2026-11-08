@@ -10,6 +10,7 @@ Routes
   GET  /w/<slug>/lessons/NNNN, /w/<slug>/assets/<file>, and every /api route accepts ?ws=<slug>
   GET  /api/state        {ws, slug, current, page_version, lessons:[...], brainstorm:{lesson,lines,rev}, workspaces:[{slug,name,path,current,count,last,lessons}]}
   GET  /api/lesson?id=NNNN&from=N&hash=H   {text, offset, reset}  (text = new bytes cut at last blank line)
+  GET  /api/video-status?id=NNNN   live progress of the lesson's video while it is made (bin/video_status.py status)
   GET  /events?id=NNNN   SSE: `change` when the lesson file or state changes
   GET  /assets/<file>    $WS/lessons/assets/<file>
   GET  /api/sources?id=NNNN   {files: [...]} every file the lesson cites, with its viewer URL
@@ -38,6 +39,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 BOARD = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(BOARD)
 HOME_DIR = os.environ.get("BLACKBOARD_HOME") or os.path.join(os.path.expanduser("~"), ".cache", "blackboard")
+sys.path.insert(0, os.path.join(ROOT, "bin"))
+import video_status  # noqa: E402  (bin/video_status.py: progress computed from the video project's files)
 os.makedirs(HOME_DIR, exist_ok=True)
 STATE = os.path.join(HOME_DIR, "state.json")
 QUEUE = os.path.join(HOME_DIR, "queue.jsonl")
@@ -1424,7 +1427,7 @@ class H(BaseHTTPRequestHandler):
                 self.end_headers()
                 return
         slug = slug or qs.get("ws", [""])[0]
-        if path == "/api/lesson-video" and slug and slug not in workspaces() and slug not in (st.get("workspaces") or {}):
+        if path in ("/api/lesson-video", "/api/video-status") and slug and slug not in workspaces() and slug not in (st.get("workspaces") or {}):
             return self.send(200, {"available": False, "error": "Workspace not found."})
         wsp = ws(slug)
         if path == "/health":
@@ -1463,6 +1466,15 @@ class H(BaseHTTPRequestHandler):
             return self.send(200, read_lesson(lid, frm, h, wsp))
         if path == "/api/lesson-video":
             return self.send(200, lesson_video(qs.get("id", [current(slug)])[0], wsp, slug))
+        if path == "/api/video-status":
+            if self.foreign():
+                return self.send(403, {"error": "only the board may read video progress"})
+            lid = qs.get("id", [current(slug)])[0]
+            if not re.fullmatch(r"\d{4}", lid):
+                return self.send(400, {"error": "id must be NNNN"})
+            if not wsp:
+                return self.send(200, {"active": False})
+            return self.send(200, video_status.status(wsp, lid, installed=bool(lesson_video(lid, wsp, slug).get("available"))))
         if path == "/events":
             return self.events(qs.get("id", [current(slug)])[0], slug)
         if path == "/api/chat":

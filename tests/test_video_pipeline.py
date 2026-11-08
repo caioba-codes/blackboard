@@ -184,7 +184,7 @@ class VideoPipelineTest(unittest.TestCase):
         media.parent.mkdir()
         media.touch()
         ref = self.workspace / "reference"
-        ref.mkdir()
+        ref.mkdir(exist_ok=True)   # init already made it for the progress pointer
         (ref / "video-0042.json").write_text(json.dumps(mapping), encoding="utf-8")
         spec = importlib.util.spec_from_file_location("lesson_video_import", ROOT / "bin/lesson_video.py")
         importer = importlib.util.module_from_spec(spec)

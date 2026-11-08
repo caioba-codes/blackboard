@@ -202,7 +202,7 @@ class PipelineCaptionsTest(unittest.TestCase):
         ws = self.workspace
         (ws / "lessons/assets").mkdir()
         (ws / "lessons/assets/0042-lecture.mp4").write_bytes(b"video")
-        (ws / "reference").mkdir()
+        (ws / "reference").mkdir(exist_ok=True)   # init already made it for the progress pointer
         shutil.copy2(self.project / "video-0042.json", ws / "reference/video-0042.json")
         cli = ROOT / "bin/lesson_video.py"
         run = lambda *a: subprocess.run([sys.executable, str(cli), *map(str, a)], capture_output=True, text=True)

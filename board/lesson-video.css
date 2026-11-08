@@ -1,4 +1,4 @@
-/* Lesson video (board/lesson-video.js). Only lessons with a video manifest ever get these elements.
+/* Lesson video (board/lesson-video.js). Only lessons with a video manifest (or one being made) ever get these elements.
    Chalk on black like the board: the lesson's accent marks what the video is saying now and is the one action colour. */
 :root{--lv-line:#2a2a27;--lv-bg:#0e0e0d}
 /* the lesson's accent, lifted a little toward chalk where it is a thin line or text on black */
@@ -26,6 +26,22 @@ html{--lv-acc:color-mix(in srgb,var(--acc) 72%,var(--chalk));--lv-acc-line:color
 .lv-imeta{font-size:15px;color:var(--dim);font-variant-numeric:lining-nums tabular-nums}
 .lv-ist{font-size:15px;color:color-mix(in srgb,var(--lv-acc) 80%,var(--chalk))}
 .lv-ist.warn{color:#d9b48a}
+
+/* ---------- progress card: where the header card will be, while the video is still being made ---------- */
+.lv-prog{margin:14px 0 26px;padding:13px 16px 14px;border:1px solid var(--lv-line);border-radius:12px;background:rgba(236,232,218,.025);font-family:var(--body);line-height:1.3;user-select:none;-webkit-user-select:none}
+.lv-ptop{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+.lv-ptop b{font:500 13px var(--body);letter-spacing:.11em;text-transform:uppercase;color:var(--chalk)}
+.lv-ppct{font-size:15px;color:var(--lv-acc);font-variant-numeric:lining-nums tabular-nums}
+.lv-pbar{height:4px;margin:10px 0 9px;border-radius:2px;background:rgba(233,230,223,.12);overflow:hidden}
+.lv-pbar i{display:block;height:100%;width:0;border-radius:2px;background:var(--lv-acc);transition:width .8s ease}
+.lv-pst{margin:0;font-size:16px;color:var(--chalk);font-variant-numeric:lining-nums tabular-nums}
+.lv-pmeta{margin:2px 0 0;font-size:15px;color:var(--dim);font-variant-numeric:lining-nums tabular-nums}
+.lv-pmeta.warn{color:#d9b48a}
+.lv-psteps{display:flex;flex-wrap:wrap;gap:4px 14px;margin:10px 0 0;padding:0;list-style:none;font-size:13px;color:color-mix(in srgb,var(--dim) 70%,transparent)}
+.lv-psteps li.done{color:var(--dim)}
+.lv-psteps li.done::before{content:'✓ ';color:var(--lv-acc)}
+.lv-psteps li.cur{color:var(--chalk)}
+@media (prefers-reduced-motion:reduce){.lv-pbar i{transition:none}}
 
 /* ---------- Watch from here: a quiet mark in the left margin of each block the video explains ---------- */
 .lv-wfh{position:absolute;left:-40px;top:4px;width:28px;height:28px;padding:0;display:grid;place-items:center;border:0;border-radius:50%;background:none;color:var(--dim);opacity:.32;cursor:pointer;transition:opacity .15s,color .15s,background .15s;z-index:1}

@@ -13,6 +13,7 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import captions  # noqa: E402  (bin/captions.py: say/show alignment, spelled-math lint, the caption track)
+import video_status  # noqa: E402  (bin/video_status.py: the board's live progress card)
 
 
 ROLE = {"model": "claude-opus-5-5", "effort": "high"}
@@ -108,6 +109,10 @@ def init(args):
             shutil.copy2(src, target)
     write_new(dest / "project.json", config)
     write_look(lesson, dest)
+    try:
+        print(f"board progress card: {video_status.register(dest)}")
+    except (ValueError, OSError) as exc:
+        print(f"board progress card not registered: {exc}", file=sys.stderr)
     print(f"initialized {dest}; lesson SHA-256 {config['lessonSha256']}; video author {ROLE['model']} {args.video_effort}")
     print("next: author script.json and anchors.json from the lesson; no model receipt was generated")
 

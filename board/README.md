@@ -70,6 +70,21 @@ Every lesson except `plain: true` boards ends with a card: Ultraman Mebius besid
 
 The photo is local and never part of the skill: `bridge.py` serves `/end-card.jpg` from `BLACKBOARD_END_CARD`, else `"end_card"` in `~/.cache/blackboard/config.json` (`{"end_card": "~/Pictures/mebius.jpg"}`), else `~/.config/blackboard/end-card.jpg`, and refuses a path inside the skill folder. With no photo the card shows the quote alone. Never commit the image: it is someone else's copyright.
 
+## Video progress card
+
+While a lesson's video is being made, the lesson page shows a small card where the video's header card will go: VIDEO IN PROGRESS with an overall percent and bar, the current stage with its real counts ("Narration · 412 / 1,899 lines · 21%", "Render · 37 / 247 chunks · 15%"), "Stage 2 of 6 · about 1 h 4 min left in narration", and the six stages (Script, Narration, Scenes, Render, Review, Import) with the finished ones ticked. It updates every 10 s without a reload (skipped while the tab is hidden) and gives way to the player once the video is imported. The only motion is the bar's width.
+
+`lesson-video.js` asks `/api/lesson-video` first; with no installed video it polls `GET /api/video-status?id=NNNN` (`&ws=<slug>`; 403 to other web pages). The bridge answers from `bin/video_status.py status`, computed from the files of the project that `$WS/reference/video-project-NNNN.json` points to (written by `video_pipeline.py init`, see VIDEO.md):
+
+```json
+{"active": true, "installed": false, "lesson": "0008", "project": "/abs/project", "stage": "narration",
+ "stageIndex": 2, "stageCount": 6, "percent": 17.5, "eta": 4773, "stalled": false,
+ "lastProgress": 1794173095, "now": 1794173098, "weights": {"script": 10, "narration": 30, "scenes": 15, "render": 35, "review": 5, "import": 5},
+ "stages": [{"key": "narration", "label": "Narration", "state": "current", "done": 472, "total": 1899, "unit": "lines", "percent": 24.9}]}
+```
+
+`stages` lists all six (`state` done, current or todo; `total` null while unknown, such as before `SPLIT.json` exists; render may add `note: "joining and muxing"` once every chunk is done). `percent` is the weighted sum of each stage's fraction; the weights put the machine-bound narration and render first. `eta` is seconds left in the current stage only, from the spacing of the mtimes of its last 200 finished files (null with fewer than 3). No new file for more than max(10 min, 10 × that spacing) sets `stalled`, and the card says "no new progress for N min" instead. `{"active": false, "installed": true}` once the board validates the imported video, `{"active": false}` with no pointer or a deleted project; either removes the card.
+
 ## Slate surface
 
 `board: slate` in front matter gives a real-blackboard surface: `slate.jpg` ("Black smooth textured paper background" from magnific.com, Freepik free license: credit it when the skill is shared publicly), stacked on its mirror so it tiles and scrolls with the text, with a faint chalk bloom and grain (`chalk.png`) on text, math and diagrams. A `slate-custom.jpg` next to it replaces the photo. On trial; it may become the default.

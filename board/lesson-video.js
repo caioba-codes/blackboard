@@ -1,6 +1,6 @@
 /* Lesson video: a lesson's narrated video beside the board, kept in step with the text.
-   Mounted only when the bridge reports a manifest for this lesson (/api/lesson-video); a lesson without one gets
-   nothing from this file. The board calls LessonVideo.refresh(ctx) after every render (first load, append, rebuild).
+   Mounted only when the bridge reports a manifest for this lesson (/api/lesson-video). A lesson without one gets
+   nothing from this file, except a progress card while its video is being made (/api/video-status). The board calls LessonVideo.refresh(ctx) after every render (first load, append, rebuild).
    Playback position, speed and view live in this browser only: never learning records, answers or XP.
 
    Views: Read (the board as always), Watch (the video alone, with its list of explanations), Both (video fixed on the
@@ -64,10 +64,72 @@ function usable(m){
 function refresh(c){
   if(!c||!c.main||!c.lessonId)return;
   ctx=c;
-  if(!probe)probe=fetchManifest().then(m=>{ if(usable(m))mount(m); });
+  if(!probe)probe=fetchManifest().then(m=>{ if(usable(m))mount(m); else progress(); });
   // a rebuilt lesson may no longer match the video: ask again whether the map still holds
   else if(S&&c.reset&&!c.first)fetchManifest().then(m=>{ if(S)setSync(!!(m&&m.available&&m.mappingValid)); });
-  probe.then(()=>{ if(S)decorate(); });
+  probe.then(()=>{ if(S)decorate(); else if(P&&P.el)placeCard(P.el); });
+}
+
+// ---------- while the video is being made: a progress card where the video will go ----------
+// /api/video-status computes the stage from the video project's own files on every request (bin/video_status.py).
+// Polled every 10 s only while the lesson has a registered project and no installed video; once the import lands the
+// card gives way to the player, and a project that goes away takes the card with it.
+let P=null;
+const POLL=10000;
+function statusUrl(){ return `/api/video-status?id=${encodeURIComponent(ctx.lessonId)}${ctx.ws?'&ws='+encodeURIComponent(ctx.ws):''}`; }
+function progress(){
+  if(P)return; P={el:null,timer:0};
+  const tick=()=>{
+    if(!P)return;
+    if(document.hidden){ P.timer=setTimeout(tick,POLL); return; }
+    fetch(statusUrl(),{cache:'no-store'}).then(r=>r.ok?r.json():null).catch(()=>null).then(d=>{
+      if(!P)return;
+      if(d&&d.installed){ stopProgress(); fetchManifest().then(m=>{ if(usable(m)&&!S){ mount(m); decorate(); } }); return; }
+      if(!d||d.active!==true){ if(d)stopProgress(); else P.timer=setTimeout(tick,POLL); return; }
+      if(!P.el){ P.el=buildCard(); placeCard(P.el); }
+      paintCard(d); P.timer=setTimeout(tick,POLL);
+    });
+  };
+  tick();
+}
+function stopProgress(){ if(!P)return; clearTimeout(P.timer); if(P.el)P.el.remove(); P=null; }
+function placeCard(el){
+  const main=ctx.main; if(!main||el.parentElement===main)return;
+  const head=[...main.children].filter(c=>c.matches('.top,.hero,p.credit:not(.imgcredits),#title,.byline')).pop();
+  if(head)head.after(el); else main.prepend(el);
+}
+function buildCard(){
+  const el=document.createElement('div'); el.className='lv-prog'; el.setAttribute('role','group'); el.setAttribute('aria-label','Video in progress');
+  el.innerHTML=`<div class="lv-ptop"><b>Video in progress</b><span class="lv-ppct"></span></div>
+<div class="lv-pbar" role="progressbar" aria-label="Video progress" aria-valuemin="0" aria-valuemax="100"><i></i></div>
+<p class="lv-pst"></p><p class="lv-pmeta"></p><ol class="lv-psteps" aria-label="Stages"></ol>`;
+  return el;
+}
+function n0(x){ return Number(x).toLocaleString('en-US'); }
+function left(sec){
+  if(sec<60)return 'under a minute';
+  const m=Math.round(sec/60), h=Math.floor(m/60);
+  return 'about '+(h?h+' h'+(m%60?' '+(m%60)+' min':''):m+' min');
+}
+function progressText(d){
+  const st=(d.stages||[]).find(x=>x.key===d.stage)||{};
+  let line=st.label||'';
+  if(st.total)line+=` · ${n0(st.done)} / ${n0(st.total)}${st.unit?' '+st.unit:''}`;
+  if(st.note)line+=` · ${st.note}`;
+  else if(st.total)line+=` · ${Math.floor(st.percent)}%`;
+  const ago=num(d.lastProgress)&&num(d.now)?Math.max(0,d.now-d.lastProgress):null;
+  let meta=`Stage ${d.stageIndex} of ${d.stageCount}`;
+  if(d.stalled&&ago!=null)meta+=` · no new progress for ${left(ago).replace(/^about /,'')}`;
+  else if(num(d.eta))meta+=` · ${left(d.eta)} left in ${(st.label||'this stage').toLowerCase()}`;
+  return {line,meta};
+}
+function paintCard(d){
+  const el=P.el, pct=clamp(num(d.percent)?d.percent:0,0,100), t=progressText(d);
+  el.querySelector('.lv-ppct').textContent=Math.floor(pct)+'%';
+  const bar=el.querySelector('.lv-pbar'); bar.setAttribute('aria-valuenow',String(Math.floor(pct))); bar.firstElementChild.style.width=pct+'%';
+  el.querySelector('.lv-pst').textContent=t.line;
+  const meta=el.querySelector('.lv-pmeta'); meta.textContent=t.meta; meta.classList.toggle('warn',!!d.stalled);
+  el.querySelector('.lv-psteps').innerHTML=(d.stages||[]).map(x=>`<li class="${x.state==='done'?'done':x.state==='current'?'cur':''}"${x.state==='current'?' aria-current="step"':''}>${esc(x.label)}</li>`).join('');
 }
 
 // ---------- state ----------
