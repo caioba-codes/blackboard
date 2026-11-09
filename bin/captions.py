@@ -21,7 +21,7 @@ NUMS = ("zero one two three four five six seven eight nine ten eleven twelve thi
         "seventeen eighteen nineteen twenty thirty forty fifty sixty seventy eighty ninety hundred").split()
 NUM = r"(?:" + "|".join(NUMS) + r")"
 SENTENCE = re.compile(r"[^.?!:]+[.?!:]?")
-MATH = re.compile(r"\$\$.+?\$\$|\$[^$]+\$", re.S)
+MATH = re.compile(r"\$\$.+?\$\$|\$[^$]+\$|`[^`\n]+`", re.S)   # math and inline code: their dots never end a sentence
 LONG = 95   # tts.py splits a sentence longer than this at its commas
 
 
