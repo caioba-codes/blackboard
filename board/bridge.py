@@ -22,7 +22,8 @@ Routes
   POST /open             {urls:[board lesson URLs]} -> opened in the default browser (for in-app panes that cannot open tabs)
   POST /define           {text,line,block} -> {text} dictionary definition of 1-5 selected words, in lesson context
   GET  /api/chat?lesson=NNNN        the lesson's chat thread {session_id, messages, running, pending}
-  POST /chat             {lesson, text, selection?} -> SSE over the response: step {tool,label}, delta {text}, done {}, error {message}
+  GET  /api/chat-image?lesson=NNNN&name=F   an image the user attached to that lesson's chat
+  POST /chat             {lesson, text, selection?, images?:[{type, data(base64)}]} -> SSE over the response: step {tool,label}, delta {text}, done {}, error {message}
   POST /chat/stop        {lesson} stops that lesson's running reply
   POST /chat/new         {lesson} archives the thread and starts an empty one
   GET  /api/flags[?lesson=NNNN]   this workspace's flagged chapters and problems {flags:[...]}, each with `missing`
@@ -963,7 +964,8 @@ def remove_exp(req):
 # ---------- study chat: one Claude Code session per lesson ----------
 # ChatThread, one per lesson, at $WS/reference/chat/<lesson-id>.json:
 #   {"session_id": str | None,
-#    "messages": [{"role": "user" | "assistant", "text": str, "steps": [{"tool": str, "label": str}], "ts": str}]}
+#    "messages": [{"role": "user" | "assistant", "text": str, "steps": [{"tool": str, "label": str}], "ts": str,
+#                  "images": [file name in reference/chat/img/] (user turns with attachments only)}]}
 # The file is what the panel shows; the Claude Code session it names is what the model remembers.
 CHAT_SYSTEM = os.path.join(BOARD, "chat-system.md")
 CHAT_TOOLS = "Read,Grep,Glob,WebSearch,WebFetch,Edit,Write"
@@ -976,6 +978,49 @@ def utc_now():
 
 def chat_file(wsp, lid):
     return os.path.join(wsp, "reference", "chat", f"{lid}.json")
+
+
+CHAT_IMG_TYPES = {"image/png": "png", "image/jpeg": "jpg", "image/gif": "gif", "image/webp": "webp"}
+CHAT_IMG_MAX, CHAT_IMG_BYTES = 6, 5 * 1024 * 1024
+CHAT_IMG_NAME = re.compile(r"\d{4}-[0-9a-f]{12}\.(png|jpg|gif|webp)")
+
+
+def chat_img_dir(wsp):
+    return os.path.join(wsp, "reference", "chat", "img")
+
+
+def chat_images(wsp, lid, images):
+    """Check and save the images attached to one message. Returns ([(media_type, base64)], [file names]) or an error."""
+    import base64, binascii
+    if not isinstance(images, list):
+        return "images must be a list"
+    if len(images) > CHAT_IMG_MAX:
+        return f"at most {CHAT_IMG_MAX} images per message"
+    blocks, names = [], []
+    for im in images:
+        typ, data = (im.get("type"), im.get("data")) if isinstance(im, dict) else (None, None)
+        if typ not in CHAT_IMG_TYPES or not isinstance(data, str):
+            return "images must be PNG, JPEG, GIF or WebP"
+        try:
+            raw = base64.b64decode(data, validate=True)
+        except (binascii.Error, ValueError):
+            return "an image is not valid base64"
+        if len(raw) > CHAT_IMG_BYTES:
+            return "an image is over 5 MB"
+        blocks.append((typ, data))
+        names.append(f"{lid}-{uuid.uuid4().hex[:12]}.{CHAT_IMG_TYPES[typ]}")
+    os.makedirs(chat_img_dir(wsp), exist_ok=True)
+    for (typ, data), name in zip(blocks, names):
+        with open(os.path.join(chat_img_dir(wsp), name), "wb") as f:
+            f.write(base64.b64decode(data))
+    return blocks, names
+
+
+def chat_input(prompt, blocks):
+    """The turn as one stream-json user message: the images first, then the text."""
+    content = [{"type": "image", "source": {"type": "base64", "media_type": t, "data": d}} for t, d in blocks]
+    content.append({"type": "text", "text": prompt})
+    return json.dumps({"type": "user", "message": {"role": "user", "content": content}}) + "\n"
 
 
 def chat_load(path):
@@ -1289,10 +1334,11 @@ def chat_allowed(wsp, sources):
 
 
 def chat_command(session_id, resume, allowed):
-    """`claude -p` for one turn. The prompt goes in on stdin, so no flag can swallow it."""
+    """`claude -p` for one turn. The prompt goes in on stdin as one stream-json message, so no flag can swallow it
+    and attached images reach the model as image blocks."""
     with open(CHAT_SYSTEM, encoding="utf-8") as f:
         system = f.read().replace("{templates}", os.path.join(ROOT, "TEMPLATES.md"))
-    return ["claude", "-p", "--output-format", "stream-json", "--verbose", "--include-partial-messages",
+    return ["claude", "-p", "--input-format", "stream-json", "--output-format", "stream-json", "--verbose", "--include-partial-messages",
             "--model", os.environ.get("BLACKBOARD_CHAT_MODEL", "opus"), "--effort", "medium",
             "--tools", CHAT_TOOLS, "--allowedTools", allowed,
             "--permission-mode", "acceptEdits", "--permission-prompts", "none",
@@ -1489,6 +1535,13 @@ class H(BaseHTTPRequestHandler):
                 turn = TURNS.get(key)
             thread.update(running=bool(turn), pending={"text": turn.text, "steps": turn.steps} if turn else None)
             return self.send(200, thread)
+        if path == "/api/chat-image":
+            lid, name = qs.get("lesson", [""])[0], qs.get("name", [""])[0]
+            f = os.path.join(chat_img_dir(wsp), name) if wsp else ""
+            if not (re.fullmatch(r"\d{4}", lid) and CHAT_IMG_NAME.fullmatch(name) and name.startswith(lid + "-") and os.path.isfile(f)):
+                return self.send(404, {"error": "no such image"})
+            with open(f, "rb") as fh:
+                return self.send(200, fh.read(), next(t for t, e in CHAT_IMG_TYPES.items() if name.endswith("." + e)))
         if path == "/api/flags":
             if self.foreign():
                 return self.send(403, {"error": "only the board may read flags"})
@@ -1758,18 +1811,28 @@ class H(BaseHTTPRequestHandler):
         """POST /chat: run one turn of this lesson's session and stream it back as SSE on this response.
         A page that goes away mid-reply does not stop it: the reply still finishes and is saved."""
         text, selection = (req.get("text") or "").strip(), (req.get("selection") or "").strip()
-        if not text and not selection:
+        images = req.get("images") or []
+        if not text and not selection and not images:
             return self.send(400, {"error": "empty message"})
         if not shutil.which("claude"):
             return self.send(503, {"error": "Claude Code (claude) is not installed"})
         said = ("> " + selection.replace("\n", "\n> ") + "\n\n" if selection else "") + text
         viewing = re.sub(r"[\x00-\x1f\[\]]", " ", str(req.get("viewing") or ""))[:300].strip()
+        if images and not said:
+            said = "(image)" if len(images) == 1 else "(images)"
         prompt = chat_prompt(lid, lesson_path(lid, wsp), wsp, said, viewing, req.get("where"))
         with TURNS_LOCK:
             if key in TURNS:
                 return self.send(409, {"error": "a reply is already running for this lesson"})
+            saved = chat_images(wsp, lid, images) if images else ([], [])
+            if isinstance(saved, str):
+                return self.send(400, {"error": saved})
+            blocks, names = saved
             thread = chat_load(key)
-            thread["messages"].append({"role": "user", "text": said, "steps": [], "ts": utc_now()})
+            msg = {"role": "user", "text": said, "steps": [], "ts": utc_now()}
+            if names:
+                msg["images"] = names
+            thread["messages"].append(msg)
             chat_save(key, thread)
             sid = thread.get("session_id") or str(uuid.uuid4())
             err = tempfile.TemporaryFile(mode="w+")
@@ -1780,7 +1843,7 @@ class H(BaseHTTPRequestHandler):
                                     start_new_session=True)
             turn = TURNS[key] = Turn(proc, wsp)
         try:
-            proc.stdin.write(prompt)
+            proc.stdin.write(chat_input(prompt, blocks))
             proc.stdin.close()
         except OSError:
             pass

@@ -85,3 +85,28 @@ class LessonSourcesTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class ChatImageTests(unittest.TestCase):
+    PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=='
+
+    def test_images_are_saved_and_sent_as_image_blocks(self):
+        with tempfile.TemporaryDirectory() as ws:
+            blocks, names = bridge.chat_images(ws, '0011', [{'type': 'image/png', 'data': self.PNG}])
+            self.assertEqual(blocks, [('image/png', self.PNG)])
+            self.assertRegex(names[0], r'^0011-[0-9a-f]{12}\.png$')
+            self.assertTrue((Path(ws) / 'reference/chat/img' / names[0]).is_file())
+            msg = __import__('json').loads(bridge.chat_input('hi', blocks))
+            content = msg['message']['content']
+            self.assertEqual([c['type'] for c in content], ['image', 'text'])
+            self.assertEqual(content[0]['source']['media_type'], 'image/png')
+
+    def test_bad_images_are_refused(self):
+        with tempfile.TemporaryDirectory() as ws:
+            self.assertIsInstance(bridge.chat_images(ws, '0001', [{'type': 'image/svg+xml', 'data': self.PNG}]), str)
+            self.assertIsInstance(bridge.chat_images(ws, '0001', [{'type': 'image/png', 'data': 'not base64!'}]), str)
+            self.assertIsInstance(bridge.chat_images(ws, '0001', [{'type': 'image/png', 'data': self.PNG}] * 7), str)
+
+    def test_the_turn_goes_in_as_stream_json(self):
+        cmd = bridge.chat_command('s-1', False, 'WebSearch')
+        self.assertEqual(cmd[cmd.index('--input-format') + 1], 'stream-json')

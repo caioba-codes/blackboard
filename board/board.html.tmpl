@@ -809,6 +809,17 @@ html.chatopen #chat{display:flex}
 #chatsel .cselt{flex:1;min-width:0;font-size:14px;line-height:1.4;color:#cfcabd;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 #chatsel .cib{width:24px;height:24px}
 #chatsel .cselt p{margin:0;max-width:none}#chatsel .cselt .katex{font-size:1em}
+#chatimgs{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 8px}
+#chatimgs[hidden]{display:none}
+#chatimgs .cim{position:relative;width:64px;height:64px;border-radius:8px;overflow:hidden;border:1px solid #2a2a2a;background:#1a1a1a}
+#chatimgs .cim img{width:100%;height:100%;object-fit:cover;display:block}
+#chatimgs .cim button{position:absolute;top:3px;right:3px;width:20px;height:20px;border:0;border-radius:50%;background:#000c;color:var(--chalk);display:grid;place-items:center;cursor:pointer;padding:0}
+#chatimgs .cim button svg{width:10px;height:10px}
+#chat .cimgs{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:6px;max-width:86%}
+#chat .cimgs a{display:block;border-radius:10px;overflow:hidden;border:1px solid #262626}
+#chat .cimgs img{display:block;max-width:220px;max-height:180px;object-fit:contain;background:#141414}
+#chatadd{flex:0 0 28px;width:28px;height:28px}
+#chat.cdrop #chatform{border-color:var(--acc);background:#181818}
 #chatq{display:block;width:100%;resize:none;border:0;outline:0;background:none;color:var(--chalk);font:16.5px/1.45 var(--body);max-height:200px;min-height:24px;padding:2px 0;margin:0}
 #chatq::placeholder{color:var(--dim)}
 #chat .cbar{display:flex;align-items:center;gap:8px;margin-top:8px}
@@ -925,7 +936,7 @@ details.flagged>summary .flcount{margin-left:10px;margin-right:auto;font:600 12p
 <div id="topbar"><a id="toplessons" href="/lessons" title="Back" aria-label="Back"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3.5 5.5 8l4.5 4.5"/></svg></a><div id="zoomctl" role="group" aria-label="Zoom"><button type="button" data-z="-1" aria-label="Zoom out (-)" title="Zoom out (-)">&minus;</button><button type="button" class="zv" data-z="0" aria-label="Reset zoom (0)" title="Reset zoom (0)">100%</button><button type="button" data-z="1" aria-label="Zoom in (+)" title="Zoom in (+)">+</button></div><div id="topsearch" role="search"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><circle cx="7" cy="7" r="4.8"/><path d="M10.6 10.6 14 14"/></svg><input id="topq" type="search" placeholder="Search every lesson" autocomplete="off" aria-label="Search every lesson" aria-controls="topresults"><kbd>/</kbd><div id="topresults" role="listbox"></div></div></div>
 <button id="chatbtn" type="button" hidden aria-label="Chat about this lesson" aria-controls="chat" aria-expanded="false"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 3.5a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v6.5a1 1 0 0 1-1 1H7l-3 2.5V11h-.5a1 1 0 0 1-1-1z"/></svg></button>
 <div id="srcview" role="dialog" aria-label="Source file" aria-hidden="true"><div class="svbar"><span class="svname"></span><a class="svtab" target="_blank" rel="noopener">Open in new tab</a><button type="button" class="svback" title="Back to lesson (Esc)">Back to lesson</button></div><div class="svbody"></div></div>
-<aside id="chat" aria-label="Study chat"><div id="chatgrip" role="separator" aria-orientation="vertical" aria-label="Drag to resize the chat. Double-click to reset." title="Drag to resize · double-click to reset"></div><div class="chead"><span class="ct">Chat</span><button type="button" class="cib" id="chatnew" title="New chat" aria-label="New chat"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg></button><button type="button" class="cib" id="chatclose" aria-label="Close chat"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg></button></div><div class="cmid"><div id="chatlist" role="log" aria-live="polite"></div><button type="button" id="chatdown" hidden aria-label="Jump to the latest message" title="Jump to the latest message"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3v10M3.5 8.5 8 13l4.5-4.5"/></svg></button></div><form id="chatform"><div id="chatsel" hidden><span class="cselt"></span><button type="button" class="cib" id="chatselx" aria-label="Remove the quoted selection" title="Remove the quoted selection"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7"/></svg></button></div><textarea id="chatq" rows="1" placeholder="Ask about this lesson" aria-label="Message"></textarea><button type="button" id="chatwhere" hidden></button><div class="cbar"><span class="cctx"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><path d="M4 1.8h5.5L12.5 5v9.2H4z"/><path d="M9.5 1.8V5h3"/></svg><span id="chatctx"></span></span><button type="submit" id="chatsend" aria-label="Send" disabled><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 13V3M3.5 7.5 8 3l4.5 4.5"/></svg></button></div></form></aside>
+<aside id="chat" aria-label="Study chat"><div id="chatgrip" role="separator" aria-orientation="vertical" aria-label="Drag to resize the chat. Double-click to reset." title="Drag to resize · double-click to reset"></div><div class="chead"><span class="ct">Chat</span><button type="button" class="cib" id="chatnew" title="New chat" aria-label="New chat"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg></button><button type="button" class="cib" id="chatclose" aria-label="Close chat"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg></button></div><div class="cmid"><div id="chatlist" role="log" aria-live="polite"></div><button type="button" id="chatdown" hidden aria-label="Jump to the latest message" title="Jump to the latest message"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3v10M3.5 8.5 8 13l4.5-4.5"/></svg></button></div><form id="chatform"><div id="chatsel" hidden><span class="cselt"></span><button type="button" class="cib" id="chatselx" aria-label="Remove the quoted selection" title="Remove the quoted selection"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7"/></svg></button></div><div id="chatimgs" hidden></div><textarea id="chatq" rows="1" placeholder="Ask about this lesson" aria-label="Message"></textarea><button type="button" id="chatwhere" hidden></button><div class="cbar"><button type="button" class="cib" id="chatadd" title="Attach images (or paste or drop them)" aria-label="Attach images"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="12" height="10" rx="1.5"/><circle cx="6" cy="6.5" r="1.2"/><path d="M2.5 12l3.5-3.5 2.5 2.5 2-2 3 3"/></svg></button><input type="file" id="chatfile" accept="image/png,image/jpeg,image/gif,image/webp" multiple hidden><span class="cctx"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><path d="M4 1.8h5.5L12.5 5v9.2H4z"/><path d="M9.5 1.8V5h3"/></svg><span id="chatctx"></span></span><button type="submit" id="chatsend" aria-label="Send" disabled><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 13V3M3.5 7.5 8 3l4.5 4.5"/></svg></button></div></form></aside>
 <div id="tocshade"></div>
 <nav id="toc" aria-label="Lesson contents: level map" aria-hidden="true" inert><div class="tochead"><b>Contents</b><kbd>t</kbd><span class="xpsum"></span></div><ol></ol></nav>
 <script>
@@ -2388,7 +2399,7 @@ document.addEventListener('keydown',e=>{
   else if((e.key==='+'||e.key==='=')&&document.documentElement.classList.contains('railmode')){e.preventDefault();zoomStep(1);}
   else if((e.key==='-'||e.key==='_')&&document.documentElement.classList.contains('railmode')){e.preventDefault();zoomStep(-1);}
   else if(e.key==='0'&&document.documentElement.classList.contains('railmode')){e.preventDefault();zoomStep(0);}
-  else if(e.key==='f'&&flagTargets.length&&!document.documentElement.matches('.lv-watch,.lv-fsmode')&&!(e.target.closest&&e.target.closest('#lvpanel,#chat,#srcview'))){e.preventDefault();flagKey();}
+  else if(e.key==='f'&&flagTargets.length&&!document.documentElement.matches('.lv-watch,.lv-fsmode')&&!e.defaultPrevented&&!(window.LessonVideo?.owns?.(e))&&!(e.target.closest&&e.target.closest('#lvpanel,#chat,#srcview'))){e.preventDefault();flagKey();}
   else if(e.key==='Escape'&&tocOpen)tocToggle(false);
 });
 // ---------- flags: chapters, sections, worked examples and questions to come back to ----------
@@ -2698,7 +2709,7 @@ const IS_MAC=/Mac|iPhone|iPad/.test(navigator.platform), CHAT_KEY=IS_MAC?'⌘⇧
 const chatList=$('#chatlist'), chatQ=$('#chatq'), chatSend=$('#chatsend'), chatBtn=$('#chatbtn'), chatDown=$('#chatdown'), chatSel=$('#chatsel');
 // a reply's raw HTML shows as text and a javascript: link as plain words: the reply may quote a web page
 const CHAT_MD=new marked.Marked({renderer:{html:h=>esc(typeof h==='string'?h:(h.text||'')),link:href=>/^\s*javascript:/i.test(href||'')?esc(href):false}});
-const chat={open:false, loaded:false, thread:{messages:[]}, pend:null, ctrl:null, sel:'', note:'', attached:true, lastTop:0, poll:0, frame:0};
+const chat={open:false, loaded:false, thread:{messages:[]}, pend:null, ctrl:null, sel:'', note:'', attached:true, lastTop:0, poll:0, frame:0, imgs:[]};
 const ICON={send:chatSend.innerHTML, mark:chatBtn.innerHTML,
   stop:'<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="4.5" y="4.5" width="7" height="7" rx="1.2" fill="currentColor"/></svg>',
   copy:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><rect x="5.5" y="5.5" width="8" height="8" rx="1.5"/><path d="M3.5 10.5H3a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1h6.5a1 1 0 0 1 1 1v.5"/></svg>',
@@ -2713,9 +2724,12 @@ function stepsHtml(steps,mode){
   const rows=steps.map((s,i)=>`<div class="cs${mode==='live'&&i===steps.length-1?' live':''}">${esc(s.label)}</div>`).join('');
   return mode==='done'?`<div class="csteps done"><button type="button" class="cstog" aria-expanded="false">${steps.length} step${steps.length>1?'s':''}</button>${rows}</div>`:`<div class="csteps">${rows}</div>`;
 }
-function userHtml(t){
-  const m=t.match(/^((?:>.*(?:\n|$))+)\s*([\s\S]*)$/), q=m?m[1].replace(/^> ?/gm,'').trim():'', rest=m?m[2]:t;
-  return `<div class="cmsg user">${q?`<div class="cq">${chatMd(q)}</div>`:''}${rest?`<div class="cb">${esc(rest)}</div>`:''}</div>`;
+function userHtml(msg){
+  const t=msg.text||'', m=t.match(/^((?:>.*(?:\n|$))+)\s*([\s\S]*)$/), q=m?m[1].replace(/^> ?/gm,'').trim():'';
+  const srcs=msg.urls||(msg.images||[]).map(n=>`/api/chat-image?lesson=${lessonId}&name=${encodeURIComponent(n)}${WSQ}`);
+  let rest=m?m[2]:t; if(srcs.length&&/^\(images?\)$/.test(rest))rest='';
+  const imgs=srcs.length?`<div class="cimgs">${srcs.map(u=>`<a href="${esc(u)}" target="_blank" rel="noopener"><img src="${esc(u)}" alt="Attached image"></a>`).join('')}</div>`:'';
+  return `<div class="cmsg user">${q?`<div class="cq">${chatMd(q)}</div>`:''}${imgs}${rest?`<div class="cb">${esc(rest)}</div>`:''}</div>`;
 }
 function botHtml(m,i){
   const live=i<0, steps=stepsHtml(m.steps||[],live?(m.text?'shown':'live'):'done');
@@ -2729,7 +2743,7 @@ function chatRender(){
     const t=chatTitle();
     chatList.innerHTML=`<div class="cempty"><div class="cmark">${ICON.mark}</div><h2>Ask about this lesson</h2><p>${esc(t||'Lesson '+lessonId)}</p>${[`Explain the hardest step of ${t||'this lesson'}`,'Quiz me on this lesson','What do I need to know before this?'].map(s=>`<button type="button" class="cchip">${esc(s)}</button>`).join('')}</div>${chat.note?`<p class="cerr">${esc(chat.note)}</p>`:''}`;
   } else {
-    chatList.innerHTML=ms.map((m,i)=>m.role==='user'?userHtml(m.text):botHtml(m,i)).join('')+(chat.pend?`<div id="chatpend">${botHtml(chat.pend,-1)}</div>`:'')+(chat.note?`<p class="cerr">${esc(chat.note)}</p>`:'');
+    chatList.innerHTML=ms.map((m,i)=>m.role==='user'?userHtml(m):botHtml(m,i)).join('')+(chat.pend?`<div id="chatpend">${botHtml(chat.pend,-1)}</div>`:'')+(chat.note?`<p class="cerr">${esc(chat.note)}</p>`:'');
   }
   chatSync(); chatFollow(); chatList.querySelectorAll('.cmsg.bot[data-i] .cmd').forEach(el=>srcCites(el));
 }
@@ -2737,7 +2751,7 @@ function chatPaint(){ if(chat.frame)return; chat.frame=requestAnimationFrame(()=
 function chatSync(){
   const busy=!!chat.pend;
   chatSend.innerHTML=busy?ICON.stop:ICON.send; chatSend.setAttribute('aria-label',busy?'Stop':'Send'); chatSend.title=busy?'Stop':'Send (Enter)';
-  chatSend.disabled=!busy&&!chatQ.value.trim()&&!chat.sel;
+  chatSend.disabled=!busy&&!chatQ.value.trim()&&!chat.sel&&!chat.imgs.length;
   $('#chatnew').disabled=busy||!(chat.thread.messages||[]).length;
 }
 // follow the reply only while the reader is at the bottom; scrolling up detaches, the arrow (or scrolling down) re-attaches
@@ -2758,14 +2772,14 @@ async function chatLoad(first){
   if(t.running&&!chat.ctrl&&!chat.poll)chat.poll=setTimeout(()=>{ chat.poll=0; chatLoad(); },1000);
 }
 async function chatSendMsg(text){
-  text=(text||'').trim(); const selection=chat.sel;
-  if(chat.pend||(!text&&!selection))return;
-  chat.note=''; chat.sel=''; chatSel.hidden=true; chatQ.value=''; chatGrow();
-  chat.thread.messages=(chat.thread.messages||[]).concat({role:'user',text:(selection?'> '+selection.replace(/\n/g,'\n> ')+'\n\n':'')+text,steps:[]});
+  text=(text||'').trim(); const selection=chat.sel, imgs=chat.imgs;
+  if(chat.pend||(!text&&!selection&&!imgs.length))return;
+  chat.note=''; chat.sel=''; chatSel.hidden=true; chatQ.value=''; chat.imgs=[]; chatImgsPaint(); chatGrow();
+  chat.thread.messages=(chat.thread.messages||[]).concat({role:'user',text:(selection?'> '+selection.replace(/\n/g,'\n> ')+'\n\n':'')+text,steps:[],urls:imgs.map(i=>i.url)});
   chat.pend={text:'',steps:[]}; chatRender(); chatFollow(true);
   chat.ctrl=new AbortController();
   try{
-    const r=await fetch('/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.assign({lesson:lessonId,text,selection,viewing:srcViewing()},WS?{ws:WS}:{},chatWhereSend())),signal:chat.ctrl.signal});
+    const r=await fetch('/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.assign({lesson:lessonId,text,selection,images:imgs.map(i=>({type:i.type,data:i.data})),viewing:srcViewing()},WS?{ws:WS}:{},chatWhereSend())),signal:chat.ctrl.signal});
     if(!r.ok){ chat.note=(await r.json().catch(()=>({}))).error||`The bridge answered ${r.status}.`; }
     else { const rd=r.body.getReader(), dec=new TextDecoder(); let buf='';
       for(;;){ const {value,done}=await rd.read(); if(done)break; buf+=dec.decode(value,{stream:true}); let k;
@@ -2826,6 +2840,50 @@ function chatSetOpen(on,focus=true,remember=true){
 }
 function chatAsk(text){ if(!chatOk()||!text)return; chat.sel=text; chatSel.querySelector('.cselt').innerHTML=chatMd(text); chatSel.hidden=false; chatSetOpen(true); chatSync(); }
 function chatGrow(){ chatQ.style.height='auto'; chatQ.style.height=Math.min(chatQ.scrollHeight,200)+'px'; chatSync(); }
+// ---------- images: paste, drop or pick them; each goes to the model as an image block ----------
+// A big photo is scaled down to 2000 px on its longest side (JPEG) so it stays under the 5 MB the model accepts.
+const CHAT_IMG_OK=['image/png','image/jpeg','image/gif','image/webp'];
+function chatImgRead(file){
+  return new Promise(res=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=()=>res(null); r.readAsDataURL(file); });
+}
+async function chatImgPrep(file){
+  let url=await chatImgRead(file); if(!url)return null;
+  let type=file.type;
+  const img=await new Promise(res=>{ const i=new Image(); i.onload=()=>res(i); i.onerror=()=>res(null); i.src=url; });
+  const big=Math.max(img?.naturalWidth||0,img?.naturalHeight||0);
+  if(img&&type!=='image/gif'&&(big>2000||file.size>3.5e6)){
+    const k=Math.min(1,2000/big), c=document.createElement('canvas');
+    c.width=Math.round(img.naturalWidth*k); c.height=Math.round(img.naturalHeight*k);
+    c.getContext('2d').drawImage(img,0,0,c.width,c.height); url=c.toDataURL('image/jpeg',.9); type='image/jpeg';
+  }
+  const data=url.slice(url.indexOf(',')+1);
+  if(data.length*3/4>5*1024*1024)return null;
+  return {type,data,url};
+}
+async function chatAddImages(files){
+  const list=[...files].filter(f=>CHAT_IMG_OK.includes(f.type)); if(!list.length)return false;
+  for(const f of list){
+    if(chat.imgs.length>=6){ chat.note='At most 6 images per message.'; chatRender(); break; }
+    const im=await chatImgPrep(f); if(im)chat.imgs.push(im); else { chat.note=`${f.name||'An image'} is too big to send.`; chatRender(); }
+  }
+  chatImgsPaint(); chatSync(); return true;
+}
+function chatImgsPaint(){
+  const box=$('#chatimgs'); box.hidden=!chat.imgs.length;
+  box.innerHTML=chat.imgs.map((im,i)=>`<div class="cim"><img src="${im.url}" alt="Image ${i+1} to send"><button type="button" data-i="${i}" aria-label="Remove image ${i+1}" title="Remove"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7"/></svg></button></div>`).join('');
+}
+$('#chatimgs').addEventListener('click',e=>{ const b=e.target.closest('button[data-i]'); if(!b)return; chat.imgs.splice(+b.dataset.i,1); chatImgsPaint(); chatSync(); chatQ.focus(); });
+$('#chatadd').onclick=()=>$('#chatfile').click();
+$('#chatfile').addEventListener('change',e=>{ chatAddImages(e.target.files).then(()=>{ e.target.value=''; chatQ.focus(); }); });
+chatQ.addEventListener('paste',e=>{ const fs=[...(e.clipboardData?.files||[])]; if(fs.some(f=>CHAT_IMG_OK.includes(f.type))){ e.preventDefault(); chatAddImages(fs); } });
+(function chatDrop(){
+  const box=$('#chat'); let depth=0;
+  const has=e=>[...(e.dataTransfer?.types||[])].includes('Files');
+  box.addEventListener('dragenter',e=>{ if(!has(e))return; e.preventDefault(); depth++; box.classList.add('cdrop'); });
+  box.addEventListener('dragover',e=>{ if(has(e))e.preventDefault(); });
+  box.addEventListener('dragleave',()=>{ if(--depth<=0){ depth=0; box.classList.remove('cdrop'); } });
+  box.addEventListener('drop',e=>{ if(!has(e))return; e.preventDefault(); depth=0; box.classList.remove('cdrop'); chatAddImages(e.dataTransfer.files).then(()=>chatQ.focus()); });
+})();
 chatQ.addEventListener('input',chatGrow);
 chatQ.addEventListener('keydown',e=>{ if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){ e.preventDefault(); chatSendMsg(chatQ.value); } });
 $('#chatform').addEventListener('submit',e=>{ e.preventDefault(); chat.pend?chatStop():chatSendMsg(chatQ.value); });

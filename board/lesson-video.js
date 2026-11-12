@@ -21,7 +21,7 @@
    seeked on this page); a `lessonvideo:context` event on window carries the same object whenever it changes. */
 (function(){
 'use strict';
-const SPEEDS=[.5,.75,1,1.25,1.5,2], SKIP=10, WIDE=1080, TOPBAR=70;
+const SPEEDS=[.5,.75,1,1.25,1.5,2], SKIP=10, NUDGE=5, WIDE=1080, TOPBAR=70;
 const root=document.documentElement, reduced=matchMedia('(prefers-reduced-motion: reduce)');
 const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const num=x=>typeof x==='number'&&isFinite(x);
@@ -775,8 +775,15 @@ function owns(e){
   if(fsOn())return !t.closest('#chat');
   const fs=fsEl(); if(fs)return false;
   if(S.panel.contains(t))return true;
-  return S.mode==='watch'&&!t.closest('#toc,#topresults,.lv-modes');
+  if(t.closest('#toc,#topresults,.lv-modes'))return false;
+  // Both: once the video has been played or sought on this page, its keys work from anywhere in the lesson, like
+  // YouTube's; a button, link or quiz control keeps its own Space and arrows
+  if(S.mode==='both')return !!S.touched&&!t.closest('button,a,summary,label,.mcq,.checkin');
+  return S.mode==='watch';
 }
+function volume(d){ const v=S.video; v.muted=false; v.volume=clamp(Math.round((v.volume+d)*20)/20,0,1); paintMenu(); save(); say(`Volume ${Math.round(v.volume*100)}%`); }
+function mute(){ S.video.muted=!S.video.muted; paintMenu(); save(); say(S.video.muted?'Muted':'Unmuted'); }
+function seekPct(n){ const d=S.dur||S.video.duration; if(!num(d)||d<=0)return; attach(); seek(d*n/10,'nav'); }
 function wire(){
   const v=S.video, p=S.panel;
   v.addEventListener('loadedmetadata',()=>{ fitCaptions(); S.meta=true; if(num(v.duration)&&v.duration>0)S.dur=v.duration; S.range.max=String(S.dur); buildZones(); v.defaultPlaybackRate=v.playbackRate=S.rate; seek(S.pendingT,'restore'); });
@@ -842,7 +849,9 @@ function wire(){
     else if(e.key==='Home')i=0; else if(e.key==='End')i=bs.length-1; else return;
     e.preventDefault(); e.stopPropagation(); setMode(bs[i].dataset.mode); focusMode(g,bs[i].dataset.mode);
   },true);
-  // keyboard: only when the player has focus, in Watch, or in full screen; never while typing
+  // keyboard, YouTube's keys: Space/K play or pause, J/L 10 s, ←/→ 5 s, ↑/↓ volume, M mute, F full screen,
+  // 0–9 jump to that tenth, Home/End, C captions, I picture in picture, </> speed, Shift+←/→ and [ ] scenes, R replay.
+  // Only when the player has focus, in Watch, in full screen, or in Both after the video was played; never while typing
   document.addEventListener('keydown',e=>{
     if(e.key==='Escape'&&S.menuOpen){ e.preventDefault(); return closeMenu(true); }
     if(e.key==='Escape'&&fsOn()&&!fsEl()&&!(e.target instanceof Element&&e.target.closest('#chat'))){ e.preventDefault(); return exitFs(); }
@@ -850,7 +859,13 @@ function wire(){
     const k=e.key, onCtl=e.target instanceof Element&&e.target.closest('button,a,summary');
     let done=true;
     if(k===' '||k==='k'||k==='K'){ if(onCtl&&k===' ')return; toggle(); }
-    else if(k==='ArrowLeft'||k==='ArrowRight'){ const d=k==='ArrowRight'?1:-1; if(e.shiftKey)d>0?navNext():navPrev(); else skip(d*SKIP); }
+    else if(k==='ArrowLeft'||k==='ArrowRight'){ const d=k==='ArrowRight'?1:-1; if(e.shiftKey)d>0?navNext():navPrev(); else skip(d*NUDGE); }
+    else if(k==='j'||k==='J'||k==='l'||k==='L')skip((k==='l'||k==='L'?1:-1)*SKIP);
+    else if(k==='ArrowUp'||k==='ArrowDown')volume(k==='ArrowUp'?.05:-.05);
+    else if(k==='m'||k==='M')mute();
+    else if(/^[0-9]$/.test(k))seekPct(+k);
+    else if(k==='Home'||k==='End'){ if(k==='Home'){ attach(); seek(0,'nav'); } else seekPct(10); }
+    else if(k==='i'||k==='I')togglePip();
     else if(k===']')navNext(); else if(k==='[')navPrev();
     else if(k==='f'||k==='F')toggleFs();
     else if((k==='c'||k==='C')&&S.caps)setCC(!S.cc);
@@ -864,7 +879,7 @@ function wire(){
   window.addEventListener('wheel',intent,{passive:true});
   window.addEventListener('touchmove',intent,{passive:true});
   document.addEventListener('keydown',e=>{
-    if(!['PageUp','PageDown','Home','End','ArrowUp','ArrowDown',' '].includes(e.key)||owns(e))return;
+    if(!['PageUp','PageDown','Home','End','ArrowUp','ArrowDown',' '].includes(e.key)||e.defaultPrevented||owns(e))return;
     if(e.target instanceof Element&&e.target.closest('input,textarea,select,button,[contenteditable],#chat'))return;
     intent(e);
   });
@@ -896,5 +911,5 @@ function focusMode(g,mode){
   if(b)b.focus({preventScroll:true});
 }
 
-window.LessonVideo={refresh,context};
+window.LessonVideo={refresh,context,owns:e=>!!S&&owns(e)};
 })();

@@ -45,7 +45,7 @@ ctx.S.video.currentTime=7522;
 assert.deepEqual({...ctx.context().practice},{label:'Your turn: 8:1 mux',revealed:false},'inside the question before its answer');
 assert(/heading:c\.textContent/.test(js)&&/return \{id:best\.h\.id\|\|null,heading/.test(js),'section is {id, heading}');
 assert(/new CustomEvent\('lessonvideo:context',\{detail:context\(\)\}\)/.test(js),'lessonvideo:context event carries the same object');
-assert(/window\.LessonVideo=\{refresh,context\}/.test(js));
+assert(/window\.LessonVideo=\{refresh,context,owns:/.test(js));
 
 // CC: a toggle in the minimal bar, remembered per browser, off by default on a burned-in video, key C
 assert(/class="lv-ib lv-ccb" data-a="cc" aria-pressed="false"/.test(js),'CC button in the control bar');
