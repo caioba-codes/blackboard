@@ -67,11 +67,12 @@ These rules come from research on why AI text is hard for people to read (Clark,
 | Object doing a human action | The minus sign bites here. | The minus sign flips both terms. |
 | Invented word pair | It is a sign-flip trap. | The sign flips. |
 
-`bin/prose_lint.py` (run by `render.sh`) flags long sentences, objects doing human actions, "the root you found" phrases, noun stacks (when spaCy is installed) and terms used before they are explained. Fix every warning before the render counts as done. The tone editor handles what a script cannot judge.
+`bin/prose_lint.py` (run by `render.sh`) flags long sentences, objects doing human actions, "the root you found" phrases, pronunciations and alternate spellings, noun stacks (when spaCy is installed) and terms used before they are explained. Fix every warning before the render counts as done. The tone editor handles what a script cannot judge.
 
 ### What a lesson leaves out
 
 - No chapter-opening preview or summary paragraph ("this chapter covers…", "you know this from…", "the X is for…, the Y is for…"). A chapter opens directly with its prerequisites, if any, or its first step. A decision rule the student needs ("use parts when no $u$-substitution works") goes where the choice is made, usually the Which Technique table.
+- No obvious explanations. Never say how a symbol is pronounced ("$\overline{Q}$, read "Q bar""), list other spellings of the same thing ("also written QN or Q'"), or restate what the student can already see. Use the one notation the course's sources use, and use only that one. Explain what a symbol means, never how to say it.
 - No trap or "common mistake" lines. The one exception: something the grader actually takes points off for, as stated by the instructor or the rubric, gets one **On the test** callout: a `::: callout` block with a `wrong:` line (the form that loses points), a `right:` line (the form the grader wants) and at most one short text line. The board renders it as an amber card with the wrong form struck through next to the right one; a plain `⚠️` line still renders as the same card with only its text.
 
   ```md
@@ -87,7 +88,7 @@ These rules come from research on why AI text is hard for people to read (Clark,
 - **Top to bottom, hard rule.** The student reads once, from the top. Never use a term, symbol or abbreviation before the paragraph that explains it. When one shows up early, move its explanation up to before that first use. Never leave a forward pointer ("see below", "more on this later"). Write each term in **bold** at the place that explains it, so `bin/prose_lint.py` can see where it is explained and flag any earlier use.
 - Start with the task the learner will be able to perform. Name the actual homework or exam skill; keep enrichment off the main path.
 - Establish only the prerequisites that task needs. Define a new concept in familiar words, introduce its notation, explain what that notation means, then use it. Do not define one unknown term through another unknown term.
-- Introduce symbols beside their first use, including overloaded operators, bars, parentheses, subscripts, abbreviations, and implicit multiplication when relevant. Read an unfamiliar expression aloud in prose before manipulating it.
+- Introduce symbols beside their first use, including overloaded operators, bars, parentheses, subscripts, abbreviations, and implicit multiplication when relevant. Say in prose what an unfamiliar expression means before manipulating it. Say its meaning, never its pronunciation.
 - Explain an operation before using it inside a larger operation. Make grouping and order explicit. For nested expressions, name the pieces and treat each group as one piece until it is that group's turn.
 - Keep names stable throughout an example. Distinguish input values, intermediate results, outputs, and placeholders in a general rule. When matching a rule, point out exactly which piece of the example fills each placeholder.
 - Use a meaning-level concrete case to make an abstract rule understandable. Do not begin with a wall of named theorems.

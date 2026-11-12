@@ -5,6 +5,7 @@ Checks the patterns a script can catch:
   - a sentence over 25 words (math counts as one word)
   - an object doing a human action ("the sign bites", "the method swallows")
   - "the root you found": a thing described by what someone does to it, with no "that"
+  - an obvious explanation: how a symbol is pronounced ("read 'Q bar'") or its other spellings ("also written QN")
   - three or more nouns in a row (only when spaCy and en_core_web_sm are installed)
   - order: a term or abbreviation used before the lesson explains it
 
@@ -16,6 +17,7 @@ MAX_WORDS = 25
 HUMAN_VERBS = r"bites?|swallows?|swallowed|eats|ate|eaten|dies|died|promises?|promised|kills?|killed|shadows|shadowed|hates?|likes|wants|knows|cares|complains?|insists?|refuses?|fires|fired"
 HUMAN_RE = re.compile(rf"\b(?!(?:you|we|they|i|he|she|people|students?|the student|the reader)\b)(it|this|that|the [a-z$][^\s,.;:]*(?: [a-z][a-z-]*)?)\s+(?:{HUMAN_VERBS})\b", re.I)
 PRONOUN_ORC = re.compile(r"\b(the|a|an|each|every|this) ([a-z]+) (you|we|they|he|she|I) ([a-z]+(?:ed|t|n|s)|did|got|made|saw|found|wrote|chose|picked|took|built|drew|kept|left)\b")
+OBVIOUS_RE = re.compile(r"\b(?:read|pronounced|said|say)\s+(?:aloud\s+)?(?:as\s+)?[\"\u201c'\u2018]|\b(?:also|sometimes|often)\s+(?:written|spelled|denoted)\b", re.I)
 STOP_CAPS = {"I", "A", "OK", "TV", "PDF", "URL", "HTML", "CSS", "JS", "PM", "AM", "US", "USA", "UK", "II", "III", "IV"}
 
 
@@ -111,6 +113,8 @@ def sentence_warnings(t, nlp=None):
         w.append(f"\"{m.group(0)}\": an object doing a human action. Say what actually happens.")
     for m in PRONOUN_ORC.finditer(t):
         w.append(f"\"{m.group(0)}\": add \"that\" or split it (\"You found the root. Plug it in.\").")
+    for m in OBVIOUS_RE.finditer(t):
+        w.append(f"\"{m.group(0)}\": an obvious explanation. Drop the pronunciation or other spelling; keep one notation.")
     for st in noun_stacks(t, nlp):
         w.append(f"\"{st}\": three or more nouns in a row. Rewrite with \"of\" or \"that\".")
     return w

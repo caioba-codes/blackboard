@@ -50,6 +50,10 @@ class ProseLint(unittest.TestCase):
         long = " ".join(["word"] * 30) + "."
         self.assertTrue(any("30-word sentence" in w for w in check_text(long)))
 
+    def test_obvious_explanations(self):
+        self.assertTrue(any("obvious" in w for w in check_text('Its complement is $\\overline{Q}$, read "Q bar" and also written QN.')))
+        self.assertFalse(any("obvious" in w for w in check_text("Read it as: the next state is 1. Its complement is $Q'$.")))
+
 
 if __name__ == "__main__":
     unittest.main()
