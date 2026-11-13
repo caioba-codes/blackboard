@@ -20,7 +20,6 @@ ROLE = {"model": "claude-opus-5-5", "effort": "high"}
 RUNTIME = ("engine.js", "style.css", "capture.mjs", "finish.sh", "tts.py", "index.html", "package.json", "render.sh")
 OPTIONAL_RUNTIME = ("README.md", "package-lock.json", ".gitignore")
 VIDEO_EFFORTS = frozenset(("low", "medium", "high"))
-SCRIPT_EFFORTS = {ROLE["model"]: VIDEO_EFFORTS, "gpt-6-astra": frozenset(("medium",))}
 # The pace reference is ECE 2020 lesson 0010 (2026-11-02, Caio: "this is the right length / pace"): 20,100 lesson words
 # became 41,883 spoken words, 204,456 narrated characters and 4 h 54 min of video with 83 pause-and-solve gates.
 PACE_REF = {"lesson": "ece2020 0010", "spoken_per_lesson_word": 2.08, "minutes_per_1000_lesson_words": 14.6,
@@ -57,17 +56,11 @@ def sha(path):
 
 def project(project_dir):
     config = read(project_dir / "project.json")
-    base_keys = {"version", "lesson", "lessonSha256", "videoRole"}
-    if not isinstance(config, dict) or set(config) not in (base_keys, base_keys | {"scriptRole"}) or config["version"] != 1:
+    if not isinstance(config, dict) or set(config) != {"version", "lesson", "lessonSha256", "videoRole"} or config["version"] != 1:
         raise PipelineError("project.json: invalid project schema")
     role = config["videoRole"]
     if not isinstance(role, dict) or set(role) != {"model", "effort"} or role["model"] != ROLE["model"] or not isinstance(role["effort"], str) or role["effort"] not in VIDEO_EFFORTS:
         raise PipelineError("project.json: required Opus 5.5 model and supported video effort (low, medium, high)")
-    script_role = config.get("scriptRole", role)
-    if (not isinstance(script_role, dict) or set(script_role) != {"model", "effort"} or
-            not isinstance(script_role["model"], str) or not isinstance(script_role["effort"], str) or
-            script_role["effort"] not in SCRIPT_EFFORTS.get(script_role["model"], ())):
-        raise PipelineError("project.json: script role must be Opus 5.5 at low/medium/high or Astra at medium")
     if not isinstance(config["lesson"], str) or not isinstance(config["lessonSha256"], str):
         raise PipelineError("project.json: lesson path and SHA must be strings")
     lesson = Path(config["lesson"])
@@ -95,18 +88,11 @@ def init(args):
         raise PipelineError("project and runtime paths overlap")
     if args.video_effort not in VIDEO_EFFORTS:
         raise PipelineError("--video-effort must be low, medium, or high")
-    if (args.script_model is None) != (args.script_effort is None):
-        raise PipelineError("--script-model and --script-effort must be given together")
-    if args.script_model is not None and args.script_effort not in SCRIPT_EFFORTS.get(args.script_model, ()):
-        raise PipelineError("script role must be Opus 5.5 at low/medium/high or Astra at medium")
     dest.mkdir(parents=True, exist_ok=True)
     if dest.is_symlink():
         raise PipelineError("project cannot be a symlink")
     config = {"version": 1, "lesson": str(lesson), "lessonSha256": sha(lesson),
               "videoRole": {"model": ROLE["model"], "effort": args.video_effort}}
-    base_config = config.copy()
-    if args.script_model is not None:
-        config["scriptRole"] = {"model": args.script_model, "effort": args.script_effort}
     # Check conflicts before the first copy, so retrying an interrupted init is safe.
     entries = [runtime / name for name in (*RUNTIME, *OPTIONAL_RUNTIME) if (runtime / name).exists() or (runtime / name).is_symlink()]
     for src in entries:
@@ -115,27 +101,19 @@ def init(args):
             raise PipelineError(f"runtime symlink at {src} or {target}; inspect before retrying")
         if not src.is_file() or (target.exists() and (not target.is_file() or sha(src) != sha(target))):
             raise PipelineError(f"runtime conflict at {target}; preserve local work and inspect before retrying")
-    project_file = dest / "project.json"
-    existing = read(project_file) if project_file.exists() else None
-    upgrade_role = (existing == base_config and "scriptRole" in config and
-                    not any((dest / name).exists() for name in ("script.json", "anchors.json", "SPLIT.json", "timeline.json", "video-runs.json")))
-    if existing is not None and existing != config and not upgrade_role:
-        raise PipelineError("project.json already targets a different lesson, revision, or script role")
+    if (dest / "project.json").exists() and read(dest / "project.json") != config:
+        raise PipelineError("project.json already targets a different lesson or lesson revision")
     for src in entries:
         target = dest / src.name
         if not target.exists():
             shutil.copy2(src, target)
-    if upgrade_role:
-        project_file.write_text(json.dumps(config, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-    else:
-        write_new(project_file, config)
+    write_new(dest / "project.json", config)
     write_look(lesson, dest)
     try:
         print(f"board progress card: {video_status.register(dest)}")
     except (ValueError, OSError) as exc:
         print(f"board progress card not registered: {exc}", file=sys.stderr)
-    script_role = config.get("scriptRole", config["videoRole"])
-    print(f"initialized {dest}; lesson SHA-256 {config['lessonSha256']}; script author {script_role['model']} {script_role['effort']}; visual builders {ROLE['model']} {args.video_effort}")
+    print(f"initialized {dest}; lesson SHA-256 {config['lessonSha256']}; video author {ROLE['model']} {args.video_effort}")
     print("next: author script.json and anchors.json from the lesson; no model receipt was generated")
 
 
@@ -443,32 +421,32 @@ def practice_warnings(project_dir, timeline, anchors):
     return out
 
 
-def receipts_ok(project_dir, split, video_role, script_role):
+def receipts_ok(project_dir, split, video_role):
     data = read(project_dir / "video-runs.json")
     if not isinstance(data, dict) or set(data) != {"version", "author", "builders", "reviewer"} or data["version"] != 1:
         raise PipelineError("video-runs.json: require version, author, builders, reviewer")
-    def run(record, name, outcome, required_role):
+    def run(record, name, outcome, opus):
         if not isinstance(record, dict) or set(record) != {"requested", "resolved", "outcome", "runtimeEvidence"}:
             raise PipelineError(f"video-runs.json {name}: incomplete runtime receipt")
         identity = record["resolved"]
         if (not isinstance(identity, dict) or set(identity) != {"model", "effort"} or
                 any(not isinstance(identity[k], str) or not identity[k].strip() for k in ("model", "effort"))):
             raise PipelineError(f"video-runs.json {name}: malformed runtime model/effort")
-        if required_role and (record["requested"] != required_role or record["resolved"] != required_role):
-            raise PipelineError(f"video-runs.json {name}: required {required_role['model']} {required_role['effort']} runtime identity mismatch")
+        if opus and (record["requested"] != video_role or record["resolved"] != video_role):
+            raise PipelineError(f"video-runs.json {name}: required Opus 5.5 video runtime identity mismatch")
         if record["requested"] != record["resolved"] or record["outcome"] != outcome:
             raise PipelineError(f"video-runs.json {name}: request/runtime mismatch or incomplete run")
         evidence = record["runtimeEvidence"]
         if not isinstance(evidence, str) or not evidence.strip():
             raise PipelineError(f"video-runs.json {name}: missing actual host runtime evidence reference")
-    run(data["author"], "author", "complete", script_role)
+    run(data["author"], "author", "complete", True)
     builders = data["builders"]
     used = [name for name, scenes in split.items() if scenes]
     if not isinstance(builders, dict) or set(builders) != set(used):
         raise PipelineError("video-runs.json builders: one receipt required per used SPLIT module")
     for name, record in builders.items():
-        run(record, name, "complete", video_role)
-    run(data["reviewer"], "reviewer", "passed", None)
+        run(record, name, "complete", True)
+    run(data["reviewer"], "reviewer", "passed", False)
 
 
 def media_ok(project_dir, duration):
@@ -595,7 +573,7 @@ def check(args):
         except PipelineError as exc:
             stages["scenes"] = str(exc)
         try:
-            receipts_ok(args.project, split, cfg["videoRole"], cfg.get("scriptRole", cfg["videoRole"]))
+            receipts_ok(args.project, split, cfg["videoRole"])
             stages["receipts"] = "ready; orchestrator must verify evidence against host metadata"
         except PipelineError as exc:
             stages["receipts"] = str(exc)
@@ -618,8 +596,6 @@ def main(argv=None):
     p.add_argument("--project", type=Path, required=True)
     p.add_argument("--runtime", type=Path, default=Path(__file__).resolve().parents[1] / "video")
     p.add_argument("--video-effort", default="high", help="explicit Opus effort; high recommended")
-    p.add_argument("--script-model", help="explicit script author model; default is the Opus video role")
-    p.add_argument("--script-effort", help="explicit script author effort; required with --script-model")
     p = sub.add_parser("build-map", help="derive a board manifest from source anchors and measured timing")
     p.add_argument("--project", type=Path, required=True)
     p.add_argument("--replace", action="store_true", help="replace a reviewed stale map")

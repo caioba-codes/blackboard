@@ -47,8 +47,8 @@ class VideoPipelineTest(unittest.TestCase):
     def init(self):
         return self.cli("init", "--lesson", self.lesson, "--project", self.project, "--runtime", self.runtime)
 
-    def plan(self, *init_args):
-        self.cli("init", "--lesson", self.lesson, "--project", self.project, "--runtime", self.runtime, *init_args)
+    def plan(self):
+        self.init()
         script = {"title": "Motion", "subtitle": "Example", "voice": "sample", "chapters": ["Intro"], "scenes": [
             {"id": "s00", "chapter": 0, "visual": "two questions", "cues": [
                 {"id": "a", "say": "Question one", "show": "Question 1"}, {"id": "think1", "pause": 1},
@@ -80,7 +80,6 @@ class VideoPipelineTest(unittest.TestCase):
             (self.runtime / name).write_text("generated\n")
         first = self.init()
         self.assertIn("no model receipt was generated", first.stdout)
-        self.assertNotIn("scriptRole", json.loads((self.project / "project.json").read_text()))
         self.assertFalse((self.project / "video-runs.json").exists())
         self.assertEqual({p.name for p in self.project.iterdir()}, set(RUNTIME) | {"README.md", "package-lock.json", ".gitignore", "project.json", "look.css"})
         self.assertFalse((self.project / "scenes").exists())
@@ -94,45 +93,11 @@ class VideoPipelineTest(unittest.TestCase):
         failure = self.cli("init", "--lesson", self.lesson, "--project", self.project,
                            "--runtime", self.runtime, "--video-effort", "hgih", ok=False)
         self.assertIn("--video-effort must be low, medium, or high", failure.stderr)
-        missing = self.cli("init", "--lesson", self.lesson, "--project", self.project,
-                           "--runtime", self.runtime, "--script-model", "gpt-6-astra", ok=False)
-        self.assertIn("must be given together", missing.stderr)
-        unsupported = self.cli("init", "--lesson", self.lesson, "--project", self.project,
-                               "--runtime", self.runtime, "--script-model", "gpt-6-astra",
-                               "--script-effort", "high", ok=False)
-        self.assertIn("Astra at medium", unsupported.stderr)
         self.assertFalse(self.project.exists())
         self.cli("init", "--lesson", self.lesson, "--project", self.project,
                  "--runtime", self.runtime, "--video-effort", "medium")
         config = json.loads((self.project / "project.json").read_text())
         self.assertEqual(config["videoRole"]["effort"], "medium")
-
-    def test_script_author_override_keeps_visual_builder_opus(self):
-        # Existing initialized projects may select a script author before writing the script.
-        self.init()
-        self.plan("--script-model", "gpt-6-astra", "--script-effort", "medium")
-        self.cli("build-map", "--project", self.project)
-        config = json.loads((self.project / "project.json").read_text())
-        self.assertEqual(config["scriptRole"], {"model": "gpt-6-astra", "effort": "medium"})
-        self.assertEqual(config["videoRole"], {"model": "claude-opus-5-5", "effort": "high"})
-        def receipt(role, outcome):
-            return {"requested": role, "resolved": role, "outcome": outcome,
-                    "runtimeEvidence": "fixture://host-runtime-record"}
-        runs = {"version": 1, "author": receipt(config["scriptRole"], "complete"),
-                "builders": {"intro": receipt(config["videoRole"], "complete")},
-                "reviewer": receipt({"model": "gpt-6-sol", "effort": "high"}, "passed")}
-        path = self.project / "video-runs.json"
-        path.write_text(json.dumps(runs))
-        def receipts_stage():
-            return json.loads(self.cli("check", "--project", self.project, ok=False).stdout)["stages"]["receipts"]
-        self.assertTrue(receipts_stage().startswith("ready"))
-        runs["builders"]["intro"] = receipt(config["scriptRole"], "complete")
-        path.write_text(json.dumps(runs))
-        self.assertIn("identity mismatch", receipts_stage())
-        runs["builders"]["intro"] = receipt(config["videoRole"], "complete")
-        runs["author"]["requested"] = config["videoRole"]
-        path.write_text(json.dumps(runs))
-        self.assertIn("identity mismatch", receipts_stage())
 
     def test_split_requires_runtime_basename(self):
         self.plan()
