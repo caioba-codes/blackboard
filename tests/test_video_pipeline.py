@@ -287,6 +287,28 @@ class VideoPipelineTest(unittest.TestCase):
         est = self.cli("estimate", "--lesson", lesson)
         self.assertEqual(json.loads(est.stdout)["minutes"], 15)
 
+    def test_length_follows_size_and_complexity(self):
+        spec = importlib.util.spec_from_file_location("video_pipeline", CLI)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        d = self.project.parent
+        lesson = d / "0004-mixed.md"
+        lesson.write_text("## Easy\n\n" + "word " * 1000 + "\n\n## Hard\n\n" + "word " * 1000, encoding="utf-8")
+        cx = d / "complexity.json"
+        cx.write_text(json.dumps({"chapters": {"1": "light", "2": "hard"}}), encoding="utf-8")
+        rows = json.loads(self.cli("estimate", "--lesson", lesson, "--complexity", cx).stdout)["chapters"]
+        self.assertEqual([r["complexity"] for r in rows], ["light", "hard"])
+        self.assertAlmostEqual(rows[1]["minutes"], 3 * rows[0]["minutes"], places=0)
+        proj = d / "mixed"
+        proj.mkdir()
+        (proj / "complexity.json").write_text(cx.read_text(), encoding="utf-8")
+        (proj / "script.json").write_text(json.dumps({"scenes": [{"cues": [{"say": "word " * 7000}]}]}), encoding="utf-8")
+        with self.assertRaises(module.PipelineError) as e:
+            module.pace_ok(lesson, proj)
+        self.assertIn("too slow", str(e.exception))
+        (proj / "script.json").write_text(json.dumps({"scenes": [{"cues": [{"say": "word " * 4200}]}]}), encoding="utf-8")
+        self.assertIn("ready", module.pace_ok(lesson, proj))
+
 
 if __name__ == "__main__":
     unittest.main()

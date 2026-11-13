@@ -34,15 +34,23 @@ Captions are not drawn into the frames. `build-map` writes `captions.json` (each
 
 ## Pacing and practice (Caio, 2026-10-26 and 2026-11-02)
 
-The reference is ECE 2020 lesson 0010 ("How to Ace Your Digital Logic Test"), which Caio called the right length and pace: **20,100 lesson words became 41,883 spoken words (2.08 per lesson word), 4 h 54 min of video (14.6 minutes per 1,000 lesson words) and 83 pause-and-solve gates (about 3.5 minutes per practice item, teaching included)**. Every video keeps that density; its length follows the material:
+Length comes from two things: how much material there is, and how hard each part is (Caio, 2026-11-13: "complex stuff needs more careful explanation"). The pace reference is ECE 2020 lesson 0010 ("How to Ace Your Digital Logic Test"), which Caio called the right pace for its material: **20,100 lesson words became 41,883 spoken words (2.08 per lesson word), 4 h 54 min of video (14.6 minutes per 1,000 lesson words) and 83 pause-and-solve gates**. That density is `standard`. Before writing the script, rate every `##` chapter of the lesson:
 
-| Lesson | Expected length |
-|---|---|
-| A whole test's material (like 0010) | about 4.5–5 h |
-| About a third of a test | about 1.6 h |
-| One homework | about 15–20 min |
+| Rating | Time per lesson word | What it looks like |
+|---|---|---|
+| `light` | half of 0010's | Definitions, recall, reading a value off a table, plugging numbers into one formula, a step the student has already seen done. Say it once, show one example, move on. |
+| `standard` | 0010's | A procedure of a few steps the student must carry out alone: simplify, convert, fill a table, trace a circuit. Every step shown, one worked example, practice. |
+| `hard` | one and a half times 0010's | New notation, a long derivation, several ideas in one problem, or the step where students usually get lost. Slow down: say why each step is legal, show the intermediate values, add a second example, pause more often. |
 
-These are targets, not caps: a lesson with more steps runs longer. Run `python3 "$BB_ROOT/bin/video_pipeline.py" estimate --lesson "$LESSON"` before writing the script: it gives the expected minutes, spoken words and ElevenLabs characters at the 0010 pace. `check` fails its `pace` stage when the script has fewer than two thirds of the reference's spoken words per lesson word (below 1.39), which means steps, values or bridges were skipped; lessons under 300 words are not judged.
+Save the ratings as `$PROJECT/complexity.json`, with a one-line reason for each that is not `standard`:
+
+```json
+{"default": "standard", "chapters": {"1": "light", "4": "hard"}, "why": {"1": "definitions only", "4": "two-step NPV with growing annuity"}}
+```
+
+Chapters count from 1 in the order of the lesson's `##` headings. Then run `python3 "$BB_ROOT/bin/video_pipeline.py" estimate --lesson "$LESSON" --complexity "$PROJECT/complexity.json"`. It prints the minutes, spoken words and ElevenLabs characters for each chapter and in total. Rate by how hard the material is to *understand*, not by how long it is: a long chapter of easy material stays `light`, and a short chapter with one hard idea is `hard`. A one-module exam on mostly familiar material comes out well under the old whole-test figure, and that is correct.
+
+The estimate is a target, not a cap. `check` fails its `pace` stage when the script has fewer than two thirds of the target's spoken words (steps, values or bridges were skipped) or more than one and a half times it (easy material is being padded). Lessons under 300 words are not judged. Without `complexity.json`, every chapter counts as `standard`.
 
 - **Every concept**: say what it is and why it is needed, then build it one visible step at a time. Example for a full adder: what a half adder does and its truth table, why one is not enough, wire the first half adder, trace its outputs, wire the second, trace it, why the OR, the final values.
 - **Define before use**: never put a symbol, gate, wire name or term on screen or in narration before saying what it means, in that scene or an earlier one.
@@ -90,7 +98,7 @@ python3 "$BB_ROOT/bin/lesson_video.py" import --workspace "$WS" --lesson "$ID" -
 python3 "$BB_ROOT/bin/lesson_video.py" status --workspace "$WS" --lesson "$ID"
 ```
 
-`check` verifies schema, source SHA, ordered measured coverage, a pause-and-solve segment for every lesson practice item, the 0010 pace floor, captions in notation, scene modules, supplied runtime receipts, the `RENDERED` success marker, final MP4 audio/video duration, and media freshness against script, timeline, scene, narration, and render inputs. It does not judge pedagogy or prove runtime identity. Rerun `./render.sh` after editing an input, even when the MP4 duration stays the same. The existing importer verifies the installed board schema and media duration. Use `--replace` on import only after reviewing a conflict. The lesson remains accessible without video if this chain cannot finish.
+`check` verifies schema, source SHA, ordered measured coverage, a pause-and-solve segment for every lesson practice item, the pace window from size and complexity, captions in notation, scene modules, supplied runtime receipts, the `RENDERED` success marker, final MP4 audio/video duration, and media freshness against script, timeline, scene, narration, and render inputs. It does not judge pedagogy or prove runtime identity. Rerun `./render.sh` after editing an input, even when the MP4 duration stays the same. The existing importer verifies the installed board schema and media duration. Use `--replace` on import only after reviewing a conflict. The lesson remains accessible without video if this chain cannot finish.
 
 ## Anchor format
 

@@ -24,7 +24,11 @@ VIDEO_EFFORTS = frozenset(("low", "medium", "high"))
 # became 41,883 spoken words, 204,456 narrated characters and 4 h 54 min of video with 83 pause-and-solve gates.
 PACE_REF = {"lesson": "ece2020 0010", "spoken_per_lesson_word": 2.08, "minutes_per_1000_lesson_words": 14.6,
             "chars_per_spoken_word": 4.88}
-PACE_FLOOR = 0.67   # check fails below two thirds of the reference density: the video is rushing the material
+PACE_FLOOR = 0.67   # check fails below two thirds of the target density: the video is rushing the material
+PACE_CEIL = 1.5     # and above one and a half times it: the video is padding easy material
+# Length follows size AND complexity (Caio, 2026-11-13: "complex stuff needs more careful explanation"). Each `##`
+# chapter is rated; 0010's average is `standard`. A light chapter gets half the time per lesson word, a hard one 1.5x.
+COMPLEXITY = {"light": 0.5, "standard": 1.0, "hard": 1.5}
 ACCENTS = {"red": "#9b3a4a", "blue": "#3f6f9b", "green": "#4a8b5f", "amber": "#a8762f", "violet": "#7a5a9b", "teal": "#3d8080"}
 ACCENT_ORDER = ("red", "blue", "green", "amber", "violet", "teal")   # the board's cycle (board.html.tmpl applyAccent)
 EPS = 0.02
@@ -153,26 +157,71 @@ def write_look(lesson, dest):
     return look
 
 
+def chapters(text):
+    """[(heading, words)] for each `##` chapter, in order; words before the first `##` go to an "Opening" part."""
+    body = re.sub(r"<!--.*?-->", "", re.sub(r"\A---\n.*?\n---\n", "", text, flags=re.S), flags=re.S)
+    parts = re.split(r"(?m)^## +(.+)$", body)
+    out = [("Opening", lesson_words(parts[0]))] if lesson_words(parts[0]) else []
+    out += [(parts[i].strip(), lesson_words(parts[i + 1])) for i in range(1, len(parts), 2)]
+    return out
+
+
+def load_complexity(path):
+    """complexity.json: {"default": rating, "chapters": {"<n>": rating}, "why": {"<n>": "..."}}; n counts `##` chapters
+    from 1. A missing file rates every chapter `standard`."""
+    if not path or not Path(path).is_file():
+        return {"default": "standard", "chapters": {}, "rated": False}
+    data = read(Path(path))
+    ratings = [data.get("default", "standard")] + list((data.get("chapters") or {}).values())
+    bad = [r for r in ratings if r not in COMPLEXITY]
+    if bad:
+        raise PipelineError(f"complexity must be one of {', '.join(COMPLEXITY)} (got {bad[0]!r})")
+    return {"default": data.get("default", "standard"), "chapters": {str(k): v for k, v in (data.get("chapters") or {}).items()}, "rated": True}
+
+
+def plan(text, cx):
+    """Per chapter: words, rating, target minutes and spoken words at the 0010 pace times the rating's factor."""
+    rows, n = [], 0
+    for heading, words in chapters(text):
+        if heading != "Opening":
+            n += 1
+        rating = cx["chapters"].get(str(n), cx["default"]) if heading != "Opening" else cx["default"]
+        f = COMPLEXITY[rating]
+        rows.append({"chapter": n, "heading": heading, "words": words, "complexity": rating,
+                     "minutes": round(words * PACE_REF["minutes_per_1000_lesson_words"] * f / 1000, 1),
+                     "spokenWords": round(words * PACE_REF["spoken_per_lesson_word"] * f)})
+    return rows
+
+
 def estimate(args):
     lesson = args.lesson.expanduser().resolve(strict=True)
-    words = lesson_words(lesson.read_text(encoding="utf-8"))
-    minutes = words * PACE_REF["minutes_per_1000_lesson_words"] / 1000
-    spoken = words * PACE_REF["spoken_per_lesson_word"]
-    print(json.dumps({"lessonWords": words, "minutes": round(minutes), "spokenWords": round(spoken),
-                      "elevenLabsCharacters": round(spoken * PACE_REF["chars_per_spoken_word"]),
-                      "reference": PACE_REF["lesson"]}, indent=2))
+    text = lesson.read_text(encoding="utf-8")
+    cx = load_complexity(args.complexity)
+    rows = plan(text, cx)
+    spoken = sum(r["spokenWords"] for r in rows)
+    out = {"lessonWords": lesson_words(text), "minutes": round(sum(r["minutes"] for r in rows)), "spokenWords": spoken,
+           "elevenLabsCharacters": round(spoken * PACE_REF["chars_per_spoken_word"]), "chapters": rows,
+           "reference": PACE_REF["lesson"]}
+    if not cx["rated"]:
+        out["note"] = "every chapter counted as standard; rate each one in complexity.json (VIDEO.md, Pacing)"
+    print(json.dumps(out, indent=2))
 
 
 def pace_ok(lesson, project_dir):
-    """Spoken words per lesson word against the 0010 reference; a short lesson (< 300 words) is not judged."""
-    words = lesson_words(lesson.read_text(encoding="utf-8"))
+    """Spoken words against the target from size and complexity (project's complexity.json, else all standard);
+    a short lesson (< 300 words) is not judged."""
+    text = lesson.read_text(encoding="utf-8")
+    words = lesson_words(text)
+    target = sum(r["spokenWords"] for r in plan(text, load_complexity(project_dir / "complexity.json")))
     script = read(project_dir / "script.json")
     spoken = sum(len(str(c.get("say", "")).split()) for sc in script.get("scenes", []) for c in sc.get("cues", []))
-    ratio, ref = (spoken / words if words else 0), PACE_REF["spoken_per_lesson_word"]
-    if words >= 300 and ratio < ref * PACE_FLOOR:
-        raise PipelineError(f"too fast: {spoken} spoken words for {words} lesson words ({ratio:.2f} per word); "
-                            f"the 0010 reference is {ref} and the floor {ref * PACE_FLOOR:.2f}. Add steps, values and bridges")
-    return f"ready ({ratio:.2f} spoken words per lesson word; reference {ref})"
+    if words >= 300 and target and spoken < target * PACE_FLOOR:
+        raise PipelineError(f"too fast: {spoken} spoken words against a target of {target} for this lesson's size and "
+                            f"complexity (floor {round(target * PACE_FLOOR)}). Add steps, values and bridges")
+    if words >= 300 and target and spoken > target * PACE_CEIL:
+        raise PipelineError(f"too slow: {spoken} spoken words against a target of {target} (ceiling "
+                            f"{round(target * PACE_CEIL)}). Cut repetition on the easy parts, or rate the hard chapters hard")
+    return f"ready ({spoken} spoken words; target {target} from size and complexity)"
 
 
 def look(args):
@@ -602,8 +651,9 @@ def main(argv=None):
     p.add_argument("--captions-burned-in", action="store_true", help="set only after visually confirming rendered captions")
     p = sub.add_parser("check", help="report each stage of project readiness")
     p.add_argument("--project", type=Path, required=True)
-    p = sub.add_parser("estimate", help="expected video length and narration characters at the 0010 pace")
+    p = sub.add_parser("estimate", help="expected video length from the lesson's size and each chapter's complexity")
     p.add_argument("--lesson", type=Path, required=True)
+    p.add_argument("--complexity", type=Path, help="complexity.json rating each ## chapter light, standard or hard")
     p = sub.add_parser("look", help="rewrite look.css from the lesson's board accent and surface")
     p.add_argument("--project", type=Path, required=True)
     args = parser.parse_args(argv)
