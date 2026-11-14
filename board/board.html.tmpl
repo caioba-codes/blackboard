@@ -191,6 +191,22 @@ figure svg ::selection,figure svg::selection{background:transparent;fill:inherit
    It sits outside the lesson's blocks: no rail tick, contents node, search hit, Explain/Definition target or XP. */
 .endcard{margin:72px 0 0;container-type:inline-size;user-select:none;-webkit-user-select:none}
 .endcard[hidden]{display:none}
+/* course route (/api/state sequence): All lessons · Lesson N of T · Next above the lesson, titled Previous / Next at its
+   foot. Navigation only: opening a lesson is never progress, a score or mastery. */
+.lnav{display:flex;align-items:center;flex-wrap:wrap;gap:8px 14px;margin:0 0 16px;font-size:17px;color:var(--dim);user-select:none;-webkit-user-select:none}
+.lnav a{display:inline-flex;align-items:center;min-height:40px;padding:0 15px;border:1px solid var(--rule);border-radius:999px;color:var(--chalk);text-decoration:none;white-space:nowrap}
+.lnav a:hover,.lnav a:focus-visible{border-color:var(--acc);outline:none}
+.lnav .lnnext{border-color:color-mix(in srgb,var(--acc) 70%,var(--rule))}
+.lnav .lnpos{flex:1 1 auto;text-align:center;white-space:nowrap;font-variant-numeric:lining-nums tabular-nums}
+.lnav .lnpos b{color:var(--chalk);font-weight:500}
+.lnpager{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:40px 0 0;padding-top:22px;border-top:1px solid var(--rule);user-select:none;-webkit-user-select:none}
+.lnpager[hidden]{display:none}
+.lnpager a{display:flex;flex-direction:column;gap:2px;min-width:0;padding:12px 16px;border:1px solid var(--rule);border-radius:10px;color:var(--chalk);text-decoration:none}
+.lnpager a:hover,.lnpager a:focus-visible{border-color:var(--acc);outline:none}
+.lnpager span{font-size:15px;color:var(--dim)}
+.lnpager b{font-family:var(--display);font-weight:500;font-size:19px;line-height:1.25;overflow-wrap:anywhere}
+.lnpager .next{grid-column:2;text-align:right}
+@media (max-width:560px){.lnav{gap:8px;font-size:16px}.lnav a{padding:0 12px}.lnpager{grid-template-columns:minmax(0,1fr)}.lnpager .next{grid-column:1}}
 .endcard .ec{position:relative;display:grid;grid-template-columns:minmax(0,11fr) minmax(0,13fr);min-height:360px;border-radius:22px 18px 24px 20px/20px 24px 18px 22px;overflow:hidden;color:#fff;
   background:radial-gradient(90% 70% at 88% 8%,rgba(96,160,255,.28),transparent 62%),radial-gradient(70% 60% at 10% 100%,rgba(10,30,90,.9),transparent 70%),linear-gradient(160deg,#16449a 0%,#0c2a66 42%,#071636 100%);
   box-shadow:0 0 0 1.5px rgba(233,230,223,.20),0 0 0 6px rgba(233,230,223,.035),0 24px 60px -28px rgba(40,100,230,.55)}
@@ -487,6 +503,13 @@ hr{border:0;border-top:1px solid var(--rule);margin:40px 0}
 .card .dots{display:flex;gap:4px}
 .card .dot{width:8px;height:8px;border-radius:50%;background:var(--rule)}
 .card .dot.p{background:var(--acc)}
+.card .ord{margin-right:8px;color:var(--acc);font-variant-numeric:lining-nums tabular-nums}
+/* the folder's study route: its lessons in order, with Continue studying on the last lesson opened in this browser */
+.cont{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 16px;margin:0 0 6px;padding:14px 18px;border:1px solid color-mix(in srgb,var(--acc) 70%,var(--rule));border-radius:12px;background:color-mix(in srgb,var(--acc) 10%,#0f0f0f);color:var(--chalk);text-decoration:none}
+.cont:hover,.cont:focus-visible{background:color-mix(in srgb,var(--acc) 20%,#0f0f0f);outline:none}
+.cont .k{flex:0 0 auto;font:600 13px var(--body);letter-spacing:.11em;text-transform:uppercase}
+.cont b{flex:1 1 240px;min-width:0;font-family:var(--display);font-weight:500;font-size:22px;line-height:1.25}
+.cont .m{flex:0 0 auto;font-size:15px;color:var(--dim);font-variant-numeric:lining-nums tabular-nums}
 .empty{color:var(--dim);font-style:italic}
 
 .interactive{margin:22px 0;padding:20px;border:1px solid #b8aa7140;border-radius:8px;background:#1c211d}
@@ -1509,10 +1532,10 @@ async function md5(s){ // cheap stand-in: server sends hash on reset; between ap
 // and, on append, ask again with from/hash from the last full reset. To keep it simple: after each append we re-request from 0 only when the server says reset.
 
 // ---------- grid page ----------
-function card(l,w,big){
+function card(l,w,big,ord){
   const base='/w/'+w.slug; const src=l.photo?(l.photo.startsWith('http')?l.photo:base+'/assets/'+l.photo.replace(/^assets\//,'')):'';
   const dots=l.scores.slice(-6).map(s=>`<span class="dot${s>=3?' p':''}"></span>`).join('');
-  return `<a class="card${big?'':' mini'}" href="${base}/lessons/${l.id}" data-q="${esc((l.title+' '+l.course+' '+l.exam+' '+l.id).toLowerCase())}" data-ws="${w.slug}"><span class="nt" role="button" tabindex="0" title="Open in a new tab" aria-label="Open in a new tab"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2.5h4.5V7"/><path d="M13.5 2.5 7.5 8.5"/><path d="M12 9.5v3a1 1 0 0 1-1 1H3.5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h3"/></svg></span>${src?`<img class="strip" src="${src}" alt="">`:'<div class="strip"></div>'}<div class="body"><p class="t">${esc(l.title)}</p><div class="m"><span>${l.id}${big?'':' · '+esc(w.name)} · ${l.date}</span><span class="dots">${dots}</span></div></div></a>`;
+  return `<a class="card${big?'':' mini'}" href="${base}/lessons/${l.id}" data-q="${esc((l.title+' '+l.course+' '+l.exam+' '+l.id).toLowerCase())}" data-ws="${w.slug}"><span class="nt" role="button" tabindex="0" title="Open in a new tab" aria-label="Open in a new tab"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2.5h4.5V7"/><path d="M13.5 2.5 7.5 8.5"/><path d="M12 9.5v3a1 1 0 0 1-1 1H3.5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h3"/></svg></span>${src?`<img class="strip" src="${src}" alt="">`:'<div class="strip"></div>'}<div class="body"><p class="t">${ord?`<span class="ord">${ord}</span>`:''}${esc(l.title)}</p><div class="m"><span>${l.id}${big?'':' · '+esc(w.name)} · ${l.date}</span><span class="dots">${dots}</span></div></div></a>`;
 }
 function grid(st){
   document.title='Lessons · Blackboard';
@@ -1522,8 +1545,16 @@ function grid(st){
   if(!total){h+='<p class="empty">Nothing yet. Ask for a lesson in the chat.</p>';main.innerHTML=h;return}
   h+=`<div class="hubbar"><input class="hubq" type="search" placeholder="Search everything in every lesson" autocomplete="off"><div class="chips">${wss.map(w=>`<button class="chip" data-ws="${w.slug}">${esc(w.name)}</button>`).join('')}</div></div>`;
   const all=wss.flatMap(w=>w.lessons.map(l=>({l,w}))).sort((a,b)=>b.l.mtime-a.l.mtime);
+  // this folder's study route first, in order, with Continue studying; its other lessons stay in their own section below
+  const route=mine&&mine.sequence&&Array.isArray(mine.sequence.lessons)?mine.sequence.lessons:[];
+  if(route.length){ const c=contPick(route,lastGet(mine.slug)), l=route[c.i];
+    h+=`<section class="hubsec route" data-sec="route" data-ws="${mine.slug}"><h2>${esc(mine.sequence.title||mine.name)}<span class="sub">in study order · ${route.length}</span><button class="openall" data-ws="${mine.slug}" title="Open every lesson of this route as tabs, in number order">Open all ↗</button></h2>`
+      +`<a class="cont" href="/w/${mine.slug}/lessons/${l.id}"><span class="k">${c.label}</span><b>Lesson ${c.i+1} of ${route.length} · ${esc(l.title||'Lesson '+l.id)}</b>${c.note?`<span class="m">${c.note}</span>`:''}</a>`
+      +`<div class="grid">${route.map((x,i)=>card(x,mine,true,i+1)).join('')}</div></section>`; }
   h+=`<section class="hubsec" data-sec="recent"><h2>Recent</h2><div class="row">${all.slice(0,5).map(x=>card(x.l,x.w,false)).join('')}</div></section>`;
-  if(mine) h+=`<section class="hubsec" data-sec="mine" data-ws="${mine.slug}"><h2>${esc(mine.name)}<span class="sub">this folder · ${mine.count}</span><button class="openall" data-ws="${mine.slug}" title="Open every lesson in this folder as tabs, in number order">Open all ↗</button></h2><div class="grid">${mine.lessons.slice().reverse().map(l=>card(l,mine,true)).join('')}</div></section>`;
+  const routeIds=new Set(route.map(l=>l.id)), rest=mine?mine.lessons.filter(l=>!routeIds.has(l.id)):[];
+  if(mine&&route.length&&rest.length) h+=`<section class="hubsec" data-sec="mine" data-ws="${mine.slug}"><h2>Other lessons in ${esc(mine.name)}<span class="sub">this folder · ${rest.length}</span></h2><div class="grid">${rest.slice().reverse().map(l=>card(l,mine,true)).join('')}</div></section>`;
+  else if(mine&&!route.length) h+=`<section class="hubsec" data-sec="mine" data-ws="${mine.slug}"><h2>${esc(mine.name)}<span class="sub">this folder · ${mine.count}</span><button class="openall" data-ws="${mine.slug}" title="Open every lesson in this folder as tabs, in number order">Open all ↗</button></h2><div class="grid">${mine.lessons.slice().reverse().map(l=>card(l,mine,true)).join('')}</div></section>`;
   const others=wss.filter(w=>w!==mine);
   if(others.length) h+=`<section class="hubsec" data-sec="others"><h2>Other folders on this computer</h2>${others.map(w=>`<div class="course" data-ws="${w.slug}"><h3><a href="/w/${w.slug}/lessons">${esc(w.name)}</a><span class="sub">${w.count} lesson${w.count===1?'':'s'} · last ${w.last}</span><button class="openall" data-ws="${w.slug}" title="Open every lesson in this folder as tabs, in number order">Open all ↗</button></h3><div class="row">${w.lessons.slice().reverse().map(l=>card(l,w,false)).join('')}</div></div>`).join('')}</section>`;
   main.innerHTML=h;
@@ -2214,10 +2245,56 @@ const ENDCARD_QUOTES=[
   "Dyuwaaah… Hah. Ning nung ning nung.. Sheah!"
 ];
 function endcardPick(key){ let h=0x811c9dc5; for(const c of new TextEncoder().encode(key)){ h^=c; h=Math.imul(h,0x01000193)>>>0; } return ENDCARD_QUOTES[h%ENDCARD_QUOTES.length]; }
+// ---------- course route: this lesson's place in the folder's study order (/api/state `sequence`) ----------
+// `prev:` in a lesson is prerequisite metadata, never the route. A lesson outside the route (an older one) keeps only
+// All lessons. Opening a lesson or watching its video is navigation, never progress, a score or mastery.
+function seqNav(seq,id,slug){
+  const ls=seq&&Array.isArray(seq.lessons)?seq.lessons.filter(l=>l&&l.id):[], base=slug?'/w/'+slug:'';
+  const link=l=>l?{id:l.id,title:l.title||'Lesson '+l.id,href:`${base}/lessons/${l.id}`}:null;
+  const i=ls.findIndex(l=>l.id===id);
+  return {all:base+'/lessons',i,total:ls.length,prev:i>0?link(ls[i-1]):null,next:i>=0?link(ls[i+1]):null,last:i>=0&&i===ls.length-1};
+}
+// the last route lesson opened in this browser, per folder: {id, at, vt (video seconds), vend (video played to its end)}
+const LAST_KEY=slug=>'bb-last:v1:'+slug;
+function lastGet(slug){ try{ const p=JSON.parse(localStorage.getItem(LAST_KEY(slug))||'null'); return p&&typeof p.id==='string'?p:null; }catch(_){ return null; } }
+function lastOpen(slug,id){ try{ const o=lastGet(slug), p=o&&o.id===id?o:{id}; p.at=Date.now(); localStorage.setItem(LAST_KEY(slug),JSON.stringify(p)); }catch(_){} }
+// Continue studying: the last lesson opened (with where its video was), else the first lesson of the route
+function contPick(route,p){
+  const i=p?route.findIndex(l=>l&&l.id===p.id):-1;
+  if(i<0)return {i:0,label:'Start studying',note:''};
+  const t=typeof p.vt==='number'&&isFinite(p.vt)?Math.floor(p.vt):0;
+  return {i,label:'Continue studying',note:p.vend?'Video watched to the end':t>5?`Video at ${Math.floor(t/60)}:${String(t%60).padStart(2,'0')}`:''};
+}
+function navFor(){ return MODE==='grid'||!lessonId||!headerDone||String(fmCache.plain||'').toLowerCase()==='true'?null:seqNav(state.sequence,lessonId,WS||state.slug||''); }
+// the route's markup: the compact top row (its Next names the lesson for screen readers) and the titled pager that
+// closes the page after the end card
+function navHtml(n){
+  const top=`<a class="lnall" href="${n.all}">‹ All lessons</a>${n.i>=0?`<span class="lnpos">Lesson <b>${n.i+1}</b> of ${n.total}</span>`:''}${n.next?`<a class="lnnext" href="${n.next.href}" title="${esc(n.next.title)}" aria-label="Next lesson: ${esc(n.next.title)}">Next ›</a>`:''}`;
+  const bot=n.i<0?'':(n.prev?`<a class="prev" href="${n.prev.href}" rel="prev"><span>‹ Previous</span><b>${esc(n.prev.title)}</b></a>`:'')
+    +(n.next?`<a class="next" href="${n.next.href}" rel="next"><span>Next ›</span><b>${esc(n.next.title)}</b></a>`:`<a class="next" href="${n.all}"><span>Last lesson of the route</span><b>Back to course</b></a>`);
+  return {top,bot};
+}
+let navTop=null, navBot=null, navSig='', navSeen='';
+function lessonNav(){
+  const n=navFor();
+  if(!n){ if(navTop)navTop.remove(); if(navBot)navBot.remove(); navTop=navBot=null; navSig=''; return; }
+  const sig=JSON.stringify(n);
+  if(sig!==navSig){
+    navSig=sig; if(navBot)navBot.remove(); navBot=null;
+    const h=navHtml(n);
+    navTop=navTop||document.createElement('nav'); navTop.className='lnav'; navTop.setAttribute('aria-label','Course');
+    navTop.innerHTML=h.top;
+    if(h.bot){ navBot=document.createElement('nav'); navBot.className='lnpager'; navBot.setAttribute('aria-label','Lesson navigation'); navBot.innerHTML=h.bot; }
+  }
+  if(main.firstElementChild!==navTop)main.prepend(navTop);
+  // the very bottom of the page: right after the end card (the card's own place stays endCard's)
+  if(navBot){ navBot.hidden=!!streaming; const at=endEl&&endEl.parentElement===main?endEl:null; if(at?at.nextElementSibling!==navBot:main.lastElementChild!==navBot){ if(at)at.after(navBot); else main.appendChild(navBot); } }
+  const slug=WS||state.slug||''; if(n.i>=0&&slug&&navSeen!==lessonId){ navSeen=lessonId; lastOpen(slug,lessonId); }
+}
 let endEl=null, endStop=null;
 function endCard(){
   const want=MODE!=='grid'&&lessonId&&headerDone&&String(fmCache.plain||'').toLowerCase()!=='true';
-  if(!want){ if(endEl)endEl.remove(); return; }
+  if(!want){ if(endEl)endEl.remove(); lessonNav(); return; }
   const ec=state.end_card||{}, key=(ec.key||WS||'')+'/'+lessonId;
   if(!endEl||endEl.dataset.key!==key){
     if(endEl)endEl.remove();
@@ -2227,7 +2304,9 @@ function endCard(){
     endEl.querySelector('.ectimer').onclick=e=>endcardTimer(e.currentTarget);
   }
   endEl.hidden=!!streaming;
-  if(main.lastElementChild!==endEl)main.appendChild(endEl);
+  const tail=main.lastElementChild;   // the card closes the lesson; only the route pager may follow it
+  if(tail!==endEl&&!(navBot&&tail===navBot&&navBot.previousElementSibling===endEl))main.appendChild(endEl);
+  lessonNav();
 }
 // The color timer: an 8-bit "ning nung ning nung" that speeds up like Ultraman running out of time. Only on a click,
 // same square-wave voice and the same m mute as the other cues; the light blinks red either way.
@@ -2566,8 +2645,9 @@ async function hubFlags(st){
   sec.innerHTML=`<h2>All flagged<span class="sub">${all.length}</span></h2><ol class="fllist">${rows}</ol>`;
   const recent=main.querySelector('.hubsec[data-sec="recent"]'); if(recent)recent.after(sec); else main.appendChild(sec);
 }
-// Back button: the page you came from on this board (lesson -> lesson, hub -> lesson), else the all-lessons hub.
-document.getElementById('toplessons').addEventListener('click',e=>{ if(e.metaKey||e.ctrlKey||e.shiftKey||e.button)return; let r=null; try{ r=document.referrer&&new URL(document.referrer); }catch(_){} if(r&&r.origin===location.origin&&r.href!==location.href&&history.length>1){ e.preventDefault(); history.back(); } });
+// Back button. On a lesson it is All lessons: always this folder's hub (boot sets the href), never history, so Next and
+// Previous never make it walk back through the route. On the hub: the page you came from on this board, else the hub.
+document.getElementById('toplessons').addEventListener('click',e=>{ if(MODE!=='grid')return; if(e.metaKey||e.ctrlKey||e.shiftKey||e.button)return; let r=null; try{ r=document.referrer&&new URL(document.referrer); }catch(_){} if(r&&r.origin===location.origin&&r.href!==location.href&&history.length>1){ e.preventDefault(); history.back(); } });
 // Top bar search: every lesson in every folder, loaded on first focus. Enter opens the highlighted result; "/" focuses.
 const topQ=$('#topq'), topRes=$('#topresults'); let topAll=null, topSel=0, topHits=[];
 async function topLoad(){ if(topAll)return; try{ const st=await fetch('/api/state?x=1&all=1').then(r=>r.json());
@@ -2634,6 +2714,7 @@ async function boot(){
   state=await fetch('/api/state?x=1'+WSQ+(MODE==='grid'?'&all=1':'')).then(r=>r.json());
   streaming=state.streaming;
   if(MODE==='grid'){grid(state);return}
+  { const tl=document.getElementById('toplessons'), slug=WS||state.slug; if(tl){ if(slug)tl.href=`/w/${slug}/lessons`; tl.title='All lessons'; tl.setAttribute('aria-label','All lessons'); } }
   if(!lessonId)lessonId=state.current;
   if(!lessonId){main.innerHTML='<p class="empty">No lesson yet. Ask for one in the chat.</p>'}
   else await loadLesson();
@@ -2699,7 +2780,7 @@ async function loadLessonWith(r){
   else if(first&&r.reset&&location.hash&&location.hash.startsWith('#s-')&&tocItems.some(x=>x.id===location.hash.slice(1))){ const h=location.hash.slice(1); setTimeout(()=>tocGo(h,false),80); }
   else if(first&&r.reset&&location.hash){ const h=location.hash.slice(1); const t=main.querySelector(`.exp[data-id="${h}"]`)||document.getElementById(h); if(t){ const d=t.closest('details'); if(d) d.open=true; const f=t.closest('.fold'); if(f){f.classList.remove('closed');f.querySelector('.exptoggle')?.setAttribute('aria-expanded','true');} setTimeout(()=>t.scrollIntoView({block:'center'}),80); } }
   // lesson video (board/lesson-video.js): mounts only when this lesson has a video manifest; re-marks blocks after every render
-  if(window.LessonVideo)LessonVideo.refresh({lessonId,ws:WS,main,first,reset:!!r.reset,streaming,rvGo,rvGroups,src:body});
+  if(window.LessonVideo)LessonVideo.refresh({lessonId,ws:WS,slug:WS||state.slug||'',nav:navFor(),main,first,reset:!!r.reset,streaming,rvGo,rvGroups,src:body});
 }
 // hash: the server hashes the first N bytes with md5; the client cannot md5 cheaply, so we ask the server for it on every reset
 // and keep offset/hash pairs consistent by only ever appending. loadLesson (initial) delegates to loadLessonWith.

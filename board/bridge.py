@@ -8,7 +8,7 @@ Routes
   GET  /<prefix>[/N]     short link: unique slug prefix -> /w/<slug>/lessons[/000N] (e.g. /m/3)
   GET  /w/<slug>/        board page pinned to one workspace: follows that workspace's current lesson
   GET  /w/<slug>/lessons/NNNN, /w/<slug>/assets/<file>, and every /api route accepts ?ws=<slug>
-  GET  /api/state        {ws, slug, current, page_version, lessons:[...], brainstorm:{lesson,lines,rev}, workspaces:[{slug,name,path,current,count,last,lessons}]}
+  GET  /api/state        {ws, slug, current, page_version, lessons:[...], sequence:{title,total,lessons:[...]}, brainstorm:{lesson,lines,rev}, workspaces:[{slug,name,path,current,count,last,lessons,sequence}]}
   GET  /api/lesson?id=NNNN&from=N&hash=H   {text, offset, reset}  (text = new bytes cut at last blank line)
   GET  /api/video-status?id=NNNN   live progress of the lesson's video while it is made (bin/video_status.py status)
   GET  /events?id=NNNN   SSE: `change` when the lesson file or state changes
@@ -479,6 +479,29 @@ def lessons_meta(wsp=None):
     return out
 
 
+def lesson_sequence(wsp, lessons=None):
+    """Ordered study route from workspace sequence.json; other lessons stay in the hub."""
+    lessons = lessons if lessons is not None else lessons_meta(wsp)
+    by_id = {lesson["id"]: lesson for lesson in lessons}
+    try:
+        with open(os.path.join(wsp, "sequence.json")) as f:
+            config = json.load(f)
+    except (OSError, ValueError):
+        config = None
+    selected = []
+    if (isinstance(config, dict) and type(config.get("version")) is int and config["version"] == 1
+            and isinstance(config.get("lessons"), list)):
+        seen = set()
+        for lid in config["lessons"]:
+            if isinstance(lid, str) and lid in by_id and lid not in seen:
+                selected.append(by_id[lid])
+                seen.add(lid)
+    title = config.get("title", "") if selected and isinstance(config.get("title"), str) else ""
+    if not selected:
+        selected = lessons
+    return {"title": title[:200], "total": len(selected), "lessons": selected}
+
+
 def strip_why(t):
     """\\why{math}{rule} (or \\why[name]{math}{rule}) -> math: the hint is board-only, every tool reads the plain math."""
     out, i = "", 0
@@ -586,7 +609,8 @@ def hub():
             continue
         name = next((l["course"] for l in reversed(lessons) if l.get("course")), "") or slug
         out.append({"slug": slug, "name": name, "path": w["path"], "current": current(slug), "count": len(lessons),
-                    "last": max(l["date"] for l in lessons), "lessons": lessons})
+                    "last": max(l["date"] for l in lessons), "lessons": lessons,
+                    "sequence": lesson_sequence(w["path"], lessons)})
     out.sort(key=lambda w: max(l["mtime"] for l in w["lessons"]), reverse=True)
     return out
 
@@ -1491,12 +1515,13 @@ class H(BaseHTTPRequestHandler):
                 return self.send(200, PENDING)
         if path == "/api/state":
             w = (st.get("workspaces") or {}).get(slug, {}) if slug else st
+            lessons = lessons_meta(wsp)
             page_files = (TMPL, os.path.join(BOARD, "fig.js"), os.path.join(BOARD, "lesson-video.js"),
                           os.path.join(BOARD, "lesson-video.css"))
             body = {"ws": wsp, "slug": slug or slug_of(wsp), "current": current(slug), "agent": w.get("agent", st.get("agent", "claude")),
                     "page_version": int(max(os.path.getmtime(p) for p in page_files if os.path.isfile(p))),
                     "layout": w.get("layout", st.get("layout", "tab")), "streaming": bool(w.get("streaming", st.get("streaming"))),
-                    "lessons": lessons_meta(wsp), "brainstorm": w.get("brainstorm"),
+                    "lessons": lessons, "sequence": lesson_sequence(wsp, lessons), "brainstorm": w.get("brainstorm"),
                     "end_card": {"image": bool(end_card_path()), "key": slug_of(wsp) if wsp else ""}}
             if qs.get("all"):
                 body["workspaces"] = hub()

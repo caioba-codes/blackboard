@@ -70,6 +70,9 @@ Files under `$WS` (formats linked):
 - `reference/chat/NNNN.json` — the board chat's history for lesson NNNN (see Chat). New chat renames it to `NNNN-<time>.json`.
 - `learning-records/NNNN-slug.md` and `quiz-log.jsonl`. [LEARNING-RECORD-FORMAT.md](./LEARNING-RECORD-FORMAT.md)
 - `NOTES.md` — the user's preferences about how they want to be taught.
+- `sequence.json` (optional) — an ordered study route for the board's lesson navigation. It lists lesson IDs and a route title; older lessons remain in All lessons. See [board/README.md](./board/README.md#layout-and-navigation) for the format. `prev:` remains prerequisite metadata, not sequence order.
+
+For every multi-lesson course and public lesson export, keep the study route visible: show All lessons, position and Next near the top, titled previous/next links at the bottom, and a Continue link on the overview using the last opened lesson and saved video time. At video end offer Practice, Next lesson (or Overview on the last lesson), and Replay. The links work in Read, Watch and Both layouts, on mobile and by keyboard. Navigation is always a choice: never auto-advance, require quiz completion, or claim a lesson is completed from reading/video position. Keep the route in workspace data rather than hardcoding course-specific IDs in the skill; verify first, middle and final lessons, resume, and narrow-screen behavior before delivery.
 
 Course mode vs self-study: a course is named in the command, or `MISSION.md` names one → course mode. Otherwise self-study. If both fit (no course named, a course workspace exists, and the topic is in its scope) ask once: "For <course> or on your own?"
 
