@@ -2875,14 +2875,30 @@ function chatImgsPaint(){
 $('#chatimgs').addEventListener('click',e=>{ const b=e.target.closest('button[data-i]'); if(!b)return; chat.imgs.splice(+b.dataset.i,1); chatImgsPaint(); chatSync(); chatQ.focus(); });
 $('#chatadd').onclick=()=>$('#chatfile').click();
 $('#chatfile').addEventListener('change',e=>{ chatAddImages(e.target.files).then(()=>{ e.target.value=''; chatQ.focus(); }); });
-chatQ.addEventListener('paste',e=>{ const fs=[...(e.clipboardData?.files||[])]; if(fs.some(f=>CHAT_IMG_OK.includes(f.type))){ e.preventDefault(); chatAddImages(fs); } });
+// Paste and drop work anywhere on the page, not only in the message box: in full screen the video fills most of the
+// screen, focus is usually on the player, and a file dropped outside the chat made the browser open it and leave the
+// lesson. The images go to the chat, which opens if it was closed.
+const chatImgFiles=dt=>[...(dt?.files||[])].filter(f=>CHAT_IMG_OK.includes(f.type));
+function chatTakeImages(files){
+  if(!chatOk())return false;
+  if(!chat.open)chatSetOpen(true,false);
+  chatAddImages(files).then(()=>chatQ.focus());
+  return true;
+}
+document.addEventListener('paste',e=>{
+  const fs=chatImgFiles(e.clipboardData); if(!fs.length)return;
+  const t=e.target instanceof Element?e.target:null;
+  if(t&&t!==chatQ&&t.closest('input,textarea,select,[contenteditable]:not([contenteditable="false"])'))return;
+  if(chatTakeImages(fs))e.preventDefault();
+});
 (function chatDrop(){
   const box=$('#chat'); let depth=0;
   const has=e=>[...(e.dataTransfer?.types||[])].includes('Files');
-  box.addEventListener('dragenter',e=>{ if(!has(e))return; e.preventDefault(); depth++; box.classList.add('cdrop'); });
-  box.addEventListener('dragover',e=>{ if(has(e))e.preventDefault(); });
-  box.addEventListener('dragleave',()=>{ if(--depth<=0){ depth=0; box.classList.remove('cdrop'); } });
-  box.addEventListener('drop',e=>{ if(!has(e))return; e.preventDefault(); depth=0; box.classList.remove('cdrop'); chatAddImages(e.dataTransfer.files).then(()=>chatQ.focus()); });
+  const off=()=>{ depth=0; box.classList.remove('cdrop'); };
+  document.addEventListener('dragenter',e=>{ if(!has(e))return; e.preventDefault(); if(depth++===0)box.classList.add('cdrop'); });
+  document.addEventListener('dragover',e=>{ if(!has(e))return; e.preventDefault(); e.dataTransfer.dropEffect='copy'; });
+  document.addEventListener('dragleave',e=>{ if(!has(e))return; if(--depth<=0)off(); });
+  document.addEventListener('drop',e=>{ if(!has(e))return; e.preventDefault(); off(); chatTakeImages(e.dataTransfer.files); });
 })();
 chatQ.addEventListener('input',chatGrow);
 chatQ.addEventListener('keydown',e=>{ if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){ e.preventDefault(); chatSendMsg(chatQ.value); } });
