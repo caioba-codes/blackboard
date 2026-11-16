@@ -259,6 +259,17 @@ video.video{width:100%;border-radius:3px;background:#000;margin:12px 0;display:b
 .vb{display:inline-block;margin-left:10px;width:21px;height:21px;line-height:21px;text-align:center;border-radius:50%;color:#0c0c0c;font-size:13px;font-weight:700;vertical-align:-4px}
 .btn.primary{border-color:var(--chalk)}
 .btn:hover{border-color:var(--dim)}
+/* Given: what the problem itself states (its text, data tables, figures), quoted so it never reads as our work.
+   A quiet card with a quote rule and a small label; inside a solution it marks what was copied, not calculated. */
+.given{margin:14px 0 22px;padding:10px 20px 6px 18px;border-left:3px solid color-mix(in srgb,var(--dim) 70%,transparent);border-radius:2px 8px 8px 2px;background:color-mix(in srgb,var(--chalk) 4%,transparent);color:color-mix(in srgb,var(--chalk) 86%,var(--dim))}
+.given .givhead{display:flex;align-items:center;gap:7px;margin:0 0 6px;font:600 11.5px/1.4 var(--body);letter-spacing:.09em;text-transform:uppercase;color:var(--dim)}
+.given .givhead svg{width:13px;height:13px;flex:0 0 13px}
+.given>:last-child{margin-bottom:8px}
+.given .tablewrap{margin:8px 0 12px}
+/* a table column copied from the problem (header written ">S1"): muted, with a "given" tint, so the calculated columns stand out */
+.tablewrap th.gv,.tablewrap td.gv{color:var(--dim);background:color-mix(in srgb,var(--chalk) 4%,transparent)}
+.tablewrap table:has(th.gv) th{vertical-align:top}
+.tablewrap th.gv::after{content:"given";display:block;font:500 10px/1.3 var(--body);letter-spacing:.08em;text-transform:uppercase;opacity:.75}
 /* "On the test" callout: amber tint, thin amber border with a left accent, line-art warning icon, small-caps label */
 :root{--amber:#d4a24a}
 .callout{width:auto;max-width:none;box-sizing:border-box;margin:14px 0 22px;padding:12px 22px 14px 20px;border:1px solid color-mix(in srgb,var(--amber) 30%,transparent);border-left:3px solid var(--amber);border-radius:4px 8px 8px 4px;background:color-mix(in srgb,var(--amber) 7%,#0d0d0c)}
@@ -1010,7 +1021,19 @@ function md(src){
   src=src.replace(/==(?=[^\s=`])([^=\n`]+?)(?<=[^\s=`])==/g,'$1'); // legacy Explain anchors (==words==) are plain text; `a == 0 || b == 0` and code spans are left alone
   const {src:s2,slots}=mathify(src);
   const html=unslot(marked.parse(s2,{mangle:false,headerIds:false}),slots);
-  return provLabels(html.replace(/<table>/g,'<div class="tablewrap"><table>').replace(/<\/table>/g,'</table></div>'));
+  return givenCols(provLabels(html.replace(/<table>/g,'<div class="tablewrap"><table>').replace(/<\/table>/g,'</table></div>')));
+}
+// A table header written ">S1" marks a column copied from the problem (TEMPLATES.md, Given vs calculated): the ">" is
+// dropped and every cell of that column gets class gv, so what the problem gave reads apart from what was calculated.
+function givenCols(html){
+  if(!/<th[^>]*>\s*&gt;/.test(html))return html;
+  const t=document.createElement('template'); t.innerHTML=html;
+  t.content.querySelectorAll('table').forEach(tb=>{
+    const ths=[...tb.querySelectorAll('thead th')], cols=new Set();
+    ths.forEach((th,i)=>{ const f=th.firstChild; if(f&&f.nodeType===3&&/^\s*>/.test(f.textContent)){ f.textContent=f.textContent.replace(/^\s*>\s*/,''); cols.add(i); th.classList.add('gv'); } });
+    if(cols.size)tb.querySelectorAll('tbody tr').forEach(tr=>[...tr.children].forEach((td,i)=>{ if(cols.has(i))td.classList.add('gv'); }));
+  });
+  return t.innerHTML;
 }
 // Problem labels (TEMPLATES.md, Official problems): a link to `src:<file>#page=N` opens that source in the viewer at the
 // page; "Official · …" and "*Written by Claude*" on their own line show as a small muted label above the problem.
@@ -1161,6 +1184,8 @@ function container(raw){
     case 'group': return `<section class="sheetcard"><h4 class="sheetlbl">${mdInline(arg)}</h4>${segments(inner,0).map(sg=>/^::: /.test(sg.raw)?container(sg.raw):md(sg.raw)).join('')}</section>`;
     case 'big': case 'key': return `<div class="sz ${kind==='big'?'sz1':'sz2'}">${segments(inner,0).map(sg=>/^::: /.test(sg.raw)?container(sg.raw):md(sg.raw)).join('')}</div>`;
     case 'callout': return calloutHtml(inner);
+    // what the problem gives, quoted: its text, data tables and figures, before the work and inside a solution
+    case 'given': return `<blockquote class="given"><div class="givhead"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M3 9.5C3 6.6 4.6 4.6 7 4v1.6C5.7 6.1 5 7 5 8h2v4H3zm6 0C9 6.6 10.6 4.6 13 4v1.6c-1.3.5-2 1.4-2 2.4h2v4H9z"/></svg><span>From the problem</span></div>${segments(inner,0).map(sg=>/^::: /.test(sg.raw)?container(sg.raw):md(sg.raw)).join('')}</blockquote>`;
     default: return `<div class="${kind}">${md(inner)}</div>`;
   }
 }
