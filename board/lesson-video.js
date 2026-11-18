@@ -154,7 +154,7 @@ function mount(m){
   const saved=load();
   S.rate=SPEEDS.includes(saved.rate)?saved.rate:1; S.loop=!!saved.loop;
   S.pendingT=num(saved.t)?clamp(saved.t,0,Math.max(0,S.dur-.5)):0; S.prevT=S.pendingT;
-  build(); S.video.muted=!!saved.muted;
+  build(); S.video.muted=false;
   root.classList.add('lv-on');
   wire();
   setMode(['read','watch','both'].includes(saved.mode)?saved.mode:'read',{init:true});
