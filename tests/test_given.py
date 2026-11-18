@@ -66,6 +66,5 @@ class Given(unittest.TestCase):
             lint = subprocess.run([sys.executable, str(HERE.parent / "bin/lint.py"), str(lesson)], capture_output=True, text=True)
             self.assertNotIn("given block", lint.stderr)
 
-
 if __name__ == "__main__":
     unittest.main()

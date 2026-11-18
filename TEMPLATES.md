@@ -83,6 +83,15 @@ These rules come from research on why AI text is hard for people to read (Clark,
   :::
   ```
 
+### Simplest to understand wins (hard rule, Caio 2026-11-18)
+
+This applies to every question, in every subject. Of all the ways to explain a step, choose the one that a student understands with the least decoding, even when it is longer: more steps, more rows, more arrows. Never make an explanation more abstract than the material forces.
+
+- Before writing a step, ask: does the student have to translate this back into something simpler to follow it? If yes, write the simpler thing instead.
+- Prefer what the lesson has been using over a new equivalent form, actual values over symbols that stand for them, and listing the cases over compressing them into a formula or a law. Do not reach for a clever shortcut, a merged expression or a general identity just because it is shorter.
+- Use the abstract form only when the question asks for it (for example "give the simplified expression"), and then build it from the concrete version already shown.
+- Example: on a state diagram with inputs Left and Up, writing the bit patterns on the arcs (`10`; `00, 01, 11`) is easier to follow than `Left·Up'` and its De Morgan complement, because the student would otherwise have to decode each expression back into those values. The same reasoning applies to any kind of question, not only state diagrams.
+
 ### Sequence meaning before use
 
 - **Top to bottom, hard rule.** The student reads once, from the top. Never use a term, symbol or abbreviation before the paragraph that explains it. When one shows up early, move its explanation up to before that first use. Never leave a forward pointer ("see below", "more on this later"). Write each term in **bold** at the place that explains it, so `bin/prose_lint.py` can see where it is explained and flag any earlier use.
