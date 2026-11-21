@@ -62,10 +62,68 @@ function usable(m){
 function refresh(c){
   if(!c||!c.main||!c.lessonId)return;
   ctx=c;
-  if(!probe)probe=fetchManifest().then(m=>{ if(usable(m))mount(m); else progress(); });
+  if(!probe)probe=fetchManifest().then(m=>{ CH.m=m; if(usable(m))mount(m); else progress(); });
   // a rebuilt lesson may no longer match the video: ask again whether the map still holds
   else if(S&&c.reset&&!c.first)fetchManifest().then(m=>{ if(S)setSync(!!(m&&m.available&&m.mappingValid)); });
-  probe.then(()=>{ if(S)decorate(); else if(P&&P.el)placeCard(P.el); });
+  probe.then(()=>{ if(S)decorate(); else if(P&&P.el)placeCard(P.el); chapterRows(); });
+}
+
+// ---------- chapter videos ----------
+// A lesson video made chapter by chapter arrives as one playlist manifest: `parts` (one file per ready chapter, with
+// its offset on the playlist's clock) and `chapters` (ready, stale or missing). Read mode puts a row under each
+// chapter's heading: "Play this chapter's video" when it is ready, else the chapter's own progress while it is made.
+const CH={m:null,st:{},timer:0,ready:new Set()};
+function chapterHeading(n){
+  // chapter n's heading is the lesson's n-th `##` (bin/lesson_chapters.py); chapter 1 may have none
+  const hs=[...ctx.main.querySelectorAll(':scope > .blk > h2')];
+  return hs[n-1]?hs[n-1].closest('.blk'):null;
+}
+function chapterRows(){
+  const m=CH.m; if(!m||!Array.isArray(m.chapters)||!ctx||!ctx.main)return;
+  for(const c of m.chapters){
+    const blk=chapterHeading(c.chapter); if(!blk)continue;
+    let row=blk.nextElementSibling&&blk.nextElementSibling.classList.contains('lv-chrow')?blk.nextElementSibling:null;
+    const part=(m.parts||[]).find(p=>p.chapter===c.chapter);
+    const st=CH.st[c.chapter];
+    let html='';
+    if(part&&S)html=`<button type="button" class="lv-chplay" data-off="${part.offset}">${I.play}<span>Play this chapter's video</span><span class="lv-chd">${fmt(part.duration)}</span></button>`;
+    else if(CH.ready.has(c.chapter))html=`<span class="lv-chst">Video ready · reload the page to play it</span>`;
+    else if(st&&st.active){ const t=progressText(st), pct=clamp(num(st.percent)?st.percent:0,0,100);
+      html=`<span class="lv-chst"><b>Video being made</b> · ${Math.floor(pct)}% · ${esc(t.line)}</span><span class="lv-chmeta${st.stalled?' warn':''}">${esc(t.meta)}</span><span class="lv-chbar"><i style="width:${pct}%"></i></span>`; }
+    if(!html){ if(row)row.remove(); continue; }
+    if(!row){ row=document.createElement('div'); row.className='lv-chrow'; row.dataset.ch=c.chapter; blk.after(row); }
+    if(row.innerHTML!==html)row.innerHTML=html;
+    const b=row.querySelector('.lv-chplay'); if(b)b.onclick=()=>{ if(!S)return; attach(); setMode('watch'); seek(+b.dataset.off,'nav'); play(); };
+  }
+  pollChapters();
+}
+function chapterStatusUrl(n){ return statusUrl()+`&chapter=${n}`; }
+function pollChapters(){
+  const m=CH.m; if(CH.timer||!m||!Array.isArray(m.chapters))return;
+  const todo=m.chapters.filter(c=>c.state!=='ready'&&!CH.ready.has(c.chapter));
+  if(!todo.length)return;
+  CH.timer=setTimeout(()=>{ CH.timer=0;
+    if(document.hidden)return pollChapters();
+    Promise.all(todo.map(c=>fetch(chapterStatusUrl(c.chapter),{cache:'no-store'}).then(r=>r.ok?r.json():null).catch(()=>null).then(d=>{ if(d){ CH.st[c.chapter]=d; if(d.installed)CH.ready.add(c.chapter); } })))
+      .then(()=>{ if(!S&&[...CH.ready].length)fetchManifest().then(m2=>{ CH.m=m2; if(usable(m2)&&!S){ mount(m2); decorate(); } chapterRows(); }); else chapterRows(); });
+  },Object.keys(CH.st).length?POLL:0);
+}
+// The player's one <video> plays the parts in turn: currentTime and duration are the playlist's, a seek loads the
+// part that holds that time, and the end of a part goes straight on to the next. No file is ever joined.
+function playlist(v,parts){
+  const D=k=>Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype,k), CT=D('currentTime'), SRC=D('src'), BUF=D('buffered');
+  const total=parts.reduce((a,p)=>Math.max(a,p.offset+p.duration),0);
+  let k=0, want=null, loaded=false, first=true;
+  const at=t=>{ let i=0; while(i<parts.length-1&&parts[i+1].offset<=t+1e-3)i++; return i; };
+  const load=(i,t,go)=>{ k=i; want={t:Math.max(0,t-parts[i].offset),go}; loaded=true; SRC.set.call(v,parts[i].url); };
+  Object.defineProperty(v,'currentTime',{configurable:true,get(){ return parts[k].offset+CT.get.call(v); },
+    set(t){ const i=at(t); if(!loaded||i!==k)load(i,t,loaded&&!v.paused); else CT.set.call(v,Math.max(0,t-parts[k].offset)); }});
+  Object.defineProperty(v,'duration',{configurable:true,get(){ return total; }});
+  Object.defineProperty(v,'src',{configurable:true,get(){ return SRC.get.call(v); },set(){ if(!loaded)load(0,0,false); }});
+  Object.defineProperty(v,'buffered',{configurable:true,get(){ const b=BUF.get.call(v), o=parts[k].offset; return {length:b.length,start:i=>o+b.start(i),end:i=>o+b.end(i)}; }});
+  // registered before the player's own listeners: a part switch is not a new video for them
+  v.addEventListener('loadedmetadata',e=>{ if(!want)return; const w=want; want=null; CT.set.call(v,w.t); if(first){ first=false; return; } e.stopImmediatePropagation(); if(w.go)v.play().catch(()=>{}); });
+  v.addEventListener('ended',e=>{ if(k<parts.length-1){ e.stopImmediatePropagation(); load(k+1,parts[k+1].offset,true); } });
 }
 
 // ---------- while the video is being made: a progress card where the video will go ----------
@@ -169,7 +227,7 @@ function usableCaps(d){
   return cues.length?cues:null;
 }
 function loadCaptions(){
-  return fetch(capsUrl(S.m.videoUrl),{cache:'no-store'}).then(r=>r.ok?r.json():null).catch(()=>null).then(d=>{
+  return fetch(S.m.captionsUrl||capsUrl(S.m.videoUrl),{cache:'no-store'}).then(r=>r.ok?r.json():null).catch(()=>null).then(d=>{
     const cues=usableCaps(d); if(!S||!cues)return;
     S.caps=cues; S.barBurned=d.progressBarBurnedIn===true;
     let on=null; try{ on=localStorage.getItem(CC_KEY(S.m.captionsBurnedIn)); }catch(_){}
@@ -276,6 +334,7 @@ function build(){
 <div class="lv-sr lv-live" aria-live="polite"></div>`;
   document.body.insertBefore(p,ctx.main);
   const q=s=>p.querySelector(s);
+  if(Array.isArray(S.m.parts)&&S.m.parts.length)playlist(q('video'),S.m.parts);
   Object.assign(S,{panel:p,video:q('video'),stage:q('.lv-stage'),big:q('.lv-big'),spin:q('.lv-spin'),gateEl:q('.lv-gate'),errEl:q('.lv-err'),endEl:q('.lv-end'),
     bar:q('.lv-bar'),range:q('.lv-range'),tip:q('.lv-tip'),tl:q('.lv-tl'),zones:q('.lv-zones'),chEl:q('.lv-ch'),playBtn:q('.lv-play'),el:q('.lv-el'),speed:q('.lv-speed select'),moreBtn:q('[data-a="more"]'),menu:q('.lv-menu'),
     fsBtn:q('[data-a="fs"]'),prevBtn:q('[data-a="prev"]'),nextBtn:q('[data-a="next"]'),readBtn:q('[data-a="read"]'),followBtn:q('.lv-follow'),
@@ -339,13 +398,16 @@ function buildZones(){
 function chapAt(t){ const a=S.chaps; let j=0; while(j<a.length-1&&a[j+1].start<=t+1e-3)j++; return j; }
 function buildIntro(){
   const el=document.createElement('div'); el.className='lv-intro'; el.setAttribute('role','group'); el.setAttribute('aria-label','Video lesson');
-  el.innerHTML=`<span class="lv-ic" aria-hidden="true">${I.play}</span><div class="lv-itx"><b>Video lesson</b><span class="lv-imeta">${fmt(S.dur)}${S.m.captionsBurnedIn?' · captions in the video':''}</span><span class="lv-ist" hidden></span></div>${modesHtml('lv-imodes',true)}`;
+  const chs=Array.isArray(S.m.chapters)?S.m.chapters:null, notYet=chs?chs.filter(c=>c.state!=='ready'):[];
+  const chMeta=chs?` · ${chs.length-notYet.length} of ${chs.length} chapters${notYet.length?` (not available yet: ${notYet.map(c=>c.chapter).join(', ')})`:''}`:'';
+  el.innerHTML=`<span class="lv-ic" aria-hidden="true">${I.play}</span><div class="lv-itx"><b>Video lesson</b><span class="lv-imeta">${fmt(S.dur)}${chMeta}${S.m.captionsBurnedIn?' · captions in the video':''}</span><span class="lv-ist" hidden></span></div>${modesHtml('lv-imodes',true)}`;
   return el;
 }
 
 // ---------- lesson decoration (every render) ----------
 function decorate(){
   const main=ctx.main; if(!main)return;
+  chapterRows();
   if(ctx.src!==S.srcSeen)buildZones();
   intro();
   const blks=[...main.querySelectorAll('.blk[data-line]')].filter(b=>!b.parentElement.closest('.blk')).map(b=>({b,line:+b.dataset.line})).sort((a,b)=>a.line-b.line);

@@ -6,6 +6,10 @@ The lesson writer chosen as [LESSON-WRITER.md](LESSON-WRITER.md) says owns the l
 
 Work in an external project directory. Keep course content, audio, generated video, host logs, and secrets out of this repository. The bundled `video/` directory contains the complete runtime. Rendering needs Python 3.9+, Node 18+, `ffmpeg`/`ffprobe` with H.264 and AAC support, Playwright Chromium, and network access for the runtime's Google Fonts and KaTeX CDN assets. Narration is ElevenLabs whenever a key is present: `ELEVENLABS_API_KEY` in the environment, else the one-line file `~/.config/blackboard/elevenlabs.key` (`chmod 600`; `tts.py` refuses a file others can read). The key never goes in a project, this repo, a commit, a log or a chat. Without a key, narration falls back to local Kokoro-82M (`am_michael`): install it once with `sh bin/setup_tts.sh`, which puts a venv and weights in `~/.cache/blackboard/`. The default ElevenLabs voice is Brian, the closest to `am_michael`; leave `voice` out of `script.json` unless the user picked another (see [video/README.md](video/README.md#ttspy)). The video is blocked only when neither narrator is available; `tts.py` exits 2 with `TTS_BLOCKED` and the install line. No TTS call is needed for CLI tests.
 
+## Chapter videos (the default)
+
+A lesson's video is made, rendered and installed chapter by chapter, so chapter 1 can be watched while chapter 2 still renders. Each `##` chapter gets its own external project: `init --chapter N` (chapter 1 also holds the opening: the weights screen and at most three sentences). Build the chapters in lesson order and run every step below once per chapter project, with `--chapter N` on each `lesson_video.py` command. The chapter's source SHA is the SHA-256 of that chapter's text only (`bin/lesson_chapters.py`): editing one chapter invalidates and re-renders that chapter alone. Anchors still name absolute lesson lines, and they must fall inside the chapter; `check` runs its practice, coverage and padding stages on that chapter only. The installed map and files are keyed `NNNN-chNN`, and the board joins the ready chapters into one playlist (board/README.md). `init` registers each chapter project, so the chapter's row on the board shows its own progress. A whole-lesson project (no `--chapter`) still works and is how the older videos were made; when a lesson has a whole-lesson video installed, the board plays it and ignores chapter videos.
+
 ## Exact sequence
 
 From the Blackboard repo root, set paths to **your** lesson and external project:
@@ -16,7 +20,9 @@ WS=/absolute/path/to/learn
 LESSON="$WS/lessons/NNNN-slug.md"
 PROJECT=/absolute/path/to/external-video-project
 ID=$(basename "$LESSON" | cut -c1-4)
-python3 "$BB_ROOT/bin/video_pipeline.py" init --lesson "$LESSON" --project "$PROJECT"
+N=1   # the chapter; leave --chapter out only for a whole-lesson video
+KEY=$(printf '%s-ch%02d' "$ID" "$N")
+python3 "$BB_ROOT/bin/video_pipeline.py" init --lesson "$LESSON" --project "$PROJECT" --chapter "$N"
 ```
 
 `init` defaults to the configured video effort `high`; supported values are exactly `low`, `medium`, and `high`. Select another value only when the host can dispatch it; an unsupported or mistyped value fails instead of falling back. For an explicit user-authorized Astra script author, add `--script-model gpt-6-astra --script-effort medium` to `init`; both flags are required, and they add `scriptRole` while leaving the Opus visual `videoRole` unchanged. An initialized project may add this override before script work starts. It copies only the portable runtime files, plus README, package lock, and gitignore when present. It never copies `sample/`, `test/`, dependencies, or generated assets. It records the absolute lesson path and SHA-256 in `project.json` and refuses changed existing files. Repeating it after an interrupted copy is safe. It never creates `script.json`, `anchors.json`, or model receipts. `--runtime /path/to/portable-runtime` selects an explicitly reviewed alternative runtime source.
@@ -29,7 +35,7 @@ Give the selected video script author [video-briefs/author.md](video-briefs/auth
 
 "The subtitles should follow the formatting of the lesson": a caption reads `$I_5 = 0$`, never "I five is zero". Every spoken cue has two texts. `say` is what the narrator speaks, math in words, for the TTS. `show` is the caption: the same words, with every symbol, subscript, complement, equation, number and value written as the lesson writes it, in `$KaTeX$` (`"say": "Row five: I five is zero."`, `"show": "Row 5: $I_5 = 0$."`). When the line quotes the lesson's math, copy the lesson's form. `show` keeps the sentences of `say` (same `.` `?` `!` `:` ends outside math) so each caption takes the time of its spoken sentence; a long sentence keeps its comma breaks or shows whole for that sentence, and a cue whose sentence count differs shows whole for the cue.
 
-Captions are not drawn into the frames. `build-map` writes `captions.json` (each cue's `show` timed by its spoken chunks), `lesson_video.py import` installs it beside the MP4 as `lessons/assets/NNNN-lecture.captions.json`, and the board's player overlays it, with a CC switch. Fixing a caption is a script edit and `build-map`, then `lesson_video.py captions --workspace "$WS" --lesson "$ID" --captions "$PROJECT/captions.json" --replace`: no narration, no render (`tts.done` fingerprints the script without its captions). `check` fails its `captions` stage when a spoken cue has no `show`, when a `show` spells math in words ("I five", "S one", "two to the n", "x squared", "C sub 2", "C in", "A bar"), or when `captions.json` is stale; `python3 "$BB_ROOT/bin/captions.py" lint --project "$PROJECT"` lists every finding. `VIDEO_BURN_CAPTIONS=1 ./render.sh` burns the captions in for a standalone export; only then run `build-map --captions-burned-in`. The frames never carry a progress bar: the player's seek bar has the chapters.
+Captions are not drawn into the frames. `build-map` writes `captions.json` (each cue's `show` timed by its spoken chunks), `lesson_video.py import` installs it beside the MP4 as `lessons/assets/NNNN-chNN-lecture.captions.json` (`NNNN-lecture.captions.json` for a whole-lesson video), and the board's player overlays it, with a CC switch. Fixing a caption is a script edit and `build-map`, then `lesson_video.py captions --workspace "$WS" --lesson "$ID" --chapter "$N" --captions "$PROJECT/captions.json" --replace`: no narration, no render (`tts.done` fingerprints the script without its captions). `check` fails its `captions` stage when a spoken cue has no `show`, when a `show` spells math in words ("I five", "S one", "two to the n", "x squared", "C sub 2", "C in", "A bar"), or when `captions.json` is stale; `python3 "$BB_ROOT/bin/captions.py" lint --project "$PROJECT"` lists every finding. `VIDEO_BURN_CAPTIONS=1 ./render.sh` burns the captions in for a standalone export; only then run `build-map --captions-burned-in`. The frames never carry a progress bar: the player's seek bar has the chapters.
 
 ## Pacing and practice
 
@@ -81,10 +87,10 @@ Every nonempty SPLIT module needs its own builder receipt. The orchestrator comp
 
 ```sh
 python3 "$BB_ROOT/bin/video_pipeline.py" check --project "$PROJECT"
-python3 "$BB_ROOT/bin/lesson_video.py" validate --workspace "$WS" --lesson "$ID" --video "$PROJECT/final.mp4" --map "$PROJECT/video-$ID.json"
-python3 "$BB_ROOT/bin/lesson_video.py" import --workspace "$WS" --lesson "$ID" --video "$PROJECT/final.mp4" --map "$PROJECT/video-$ID.json" --dry-run
-python3 "$BB_ROOT/bin/lesson_video.py" import --workspace "$WS" --lesson "$ID" --video "$PROJECT/final.mp4" --map "$PROJECT/video-$ID.json"
-python3 "$BB_ROOT/bin/lesson_video.py" status --workspace "$WS" --lesson "$ID"
+python3 "$BB_ROOT/bin/lesson_video.py" validate --workspace "$WS" --lesson "$ID" --chapter "$N" --video "$PROJECT/final.mp4" --map "$PROJECT/video-$KEY.json"
+python3 "$BB_ROOT/bin/lesson_video.py" import --workspace "$WS" --lesson "$ID" --chapter "$N" --video "$PROJECT/final.mp4" --map "$PROJECT/video-$KEY.json" --dry-run
+python3 "$BB_ROOT/bin/lesson_video.py" import --workspace "$WS" --lesson "$ID" --chapter "$N" --video "$PROJECT/final.mp4" --map "$PROJECT/video-$KEY.json"
+python3 "$BB_ROOT/bin/lesson_video.py" status --workspace "$WS" --lesson "$ID" --chapter "$N"
 ```
 
 `check` verifies schema, source SHA, ordered measured coverage, a pause-and-solve segment for every lesson practice item, step coverage of every written solution, no unanchored speech after a three-sentence opening, captions in notation, scene modules, supplied runtime receipts, the `RENDERED` success marker, final MP4 audio/video duration, and media freshness against script, timeline, scene, narration, and render inputs. It does not judge pedagogy or prove runtime identity. Rerun `./render.sh` after editing an input, even when the MP4 duration stays the same. The existing importer verifies the installed board schema and media duration. Use `--replace` on import only after reviewing a conflict. The lesson remains accessible without video if this chain cannot finish.

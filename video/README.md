@@ -2,7 +2,7 @@
 
 Turns a narration script and a set of hand-built animated scenes into a 1920×1080, 30 fps MP4 and an SRT. The frames carry no captions and no progress bar: the board's player overlays the caption track (`captions.json`, the cues' `show` texts in the lesson's notation, written by `video_pipeline.py build-map`) and has its own seek bar. `VIDEO_BURN_CAPTIONS=1` burns the captions in for a standalone export. Each frame is a pure function of time, so a render is deterministic and can resume.
 
-Copy the runtime files into a new project directory. A project is self-contained, and every command below runs inside it.
+Copy the runtime files into a new project directory. A project is self-contained, and every command below runs inside it. A lesson's video is normally made chapter by chapter: one project per `##` chapter (`video_pipeline.py init --chapter N`), each with its own script, narration, scenes and render (VIDEO.md **Chapter videos**).
 
 | Runtime file | Role |
 |---|---|
