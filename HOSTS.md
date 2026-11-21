@@ -7,14 +7,13 @@ The skill has one core and a thin host layer. Two axes are detected separately, 
 | **agent** | `BLACKBOARD_AGENT` override → `CLAUDECODE=1` → `claude`; `CODEX_THREAD_ID` or `CODEX_HOME` → `codex`; else `claude` | `claude`, `codex` |
 | **layout** | `BLACKBOARD_LAYOUT` override → `CMUX_WORKSPACE_ID` set → `cmux` → `CODEX_INTERNAL_ORIGINATOR_OVERRIDE=Codex Desktop` → `app`; else `tab`. | `cmux`, `app`, `tab` |
 
-`board/render.sh` computes both and writes them into `board/state.json` (`agent`, `layout`, plus `cli_surface` in cmux) so `bridge.py` and the scripts agree.
+`board/render.sh` computes both and writes them into `~/.cache/blackboard/state.json` (`agent`, `layout`, plus `cli_surface` in cmux) so `bridge.py` and the scripts agree.
 
 ## What differs
 
 | | tab (Claude Code / Codex CLI) | app (Codex desktop) | cmux (either agent) |
 |---|---|---|---|
 | Board display | `open http://127.0.0.1:7331` once in the default browser | agent creates and navigates an in-app Browser tab, marks it deliverable, then presents that exact tab on the right with `codex_app__open_in_codex` | `cmux new-surface --type browser --url http://127.0.0.1:7331` once in the right pane; tab title "Blackboard" |
-| Board → agent (predict, ×) | Claude uses `bin/wait-ask.sh`; Codex gets the paste fallback | bridge returns the Codex paste fallback | `cmux send --surface <cli surface> '<command>\n'` types the command into the agent's pane; syntax follows the agent (`/blackboard …` for Claude, `$blackboard …` for Codex) |
 | LMS pull browser | Claude uses its Chrome extension; Codex uses the token path (`bin/lms-pull.sh`) or manual drop | token path (`bin/lms-pull.sh`) or manual drop | `cmux browser` (`import --from chrome` once, then `eval` / `download`) |
 | Voice (Speak on a flashcard) | page → bridge `/api/listen` → `bin/listen.sh` | same | same |
 | Explain, quiz generation, quiz grading | headless in the bridge (`bin/explain.py`, `bin/quiz.py`) | same | same |
@@ -39,13 +38,13 @@ The Browser and `codex_app__open_in_codex` tools may be deferred. Find them by e
 - Claude Code: `/blackboard explain e3 L48 "text"`
 - Codex: `$blackboard explain e3 L48 "text"`
 
-`bridge.py` builds the command from `board/state.json`. Nothing else in the skill depends on the host.
+`bridge.py` builds the command from `~/.cache/blackboard/state.json`. Nothing else in the skill depends on the host.
 
 ## What is host-independent
 
 Everything the student touches on the page is the same local document in all three layouts: the flashcard box, the Speak button, Validate, the topic and mode chips, the loading shimmers. The board is served from `127.0.0.1` to a browser on the same machine, so the mic can live on the bridge and use on-device Apple Speech rather than the browser's Web Speech API, which exists only in Chrome and would fail in the cmux WKWebView.
 
-Explain, quiz generation and quiz grading run headless inside the bridge. They do not use `cmux send`, `bin/wait-ask.sh` or the Codex paste fallback, so they work the same everywhere. Only `predict` and the multiple-choice click log still travel the host-specific path, and both are pure logging.
+Explain, quiz generation and quiz grading run headless inside the bridge. They do not use `cmux send`, `bin/wait-ask.sh` or the Codex paste fallback, so they work the same everywhere. Clicks are logged by the bridge; nothing on the page wakes the agent.
 
 ## Recommended setups
 
@@ -61,7 +60,7 @@ When the agent runs on a machine nobody is looking at, render as usual (`board/r
   --window-size=1280,1600 --screenshot=/tmp/board.png http://127.0.0.1:7331/ 2>/dev/null
 ```
 
-Keep the bridge up so a later `/blackboard` command edits the same lesson. Board → agent clicks (predict, ×) have no live channel there; the user answers in the chat and the agent feeds it as the matching command. Never open a browser window on a headless host just to render the board.
+Keep the bridge up so a later `/blackboard` command edits the same lesson. Never open a browser window on a headless host just to render the board.
 
 
 ## Lesson writer routing

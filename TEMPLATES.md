@@ -1,6 +1,6 @@
 # Lesson template
 
-Every lesson is one markdown file, `lessons/NNNN-slug.md`, rendered on the board. This file holds the rules that every lesson shares. The shape of the lesson comes from one of three blueprints, which SKILL.md **Lessons** picks: [BLUEPRINT-STEM.md](./BLUEPRINT-STEM.md), [BLUEPRINT-HUMANITIES.md](./BLUEPRINT-HUMANITIES.md) or [BLUEPRINT-FUN.md](./BLUEPRINT-FUN.md).
+Every lesson is one markdown file, `lessons/NNNN-slug.md`, rendered on the board. This file holds the rules that every lesson shares. The shape of the lesson comes from one of three blueprints, which SKILL.md **Lesson blueprints** picks: [BLUEPRINT-STEM.md](./BLUEPRINT-STEM.md), [BLUEPRINT-HUMANITIES.md](./BLUEPRINT-HUMANITIES.md) or [BLUEPRINT-FUN.md](./BLUEPRINT-FUN.md).
 
 **Minimize the energy it takes to read and practice. Every sentence either helps solve the problem or is cut. No intros, previews, recaps, answer checks or filler.**
 
@@ -72,7 +72,7 @@ These rules come from research on why AI text is hard for people to read (Clark,
 
 ### What a lesson leaves out
 
-- No chapter-opening preview or summary paragraph ("this chapter covers…", "you know this from…", "the X is for…, the Y is for…"). A chapter opens directly with its first block, in the order its blueprint gives. A decision rule the student needs ("use parts when no $u$-substitution works") goes where the choice is made, usually the Which Technique table.
+- No chapter-opening preview or summary paragraph ("this chapter covers…", "you know this from…", "the X is for…, the Y is for…"). A chapter opens directly with its first block, in the order its blueprint gives. A decision rule the student needs ("use parts when no $u$-substitution works") goes where the choice is made (the chapter's **What you need**).
 - No obvious explanations. Never say how a symbol is pronounced ("$\overline{Q}$, read "Q bar""), list other spellings of the same thing ("also written QN or Q'"), or restate what the student can already see. Use the one notation the course's sources use, and use only that one. Explain what a symbol means, never how to say it.
 - No trap or "common mistake" lines. The one exception: something the grader actually takes points off for, as stated by the instructor or the rubric, gets one **On the test** callout: a `::: callout` block with a `wrong:` line (the form that loses points), a `right:` line (the form the grader wants) and at most one short text line. The board renders it as an amber card with the wrong form struck through next to the right one; a plain `⚠️` line still renders as the same card with only its text.
 
@@ -131,7 +131,7 @@ These rules apply to every blueprint that uses official problems (STEM and human
 
 ## Lesson frame
 
-Every lesson has the same top: front matter, the `# title`, a collapsed **Contents**, a collapsed **Sources**. The rest comes from the blueprint (SKILL.md **Lessons** picks it). This example is the top of a STEM lesson.
+Every lesson has the same top: front matter, the `# title`, a collapsed **Contents**, a collapsed **Sources**. The rest comes from the blueprint (SKILL.md **Lesson blueprints** picks it). This example is the top of a STEM lesson.
 
 ```md
 ---
@@ -167,7 +167,7 @@ caption: a short description of the banner   # optional; otherwise the title par
 …the chapter, in the blueprint's order…
 ```
 
-Chapter links must match the rendered heading anchors. `prev:` in front matter names an earlier lesson only when this one continues it.
+Every `##` after the top is `## Chapter N · <name>`, the mixed drill, practice exam, cheat sheet and flashcards included, so the board's reading scale and level map list it. Chapter links must match the rendered heading anchors. `prev:` in front matter names an earlier lesson only when this one continues it.
 
 Block syntax the renderer understands:
 
@@ -187,12 +187,11 @@ Block syntax the renderer understands:
 - `::: fig <template>` / JSON spec / `:::` → inline chalk SVG (taccounts, bars, flow, timeline, table, kmap, vectors, wave, raw). Specs in [FIGURES.md](./FIGURES.md). `caption` in the spec becomes the figcaption.
 - `::: photo [side|wide]` / `query: <what to fetch>` / `caption: <short description>` / `:::` → a real photograph of the thing being discussed, fetched by `bin/photos.py` from licensed sources and saved under `assets/`; `src: https://…` skips the fetch when a specific image (a maker's press photo) is the only good one. `side` floats it right at 44% width with the text flowing on the left; `wide` spans the column. Rules in **Photos** below.
 - `::: figure assets/x.svg|png` / caption / `:::` → an existing image; `.svg` is inlined so the page fonts apply; add `wide` for a full-width `.png`.
-- `::: video assets/x.mp4` / caption / `:::` → a Manim animation rendered with `bin/anim.sh`; a YouTube embed URL gives an iframe.
 - `$100` in prose is money and stays as typed. Inline math is `$…$` on one line with no space just inside either `$`. It may start with a digit (`$4$`, `$0.5 \cdot 2$`, `$2^{9/2}$`), because money never has a closing `$` on the same line. Two amounts on one line (`$5 and $10`) stay money. `\$` is a literal dollar sign.
-- `::: video URL` / caption / `:::` → embedded video.
-- `::: quiz` / `topics: a, b, c` / items / `:::` → the quiz. Items render first, the "More practice" panel under them. Only the self-study blueprint ends with one.
+- `::: video assets/x.mp4|URL` / caption / `:::` → a Manim animation rendered with `bin/anim.sh`, or a YouTube embed URL as an iframe.
+- `::: quiz` / `topics: a, b, c` / items / `:::` → the quiz. Items render first, the "More practice" panel under them. Humanities lessons hold their flashcards in one; self-study lessons end with one.
 - `::: mcq q1 b` / stem / option lines `- option || the mistake that gives it` (the key has no `||` part; how many: QUIZ.md **Multiple choice**) / `why: …` / `:::` → one multiple-choice item in a numbered list; the letter is the key in the order written, options shuffle on render, a wrong pick shows that option's mistake line. The stem may hold a fenced code block (rendered as a code box, question sentence after it); an option that is a whole statement of code in backticks shows as a small preformatted box.
-- `::: card c1` / question / `answer: …` / `must: …` lines / `:::` → one flashcard. Every card in a quiz joins one deck, shown one card at a time where the first card sat: the front holds the question and an answer box (typed, or filled by Speak); Validate grades it and the card turns to show `answer:` and the verdict. `must:` lines are the grader's rubric and stay off the front. A humanities lesson ships with its flashcards (BLUEPRINT-HUMANITIES.md **Recall**); in other lessons, cards come from the More practice panel (`bin/quiz.py`).
+- `::: card c1` / question / `answer: …` / `must: …` lines / `:::` → one flashcard. Every card in a quiz joins one deck, shown one card at a time where the first card sat: the front holds the question and an answer box (typed, or filled by Speak); Validate grades it and the card turns to show `answer:` and the verdict. `must:` lines are the grader's rubric and stay off the front. A humanities lesson ships with its flashcards (BLUEPRINT-HUMANITIES.md **Recall**); only a lesson with a `::: quiz` block (humanities, self-study) has the More practice panel (`bin/quiz.py`).
 - `::: score c1 4` / the answer, the rationale, `Missing: …` / `:::` → the verdict on the back of that card. Written by `bin/quiz.py`, never by hand.
 - A markdown table → a booktabs table (rules at the top, under the header, and at the bottom; no vertical rules, no fills). Math works in any cell. See **Tables** below.
 

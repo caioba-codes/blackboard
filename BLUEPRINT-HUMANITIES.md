@@ -35,7 +35,7 @@ Inside a chapter, in this order:
 
 ## Recall
 
-Every term, author, date and argument that the questions depend on becomes a flashcard (`::: card`). The front holds the question. The back holds the short answer, and its `must:` lines hold the points it has to contain. Cards are graded on meaning, not wording. The flashcards replace the STEM cheat sheet, and they sit in a `## Flashcards` chapter after the last question type.
+Every term, author, date and argument that the questions depend on becomes a flashcard (`::: card`). The front holds the question. The back holds the short answer, and its `must:` lines hold the points it has to contain. Cards are graded on meaning, not wording. The flashcards replace the STEM cheat sheet. They sit in one `::: quiz` block (so they form one deck) in a `## Chapter N · Flashcards` chapter after the last question type.
 
 ## End
 
@@ -48,4 +48,4 @@ A study session starts with the cards and questions missed in earlier sessions, 
 
 ## Same as STEM
 
-Official material is quoted verbatim and labelled (TEMPLATES.md **Official problems**). No intros, no previews, no recaps. The size comes from the number of question types, never from a target length.
+Official material is quoted verbatim and labelled (TEMPLATES.md **Problems and solutions**). No intros, no previews, no recaps. The size comes from the number of question types, never from a target length.

@@ -73,7 +73,7 @@ for m in re.finditer(r"\\begin\{(array|tabular)\}\{([^}]*)\}(.*?)\\end\{\1\}", s
 for m in re.finditer(r"\\(Large|LARGE|large|Huge|huge)(?![A-Za-z])", s):
     line = s[:m.start()].count("\n") + 1
     print(f"  lint: line {line}: hand-sized math (\\{m.group(1)}). Wrap the display in ::: big (level 1) or ::: key (level 2) instead.", file=sys.stderr); warn += 1
-# official problems (TEMPLATES.md, Official problems): every problem has a label, every src: file exists, and only a
+# official problems (TEMPLATES.md, Problems and solutions): every problem has a label, every src: file exists, and only a
 # verbatim official multiple-choice item may have other than four (or two) options
 import os
 raw = open(sys.argv[1]).read()

@@ -10,10 +10,10 @@ Generation and grading both run headless in `bin/quiz.py` (its prompts hold the 
 
 Before writing any lesson practice, More practice set or flashcard, inspect the user's relevant sources: practice exams, past exams, quizzes, problem sets, homework, and their answer keys. Match what the lesson actually teaches.
 
-- **Official first.** Worked examples, Your turns, drills, practice exams and quizzes use official problems from the course's official sources (past exams, practice sets, homework, the official review, lecture slides), quoted as TEMPLATES.md **Official problems** says. Write our own only when no official problem trains that skill, or the official one skips the fundamentals the lesson needs; label it `*Written by Claude*`. Never change an official problem's numbers.
+- **Official first.** Worked examples, Your turns, drills, practice exams and quizzes use official problems from the course's official sources (past exams, practice sets, homework, the official review, lecture slides), quoted as TEMPLATES.md **Problems and solutions** says. Write our own only when no official problem trains that skill, or the official one skips the fundamentals the lesson needs; label it `*Written by Claude*`. Never change an official problem's numbers.
 - A free-response official problem stays free response (a Your turn), or becomes multiple choice only by adding options around its exact text.
 - **Answer keys are checked.** Recompute every answer and every option independently of the official key; when the key is wrong, the lesson gives the right answer with a one-line note on the key's mistake.
-- Record the actual source filename and question/page plus what changed in a Markdown comment immediately before each authored item. For generated items, include that reference in the answer explanation. Never invent a source citation or claim to have read an unavailable question.
+- Record the actual source filename and question/page plus what changed in a Markdown comment immediately before each authored item. Never invent a source citation or claim to have read an unavailable question.
 - Independently invent questions only when there are no relevant supplied question sources, such as a non-school lesson without user-provided material. First inspect the available sources; missing extraction/access is not evidence that no relevant source exists. If expected sources cannot be read, report that gap rather than silently inventing exam-style questions.
 - Test only taught material, but retain the source difficulty.
 
@@ -84,4 +84,4 @@ Missing: the rule has a name, $X\overline{Y} + XY = X$. Say it back in one sente
 :::
 ```
 
-`- option || mistake` gives that distractor its one-line feedback. `why:` is one line shown after any pick, right or wrong. Explain the operation or causal rule that produces the answer, not only its theorem name. Any explanation of a distractor must describe an error that could actually produce that distractor. Options are shuffled on render; the key letter (`a`/`b`/`c`) refers to the order written.
+`- option || mistake` gives that distractor its one-line feedback. `why:` is the solution: on a right pick it opens stepped; on a wrong pick only its first sentence shows, as a hint. Explain the operation or causal rule that produces the answer, not only its theorem name. Any explanation of a distractor must describe an error that could actually produce that distractor. Options are shuffled on render; the key letter (`a`/`b`/`c`) refers to the order written.

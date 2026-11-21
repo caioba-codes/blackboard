@@ -44,13 +44,10 @@ Every new full lesson includes both the written lesson and its video unless the 
 - `learn <topic> [for <course>]` — write and render a lesson (default when the first word is not a mode).
 - `explain <id> <line> "<text>"` — answer an Explain request from the board (see Explain).
 - `remove <id>` — delete an explanation block.
-- `predict <block> <choice>` / `mcq <item> <choice>` — record a click from the board.
 - `add <path|url>` — add material to the workspace and re-tier.
 - `sync` — re-pull the LMS course.
 - `image NNNN` — re-roll the lesson photo.
 - `grid` — open the lessons hub (`/lessons`): every lesson in every folder the board knows about, with search and folder chips.
-
-Requests from the board arrive as one line of JSON in `board/queue.jsonl` (delivered by `bin/wait-ask.sh`, `cmux send`, or pasted by the user); treat that line exactly like the corresponding command.
 
 # Workspace
 
@@ -64,7 +61,7 @@ Files under `$WS` (formats linked):
 - `MISSION.md` — why the user is learning this. [MISSION-FORMAT.md](./MISSION-FORMAT.md)
 - `RESOURCES.md` — trusted sources with `kind` and `tier`. [RESOURCES-FORMAT.md](./RESOURCES-FORMAT.md)
 - `sources/` — course files and extracted text. [LMS.md](./LMS.md)
-- `lessons/NNNN-slug.md` — lessons, markdown + LaTeX. `lessons/assets/` holds photos and Manim stills.
+- `lessons/NNNN-slug.md` — lessons, markdown + LaTeX. `lessons/assets/` holds photos, cropped figures, Manim clips and lesson videos.
 - `reference/*.md` — cheat sheets and glossaries.
 - `reference/chat/NNNN.json` — the board chat's history for lesson NNNN (see Chat). New chat renames it to `NNNN-<time>.json`.
 - `learning-records/NNNN-slug.md` and `quiz-log.jsonl`. [LEARNING-RECORD-FORMAT.md](./LEARNING-RECORD-FORMAT.md)
@@ -116,9 +113,9 @@ Every lesson starts with its title, a collapsed **Contents** (`::: contents`, ch
 
 # Sources
 
-Course mode: only this course's material, from `$WS/sources/` via RESOURCES.md, tiered. Never YouTube, never external explainers unless the user adds them. Label claims whose authority matters (`officially stated`, `professor emphasized`, `inferred`) in the `::: sources` drop-down; STEM lessons never carry them inline.
+Course mode: only this course's material, from `$WS/sources/` via RESOURCES.md, tiered. Never YouTube, never external explainers unless the user adds them. Label claims whose authority matters (`officially stated`, `professor emphasized`, `inferred`) in the `::: sources` drop-down; lessons never carry them inline.
 
-Self-study: find primary sources first (papers, official docs, textbooks) and record them in RESOURCES.md. Then pick one video from `## Channels` that covers the topic: `bin/yt-transcript.sh "ytsearch5:<topic> <channel>"`, save the transcript under `sources/youtube/`, cite it, and end the lesson with `::: video` embedding that exact video with `?start=` at the most relevant minute. Never embed a video that was not used.
+Self-study: find primary sources first (papers, official docs, textbooks) and record them in RESOURCES.md. Then pick one video from `## Channels` that covers the topic: `bin/yt-transcript.sh "ytsearch5:<topic> <channel>"`, save the transcript under `sources/youtube/`, cite it, and put it under `## Extra` at the end (BLUEPRINT-FUN.md **End**) as a `::: video` embedding that exact video with `?start=` at the most relevant minute. Never embed a video that was not used.
 
 Never trust parametric memory for facts that a source in the workspace can settle.
 
@@ -177,7 +174,7 @@ Selecting words on the board raises **Explain**, **Definition** (1–5 words) an
 
 Explain is answered by `bridge.py` running `bin/explain.py` with the lesson, source block, and selection. The worker writes an `::: exp` block. Nothing reaches the chat.
 
-The interactive agent handles Explain when explicitly asked in chat or when the headless writer is unavailable:
+The interactive agent handles Explain when explicitly asked in chat:
 
 1. Leave the selected paragraph untouched: no markers, underlines or inline links.
 2. Insert after the source block, or inside the parent's `::: exp` for a nested request:

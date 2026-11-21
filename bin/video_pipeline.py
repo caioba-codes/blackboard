@@ -22,7 +22,7 @@ RUNTIME = ("engine.js", "style.css", "capture.mjs", "finish.sh", "tts.py", "inde
 OPTIONAL_RUNTIME = ("README.md", "package-lock.json", ".gitignore")
 VIDEO_EFFORTS = frozenset(("low", "medium", "high"))
 SCRIPT_EFFORTS = {ROLE["model"]: VIDEO_EFFORTS, "gpt-6-astra": frozenset(("medium",))}
-# Video length is not standardized (Caio, 2026-11-21): it follows the lesson's steps. `check` verifies that every
+# Video length is not standardized: it follows the lesson's steps. `check` verifies that every
 # step row of every written solution is narrated (coverage) and that nothing is spoken that no lesson line backs
 # (padding), apart from an opening of at most three sentences.
 OPENING_SENTENCES = 3

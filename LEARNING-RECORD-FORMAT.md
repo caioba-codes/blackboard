@@ -46,7 +46,7 @@ When a later record contradicts an earlier one (the user's understanding deepene
 
 ## Quiz results and misconceptions (Blackboard)
 
-Graded quiz items are appended to `./learning-records/quiz-log.jsonl`, one JSON object per line: `{ts, lesson, topic, mode, score, misconception}`. The board also appends every multiple-choice click there as `{ts, lesson, topic: item, mode: "mcq", item, choice, sig, score: 5|0}`; `sig` is a hash of the question stem so a rewritten question does not inherit an old answer. The board's Reset button appends `{ts, lesson, topic: item, mode: "mcq", item, event: "reset", sig}` with no score: readers skip it as evidence, and it marks the item unanswered until the next pick. This file is machine-read (grid dots, next lesson's check-in); do not edit it by hand.
+Graded quiz items are appended to `./learning-records/quiz-log.jsonl`, one JSON object per line: `{ts, lesson, topic, mode, score, misconception}`. The board also appends every multiple-choice click there as `{ts, lesson, topic: item, mode: "mcq", item, choice, sig, score: 5|0}`; `sig` is a hash of the question stem so a rewritten question does not inherit an old answer. The board's Reset button appends `{ts, lesson, topic: item, mode: "mcq", item, event: "reset", sig}` with no score: readers skip it as evidence, and it marks the item unanswered until the next pick. This file is machine-read (grid dots, XP); do not edit it by hand.
 
 A learning record written after a lesson gains one optional section:
 

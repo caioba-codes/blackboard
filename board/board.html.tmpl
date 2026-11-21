@@ -537,7 +537,7 @@ h1.new,h2.new,h3.new{--wipe:linear-gradient(90deg,#000 40%,transparent 60%);mask
 #nub{position:fixed;width:9px;height:20px;border-radius:2px;background:#f2eee4;box-shadow:0 0 6px #fff6;transform:rotate(20deg);pointer-events:none;transition:left .12s,top .12s,opacity .4s;z-index:9;opacity:0}
 #nub.on{opacity:1}
 @keyframes blink{50%{opacity:.2}}
-/* The chalk-writing reveal plays even with Reduce Motion on (Caio asked for it, like the XP celebration): it is short and never loops. */
+/* The XP celebration plays even with Reduce Motion on (it was asked for): it is short and never loops. */
 @media (prefers-reduced-motion:reduce){.btn.ok,.mcqi.done label.right::after{animation:none!important;mask:none!important;-webkit-mask:none!important;clip-path:none!important;opacity:1!important;filter:none!important;transform:none!important}#nub{display:none}}
 
 /* contents: drawer from the left + section ticks on the reading-progress bar */
@@ -1028,7 +1028,7 @@ function givenCols(html){
   });
   return t.innerHTML;
 }
-// Problem labels (TEMPLATES.md, Official problems): a link to `src:<file>#page=N` opens that source in the viewer at the
+// Problem labels (TEMPLATES.md, Problems and solutions): a link to `src:<file>#page=N` opens that source in the viewer at the
 // page; "Official · …" and "*Written by Claude*" on their own line show as a small muted label above the problem.
 function provLabels(html){
   html=html.replace(/<a href="src:([^"#]*)(?:#page=(\d+))?"[^>]*>([\s\S]*?)<\/a>/g,(m,path,pg,txt)=>{
