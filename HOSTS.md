@@ -7,7 +7,7 @@ The skill has one core and a thin host layer. Two axes are detected separately, 
 | **agent** | `BLACKBOARD_AGENT` override → `CLAUDECODE=1` → `claude`; `CODEX_THREAD_ID` or `CODEX_HOME` → `codex`; else `claude` | `claude`, `codex` |
 | **layout** | `BLACKBOARD_LAYOUT` override → `CMUX_WORKSPACE_ID` set → `cmux` → `CODEX_INTERNAL_ORIGINATOR_OVERRIDE=Codex Desktop` → `app`; else `tab`. | `cmux`, `app`, `tab` |
 
-`board/render.sh` computes both and writes them into `~/.cache/blackboard/state.json` (`agent`, `layout`, plus `cli_surface` in cmux) so `bridge.py` and the scripts agree.
+`board/render.sh` computes both and writes them into `~/.cache/blackboard/state.json` (`agent`, `layout`) so `bridge.py` and the scripts agree.
 
 ## What differs
 
@@ -44,7 +44,7 @@ The Browser and `codex_app__open_in_codex` tools may be deferred. Find them by e
 
 Everything the student touches on the page is the same local document in all three layouts: the flashcard box, the Speak button, Validate, the topic and mode chips, the loading shimmers. The board is served from `127.0.0.1` to a browser on the same machine, so the mic can live on the bridge and use on-device Apple Speech rather than the browser's Web Speech API, which exists only in Chrome and would fail in the cmux WKWebView.
 
-Explain, quiz generation and quiz grading run headless inside the bridge. They do not use `cmux send`, `bin/wait-ask.sh` or the Codex paste fallback, so they work the same everywhere. Clicks are logged by the bridge; nothing on the page wakes the agent.
+Explain, quiz generation and quiz grading run headless inside the bridge. Nothing is sent to the chat, so they work the same everywhere. Clicks are logged by the bridge; nothing on the page wakes the agent.
 
 ## Recommended setups
 

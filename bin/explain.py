@@ -2,8 +2,8 @@
 """explain.py <lesson.md> '<request json>'
 
 Headless writer for the board's expandable Explain callouts. Called by bridge.py in a background thread.
-Request: {"text": selected words, "depth": "line"|"deep", "block": "b12", "line": 42,
-          "parent": "e3" (nested) | null, "grow": "e5" (rewrite in place) | null, "pending": "p123" (page placeholder id)}
+Request: {"text": selected words, "block": "b12", "line": 42,
+          "parent": "e3" (nested) | null, "pending": "p123" (page placeholder id)}
 Writes the ::: exp block into the lesson file and prints {"id": "e8"}.
 The lesson file change is picked up by the bridge's SSE loop; no explicit render call needed.
 """
@@ -12,8 +12,7 @@ import json, os, re, shutil, subprocess, sys, time
 SKILL = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 path, req = sys.argv[1], json.loads(sys.argv[2])
 text = (req.get("text") or "").strip()
-depth = req.get("depth", "line")
-parent, grow = req.get("parent"), req.get("grow")
+parent = req.get("parent")
 src = open(path).read()
 # No line from the page (it happens): find the selected words in the body instead of falling back to line 1,
 # which would drop the callout into the front matter above the title.
@@ -94,7 +93,7 @@ Never write a chain like "= ... = ..." inside a sentence. One equation per displ
 {tag}
 Output only the note. Do not repeat or quote the selected words at the start. No label, no quotation marks around the answer, no markdown heading."""
 
-length = "Length: explain the selected passage clearly in a short paragraph. Add steps or a display equation when needed to resolve the question. Avoid unrelated background." if depth == "line" else "Length: one paragraph, 4 to 8 sentences, plus one or two display equations."
+length = "Length: explain the selected passage clearly in a short paragraph. Add steps or a display equation when needed to resolve the question. Avoid unrelated background."
 tag = 'End with " → Exam: <problem it serves>" if the lesson text names an exam problem for this block, otherwise end with " → background".' if course_mode(src) and re.search(r"→ (Exam|background)\b", src) else "Do not add any trailing tag."  # STEM lessons carry no inline tags
 a, b, block = block_at(src, int(req.get("line") or 1))
 prompt = RULES.format(length=length, tag=tag) + f"""
@@ -160,7 +159,7 @@ def existing_note(s, line, label):
             if d == 0: break
     return None
 
-if not grow and not parent:
+if not parent:
     dup = existing_note(src, int(req.get("line") or 1), label)
     if dup:
         s2 = re.sub(rf"^(::: exp {dup}[^\n]*?)\s*folded\s*$", r"\1", src, flags=re.M)
@@ -200,54 +199,41 @@ if block.strip() and s != src:
     k = s.find(block)
     if k >= 0:
         line_now = s[:k].count("\n") + 1 + max(0, line_now - (a + 1))
-lines = s.split("\n")
-if grow:
-    m = re.search(rf"^::: exp {re.escape(grow)}(?P<flags>[^\n]*)\n\*\*(?P<label>[^*]+)\*\* — (?P<body>.*?)(?=\n(?:::: exp |:::\s*$))", s, re.S | re.M)
+eid = next_id(s)
+block_md = f"::: exp {eid}\n**{label}** — {body}\n:::"
+if parent:
+    # insert before the closing ::: of the parent block (after its children)
+    m = re.search(rf"^::: exp {re.escape(parent)}[^\n]*\n", s, re.M)
     if m:
-        flags = m.group("flags")
-        if "deep" not in flags:
-            flags = (flags + " deep").rstrip()
-        new = f"::: exp {grow}{flags}\n**{m.group('label')}** — {body}"
-        s = s[:m.start()] + new + s[m.end():]
-        eid = grow
+        i = m.end(); depth_c = 1
+        while i < len(s) and depth_c > 0:
+            nl = s.find("\n", i); ln = s[i:nl if nl >= 0 else len(s)]
+            if ln.startswith("::: "): depth_c += 1
+            elif re.match(r"^:::\s*$", ln): depth_c -= 1
+            if depth_c == 0: break
+            i = nl + 1 if nl >= 0 else len(s)
+        s = s[:i] + block_md + "\n" + s[i:]
     else:
-        grow = None
-if not grow:
-    eid = next_id(s)
-    block_md = f"::: exp {eid}{' deep' if depth == 'deep' else ''}\n**{label}** — {body}\n:::"
-    if parent:
-        # insert before the closing ::: of the parent block (after its children)
-        m = re.search(rf"^::: exp {re.escape(parent)}[^\n]*\n", s, re.M)
-        if m:
-            i = m.end(); depth_c = 1
-            while i < len(s) and depth_c > 0:
-                nl = s.find("\n", i); ln = s[i:nl if nl >= 0 else len(s)]
-                if ln.startswith("::: "): depth_c += 1
-                elif re.match(r"^:::\s*$", ln): depth_c -= 1
-                if depth_c == 0: break
-                i = nl + 1 if nl >= 0 else len(s)
-            s = s[:i] + block_md + "\n" + s[i:]
-        else:
-            parent = None
-    if not parent:
-        # Leave the selected paragraph untouched; insert the callout after it
-        lines = s.split("\n")
-        a2, b2, blk = block_at(s, line_now)
-        # skip existing exp blocks that directly follow, so siblings keep order
-        j = b2 + 1
-        while j < len(lines):
-            if lines[j].strip() == "": j += 1; continue
-            if lines[j].startswith("::: exp"):
-                d = 0
-                while j < len(lines):
-                    if lines[j].startswith("::: "): d += 1
-                    elif re.match(r"^:::\s*$", lines[j]): d -= 1
-                    j += 1
-                    if d == 0: break
-                continue
-            break
-        lines[j:j] = ["", block_md]
-        s = "\n".join(lines)
+        parent = None
+if not parent:
+    # Leave the selected paragraph untouched; insert the callout after it
+    lines = s.split("\n")
+    a2, b2, blk = block_at(s, line_now)
+    # skip existing exp blocks that directly follow, so siblings keep order
+    j = b2 + 1
+    while j < len(lines):
+        if lines[j].strip() == "": j += 1; continue
+        if lines[j].startswith("::: exp"):
+            d = 0
+            while j < len(lines):
+                if lines[j].startswith("::: "): d += 1
+                elif re.match(r"^:::\s*$", lines[j]): d -= 1
+                j += 1
+                if d == 0: break
+            continue
+        break
+    lines[j:j] = ["", block_md]
+    s = "\n".join(lines)
 
 open(path, "w").write(s)
 print(json.dumps({"id": eid, "pending": req.get("pending")}))

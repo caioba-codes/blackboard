@@ -19,7 +19,7 @@ Routes
   GET  /source/<path>    a cited file (pdf, image, text), only from inside the course folder
   GET  /anim/<path>      board/anim/<path>
   GET  /end-card.jpg     the optional end-of-lesson photo (end_card_path()), 404 when none is configured
-  POST /ask              {kind,...} -> appended to queue.jsonl, wake per host
+  POST /ask              {kind,...} -> appended to queue.jsonl; explain/quiz/grade run headless, the rest is logged
   POST /open             {urls:[board lesson URLs]} -> opened in the default browser (for in-app panes that cannot open tabs)
   POST /define           {text,line,block} -> {text} dictionary definition of 1-5 selected words, in lesson context
   GET  /api/chat?lesson=NNNN        the lesson's chat thread {session_id, messages, running, pending}
@@ -31,7 +31,7 @@ Routes
   GET  /api/flags?all=1  every workspace's flags {folders:[{slug, name, flags}]} for the hub's All flagged view
   POST /flags            {ws, op: add|remove|note|move, ...} -> $WS/learning-records/flags.json
   GET  /health           ok
-State lives in $BLACKBOARD_HOME/state.json (default ~/.cache/blackboard), written by render.sh: {ws, current, agent, layout, cli_surface, opened}
+State lives in $BLACKBOARD_HOME/state.json (default ~/.cache/blackboard), written by render.sh: {ws, current, agent, layout, opened}
 """
 import unicodedata
 import calendar, fnmatch, glob, hashlib, json, os, re, shutil, signal, subprocess, sys, tempfile, threading, time, urllib.parse, uuid
@@ -783,35 +783,6 @@ def read_lesson(lid, frm, h, wsp=None):
     return {"reset": True, "text": text, "offset": len(data), "hash": hashlib.md5(data).hexdigest()}
 
 
-def host_command(req):
-    """Build the agent command for a queue item."""
-    agent = state().get("agent", "claude")
-    prefix = "$blackboard" if agent == "codex" else "/blackboard"
-    k = req.get("kind")
-    q = lambda s: '"' + str(s).replace('"', "'") + '"'
-    if k == "explain":
-        parts = [prefix, "explain", f"L{req.get('line', 0)}", q(req.get("text", ""))]
-        if req.get("depth") == "deep":
-            parts.append("deep")
-        if req.get("parent"):
-            parts.append(f"parent={req['parent']}")
-        if req.get("grow"):
-            parts.append(f"grow={req['grow']}")
-        parts.append(f"lesson={req.get('lesson','')}")
-        return " ".join(parts)
-    if k == "remove":
-        return f"{prefix} remove {req.get('id')} lesson={req.get('lesson','')}"
-    if k == "quiz":
-        return f"{prefix} quiz {q(req.get('topic',''))} {req.get('mode','recall')} lesson={req.get('lesson','')}"
-    if k == "predict":
-        return f"{prefix} predict {req.get('block')} {req.get('choice')} lesson={req.get('lesson','')}"
-    if k == "mcq":
-        return f"{prefix} mcq {req.get('item')} {'reset' if req.get('event') == 'reset' else req.get('choice')} lesson={req.get('lesson','')}"
-    if k == "grid":
-        return f"{prefix} grid"
-    return f"{prefix} {json.dumps(req)}"
-
-
 PENDING = {}
 PENDING_LOCK = threading.Lock()
 LISTEN_LOCK = threading.Lock()
@@ -1543,7 +1514,6 @@ def stop_turn(turn):
 
 
 def wake(req):
-    st = state()
     k = req.get("kind")
     if k == "explain":
         return headless("explain.py", req, keep=("id",))
@@ -1557,20 +1527,8 @@ def wake(req):
         return set_fold(req)
     if k == "remove":
         return remove_exp(req)
-    if k in ("predict", "mcq"):
-        # click logging only; no agent wake
-        return {"queued": True, "wake": "none"}
-    cmd = host_command(req)
-    layout, agent = st.get("layout", "tab"), st.get("agent", "claude")
-    if layout == "cmux" and st.get("cli_surface"):
-        try:
-            subprocess.run(["cmux", "send", "--surface", st["cli_surface"], cmd + "\n"], check=False, timeout=5)
-            return {"queued": True, "wake": "cmux", "command": cmd}
-        except Exception as e:
-            return {"queued": True, "wake": "cmux-failed", "command": cmd, "error": str(e)}
-    if agent == "codex":
-        return {"queued": True, "fallback": "paste", "command": cmd}
-    return {"queued": True, "wake": "waiter", "command": cmd}
+    # predict / mcq and anything else: click logging only; nothing wakes the agent
+    return {"queued": True, "wake": "none"}
 
 
 class H(BaseHTTPRequestHandler):
@@ -1886,11 +1844,11 @@ class H(BaseHTTPRequestHandler):
             # dedupe: same explain text+block+lesson within 120 s is a repeat click, not a new question
             if req.get("kind") == "explain":
                 try:
-                    key = (req.get("text"), req.get("block"), req.get("lesson"), req.get("depth"), req.get("parent"), req.get("grow"))
+                    key = (req.get("text"), req.get("block"), req.get("lesson"), req.get("parent"))
                     now = time.time()
                     for line in reversed(open(QUEUE).read().splitlines()[-20:]):
                         r = json.loads(line)
-                        if r.get("kind") == "explain" and (r.get("text"), r.get("block"), r.get("lesson"), r.get("depth"), r.get("parent"), r.get("grow")) == key \
+                        if r.get("kind") == "explain" and (r.get("text"), r.get("block"), r.get("lesson"), r.get("parent")) == key \
                            and now - calendar.timegm(time.strptime(r.get("ts", "1970-01-01T00:00:00Z"), "%Y-%m-%dT%H:%M:%SZ")) < 120:
                             return self.send(200, {"queued": False, "duplicate": True})
                 except Exception as e:

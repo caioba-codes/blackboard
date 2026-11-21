@@ -66,9 +66,9 @@ A full-width block below the selected paragraph, framed like chalk: a hand-drawn
 
 ## Definition
 
-A one-sentence meaning of the selected term as this lesson uses it, in a small popup at the selection. It closes on an outside click, Escape or scroll; the selected term keeps a dotted underline that reopens it (Enter/Space too). Anchors persist per workspace and lesson in this browser. Nothing is written to the lesson file and nothing reaches the chat. `POST /define` answers through `bin/define.py`, cheapest source first:
+A one-sentence meaning of the selected term as this lesson uses it, in a small popup at the selection. The text appears at once when it arrives, with no writing animation. It closes on an outside click, Escape or scroll; the selected term keeps a dotted underline that reopens it (Enter/Space too). Anchors persist per workspace and lesson in this browser. Nothing is written to the lesson file and nothing reaches the chat. `POST /define` answers through `bin/define.py`, cheapest source first:
 
-1. **The lesson's own words**: a table row, a `**Term** — …` note, a `Term:` line, or a `GLOSSARY.md` entry, returned verbatim (`via: lesson`).
+1. **The lesson's own words**: a table row, a `**Term** — …` note, or a `Term:` line, returned verbatim (`via: lesson`).
 2. **Precompute**: serving a lesson starts a background pass over its own terms (emphasis used more than once, table keys, inline code, words already asked about; 40 max), one at a time and yielding to real clicks, only when a local model is installed.
 3. **Disk cache**: `~/.cache/blackboard/defs/<slug>/<lesson>.json`. Delete it to regenerate.
 4. **Local model**: Ollama. `BLACKBOARD_DEFINE_LOCAL` picks the model; by default a plain instruct model (`llama3.2:3b`, `gemma3`), else the smallest installed. Avoid hybrid reasoning models: on Ollama 0.33 neither `think: false` nor `/no_think` silences qwen3. The bridge keeps it warm (`keep_alive` 30 m, a one-token ping at startup and on each page view).

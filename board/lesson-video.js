@@ -4,7 +4,7 @@
    Playback position, speed and view live in this browser only: never learning records, answers or XP.
 
    Views: Read (the board as always) and Watch (the video alone, with its list of explanations). A saved "both" view
-   from older versions opens as Read. The code that kept the text in step beside the video stays for now, unreachable.
+   from older versions opens as Read.
 
    Segment `step` (1-based) never reveals anything by itself: in a check-in answer opened after the practice gate it
    advances the step-by-step reveal to that step (never backwards); otherwise it marks that row of the block's single
@@ -21,7 +21,7 @@
    seeked on this page); a `lessonvideo:context` event on window carries the same object whenever it changes. */
 (function(){
 'use strict';
-const SPEEDS=[.5,.75,1,1.25,1.5,2], SKIP=10, NUDGE=5, WIDE=1080, TOPBAR=70;
+const SPEEDS=[.5,.75,1,1.25,1.5,2], SKIP=10, NUDGE=5, TOPBAR=70;
 const root=document.documentElement, reduced=matchMedia('(prefers-reduced-motion: reduce)');
 const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const num=x=>typeof x==='number'&&isFinite(x);
@@ -93,7 +93,7 @@ function chapterRows(){
     if(!html){ if(row)row.remove(); continue; }
     if(!row){ row=document.createElement('div'); row.className='lv-chrow'; row.dataset.ch=c.chapter; blk.after(row); }
     if(row.innerHTML!==html)row.innerHTML=html;
-    const b=row.querySelector('.lv-chplay'); if(b)b.onclick=()=>{ if(!S)return; attach(); setMode('watch'); seek(+b.dataset.off,'nav'); play(); };
+    const b=row.querySelector('.lv-chplay'); if(b)b.onclick=()=>{ if(!S)return; setMode('watch'); seek(+b.dataset.off,'nav'); play(); };
   }
   pollChapters();
 }
@@ -202,10 +202,10 @@ function segAt(t){ const a=S.segs; let lo=0,hi=a.length-1,ans=0; while(lo<=hi){ 
 function mount(m){
   const segs=m.segments.map((s,i)=>({id:s.id,label:s.label,start:s.start,end:s.end,line:s.line,step:Number.isInteger(s.step)&&s.step>0?s.step:null,p:s.practice||null,i}));
   S={m,segs,prac:segs.filter(s=>s.p),dur:m.duration,key:`bb-video:v1:${ctx.ws||''}:${ctx.lessonId}:${String(m.lessonSha256||m.version||'').slice(0,12)}`,
-    mode:'read',sync:!!m.mappingValid,follow:false,detach:'mode',i:-1,targets:[],first:new Map(),
+    mode:'read',sync:!!m.mappingValid,i:-1,targets:[],
     armed:new Set(),granted:new Set(),gate:null,ended:false,err:false,errMsg:'',src:false,meta:false,pendingT:0,prevT:0,
-    scrub:false,scrubT:0,scrubRaf:0,loop:false,rate:1,raf:0,saveAt:0,readY:0,ignoreUntil:0,autoY:0,waitT:0,lastSec:-1,
-    menuOpen:false,introVis:true,band:null,intro:null,io:null,opened:new Map()};
+    scrub:false,scrubT:0,scrubRaf:0,loop:false,rate:1,raf:0,saveAt:0,readY:0,waitT:0,lastSec:-1,
+    menuOpen:false,introVis:true,intro:null,io:null,opened:new Map()};
   S.prac.forEach(s=>S.armed.add(s.id));
   const saved=load();
   S.rate=SPEEDS.includes(saved.rate)?saved.rate:1; S.loop=!!saved.loop;
@@ -323,7 +323,6 @@ function build(){
 <div class="lv-bar"><div class="lv-tl"><div class="lv-zones" aria-hidden="true"></div><input type="range" class="lv-range" min="0" max="${S.dur}" step="0.1" value="0" aria-label="Video position"><div class="lv-tip" hidden aria-hidden="true"><b class="lv-tipc"></b><span class="lv-tipt"></span></div></div>
 <div class="lv-ctl"><button type="button" class="lv-ib lv-play" data-a="play" aria-label="Play" title="Play (Space)">${I.play}</button>
 <span class="lv-time"><span class="lv-el">0:00</span><span class="lv-du"> / ${fmt(S.dur)}</span><span class="lv-ch"></span></span>
-<button type="button" class="lv-chip lv-follow" data-a="follow" hidden title="Scroll the text back to what the video is saying">Follow</button>
 <label class="lv-speed" title="Playback speed (Shift+&lt; and Shift+&gt;)"><span class="lv-sr">Playback speed</span><select>${SPEEDS.map(r=>`<option value="${r}">${r}×</option>`).join('')}</select></label>
 <div class="lv-more"><button type="button" class="lv-ib" data-a="more" aria-label="More video options" aria-expanded="false" aria-controls="lvmenu" title="More">${I.more}</button>
 <div class="lv-menu" id="lvmenu" hidden><button type="button" data-a="back">Back 10 seconds<kbd>←</kbd></button><button type="button" data-a="fwd">Forward 10 seconds<kbd>→</kbd></button><button type="button" data-a="prev">Previous explanation<kbd>⇧←</kbd></button><button type="button" data-a="next">Next explanation<kbd>⇧→</kbd></button><button type="button" data-a="replay">Replay this explanation<kbd>R</kbd></button><button type="button" data-a="loop" aria-pressed="false">Loop this explanation</button><button type="button" data-a="mute" aria-pressed="false">Mute</button><button type="button" data-a="pip" hidden>Picture in picture</button><button type="button" data-a="read">Read from here</button></div></div>
@@ -337,7 +336,7 @@ function build(){
   if(Array.isArray(S.m.parts)&&S.m.parts.length)playlist(q('video'),S.m.parts);
   Object.assign(S,{panel:p,video:q('video'),stage:q('.lv-stage'),big:q('.lv-big'),spin:q('.lv-spin'),gateEl:q('.lv-gate'),errEl:q('.lv-err'),endEl:q('.lv-end'),
     bar:q('.lv-bar'),range:q('.lv-range'),tip:q('.lv-tip'),tl:q('.lv-tl'),zones:q('.lv-zones'),chEl:q('.lv-ch'),playBtn:q('.lv-play'),el:q('.lv-el'),speed:q('.lv-speed select'),moreBtn:q('[data-a="more"]'),menu:q('.lv-menu'),
-    fsBtn:q('[data-a="fs"]'),prevBtn:q('[data-a="prev"]'),nextBtn:q('[data-a="next"]'),readBtn:q('[data-a="read"]'),followBtn:q('.lv-follow'),
+    fsBtn:q('[data-a="fs"]'),prevBtn:q('[data-a="prev"]'),nextBtn:q('[data-a="next"]'),readBtn:q('[data-a="read"]'),
     list:q('.lv-list'),live:q('.lv-live'),gateBtn:q('[data-a="continue"]'),capEl:q('.lv-cc'),band2:q('.lv-ccband'),capText:q('.lv-cct'),ccBtn:q('.lv-ccb'),mask:q('.lv-mask')});
   S.speed.value=String(S.rate);
   if(!(document.pictureInPictureEnabled&&!S.video.disablePictureInPicture))q('[data-a="pip"]').remove(); else q('[data-a="pip"]').hidden=false;
@@ -419,11 +418,7 @@ function decorate(){
     let lo=0,hi=blks.length-1,ans=-1; while(lo<=hi){ const m=(lo+hi)>>1; if(blks[m].line<=s.line){ans=m;lo=m+1;} else hi=m-1; }
     return ans<0?title:(nested(blks[ans],s.line,src)||blks[ans].b);
   });
-  S.first=new Map();
-  if(S.sync)S.targets.forEach((b,i)=>{ if(isAnchor(b)&&!S.first.has(b))S.first.set(b,i); });
-  paintHighlight(); applyStep(S.i);
-  // the board may have just restored the reader's place: that scroll is not the reader leaving the video
-  S.ignoreUntil=performance.now()+400; S.autoY=window.scrollY;
+  applyStep(S.i);
 }
 // A container block (::: quiz) renders several questions from one source block: a cue line inside a `::: mcq <item>`
 // points at that question, found by its item id, not at the top of the whole block. Needs the lesson source text.
@@ -437,7 +432,6 @@ function nested(e,line,src){
   }
   return null;
 }
-const isAnchor=el=>!!el&&el.nodeType===1&&el.matches('.blk,.mcqi');
 function intro(){
   const main=ctx.main;
   if(!S.intro)S.intro=buildIntro();
@@ -451,44 +445,36 @@ function intro(){
   }
   paintModes(); paintIntro();
 }
-function setSync(v){ if(S.sync===v)return; S.sync=v; if(!v){ S.follow=false; } decorate(); paintFoot(); paintIntro(); }
+function setSync(v){ if(S.sync===v)return; S.sync=v; decorate(); paintFoot(); paintIntro(); }
 
 // ---------- views ----------
 function placeAnchor(){ const b=[...ctx.main.querySelectorAll('.blk')].find(x=>x.getBoundingClientRect().bottom>TOPBAR+10); return b?{el:b,top:b.getBoundingClientRect().top}:null; }
 function restoreAnchor(a){ if(a&&a.el.isConnected){ const dy=a.el.getBoundingClientRect().top-a.top; if(Math.abs(dy)>1)window.scrollTo(0,window.scrollY+dy); } }
-function inView(b){ const r=b.getBoundingClientRect(), top=topOffset(); return r.bottom>top+20&&r.top<innerHeight-40; }
 function setMode(mode,o={}){
   const prev=S.mode;
   if(!o.init&&mode===prev){ paintModes(); return; }
   const anchor=!o.init&&prev!=='watch'?placeAnchor():null;
   if(!o.init&&prev!=='watch')S.readY=window.scrollY;
   S.mode=mode;
-  root.classList.toggle('lv-watch',mode==='watch'); root.classList.toggle('lv-both',mode==='both');
+  root.classList.toggle('lv-watch',mode==='watch');
   S.panel.hidden=mode==='read';
   if(mode==='read'){ if(!S.video.paused)S.video.pause(); closeMenu(); exitFs(); }
   else { ensureSrc(); if(S.err)retry(); }
-  layout(); paintModes(); paintHighlight(); paintCards();
-  S.ignoreUntil=performance.now()+500;
-  const tgt=S.sync?S.targets[S.i]:null;
-  if(o.init){ S.follow=false; S.detach='mode'; }   // after a reload the text stays put until Play
+  layout(); paintModes(); paintCards();
+  if(o.init);   // after a reload the text stays put
   else if(mode==='watch')window.scrollTo(0,0);
-  else if(mode==='both'&&prev==='watch'){ if(tgt){ attach(); snapTo(tgt,false); } else window.scrollTo(0,S.readY); }
-  else if(mode==='both'){ restoreAnchor(anchor); if(tgt&&inView(tgt)){ S.follow=true; S.detach=''; } else { S.follow=false; S.detach='mode'; } }
   else if(prev==='watch')window.scrollTo(0,S.readY);
   else restoreAnchor(anchor);
-  S.autoY=window.scrollY; applyStep(S.i); paintFoot(); paintIntro();
+  applyStep(S.i); paintFoot(); paintIntro();
   if(!o.init&&o.persist!==false)save();
 }
 function layout(){
   const cw=parseFloat(getComputedStyle(root).getPropertyValue('--chatw'))||0, avail=innerWidth-cw;
-  const side=S.mode==='both'&&avail>=WIDE;
-  root.classList.toggle('lv-side',side); root.classList.toggle('lv-stack',S.mode==='both'&&!side);
-  if(side)root.style.setProperty('--lvw',Math.round(clamp(Math.min(avail-780,(innerHeight-270)*16/9),360,760))+'px');
   // Watch: the video as large as the window allows, its list of explanations beside it when there is room
   const wide=S.mode==='watch'&&avail>=1100; root.classList.toggle('lv-wwide',wide);
   if(S.mode==='watch')root.style.setProperty('--lvtw',Math.round(clamp(Math.min(1120,avail-(wide?380:32),(innerHeight-(wide?250:300))*16/9),260,1120))+'px');
 }
-function topOffset(){ return S.mode==='both'&&root.classList.contains('lv-stack')?TOPBAR+S.panel.offsetHeight+12:TOPBAR+14; }
+function topOffset(){ return TOPBAR+14; }
 function paintModes(){
   document.querySelectorAll('.lv-modes [data-mode]').forEach(b=>{ const on=b.dataset.mode===S.mode; b.setAttribute('aria-checked',String(on)); b.tabIndex=on?0:-1; });
   paintTopModes();
@@ -503,14 +489,10 @@ function paintIntro(){
   st.textContent=msg; st.hidden=!msg; st.classList.toggle('warn',S.err||!S.sync);
 }
 
-// ---------- following the text ----------
-function attach(){ S.follow=true; S.detach=''; paintFoot(); }
-function detach(why){ if(!S.follow&&S.detach===why)return; S.follow=false; S.detach=why; paintFoot(); }
+// ---------- reading from the video's place ----------
 function scrollByAuto(dy,smooth){
   const sm=smooth&&!reduced.matches;
-  S.ignoreUntil=performance.now()+(sm?1400:300);
   window.scrollTo({top:Math.max(0,window.scrollY+dy),behavior:sm?'smooth':'auto'});
-  if(!sm)S.autoY=window.scrollY;
 }
 // exact place: the block's top a little below the free top edge; when the explained row of a long derivation would then
 // sit below the screen, that row is placed in the upper third instead
@@ -522,36 +504,15 @@ function snapDy(b){
   return dy;
 }
 function snapTo(b,smooth){ const dy=snapDy(b); if(Math.abs(dy)>6)scrollByAuto(dy,smooth); }
-// while playing: move only when the block (or its explained row) is not already comfortably on screen
-function followTo(b){
-  const top=topOffset(), free=innerHeight-top, r=rowOf(b)||b.getBoundingClientRect();
-  if(r.top>=top&&r.top<=top+free*.55&&(r.bottom<=innerHeight-8||r.bottom-r.top>free*.8))return;
-  snapTo(b,true);
-}
-function snapCurrent(smooth){ if(S.mode==='both'&&S.sync&&S.follow){ const b=S.targets[S.i]; if(b)snapTo(b,!!smooth); } }
 function flash(b){ if(!b||!b.classList)return; b.classList.remove('lv-flash'); void b.offsetWidth; b.classList.add('lv-flash'); setTimeout(()=>b.classList.remove('lv-flash'),1800); }
-function paintHighlight(){
-  const want=S.mode==='both'&&S.sync?S.targets[S.i]:null;
-  ctx.main.querySelectorAll('.lv-cur').forEach(x=>{ if(x!==want)x.classList.remove('lv-cur'); });
-  if(isAnchor(want))want.classList.add('lv-cur');
-  if(!want)clearBand();
-}
 
 // ---------- steps ----------
-function clearBand(){ if(S.band){ S.band.remove(); S.band=null; } }
 const grantedBlk=b=>S.prac.some(s=>S.granted.has(s.id)&&S.targets[s.i]===b);
 function applyStep(i){
-  clearBand();
   const s=S.segs[i]; if(!s||!s.step||!S.sync)return;
   const b=S.targets[i]; if(!b||!b.classList.contains('blk'))return;
   const box=b.querySelector('.check>details[open]>div');
-  if(box&&box._rv&&grantedBlk(b)){ if(box._rv.k<s.step&&ctx.rvGo)ctx.rvGo(box,s.step); return; }
-  if(S.mode!=='both')return;
-  const row=stepRow(i); if(!row)return;
-  const br=b.getBoundingClientRect(), sc=b.offsetHeight/(br.height||1), q=row.rect;
-  const band=document.createElement('div'); band.className='lv-band'; band.setAttribute('aria-hidden','true');
-  Object.assign(band.style,{top:((q.top-br.top)*sc-3)+'px',height:((q.bottom-q.top)*sc+6)+'px',left:((q.left-br.left)*sc)+'px',width:((q.right-q.left)*sc)+'px'});
-  b.appendChild(band); S.band=band;
+  if(box&&box._rv&&grantedBlk(b)&&box._rv.k<s.step&&ctx.rvGo)ctx.rvGo(box,s.step);
 }
 // the on-screen row of segment i's step in its block's single aligned derivation (client coordinates), or null
 function stepRow(i){
@@ -608,7 +569,7 @@ function cont(){
 function replayQ(){
   const s=S.gate||S.segs[S.i]; S.gate=null;
   let t=s.start; if(s.p&&s.p.pauseAt-s.start<1&&s.i>0)t=S.segs[s.i-1].start;   // the question was asked before this segment
-  attach(); seek(t,'replay'); play();
+  seek(t,'replay'); play();
 }
 
 // ---------- playback ----------
@@ -633,8 +594,6 @@ function seek(t,kind,from){
   rawSeek(t);
   if(gate)showGate(gate);
   paintCards(); paintPlay();
-  if(kind==='nav'||kind==='replay'||kind==='scrub'||kind==='media')snapCurrent();
-  else if(kind==='skip'&&S.mode==='both'&&S.sync&&S.follow&&S.targets[S.i])followTo(S.targets[S.i]);
   if(kind!=='preview')save();
   if(kind!=='restore'&&kind!=='preview'){ S.touched=true; emit(); }
 }
@@ -643,15 +602,14 @@ function play(){
   ensureSrc();
   if(S.err){ retry(); }
   if(S.ended){ S.ended=false; seek(0,'nav'); }
-  if(!S.follow&&S.detach==='mode'&&S.sync){ attach(); snapCurrent(true); }
   const pr=S.video.play();
   if(pr&&pr.catch)pr.catch(e=>{ if(e&&e.name==='AbortError')return; paintPlay(); if(e&&e.name==='NotAllowedError')say('Press Play to start the video.'); });
 }
 function toggle(){ if(S.gate)return cont(); if(S.video.paused||S.ended)play(); else S.video.pause(); }
 function skip(d){ const t=cur(); seek(t+d,'skip',t); }
-function navPrev(){ const s=S.segs[S.i]; let j=S.i; if(cur()-s.start<3&&j>0)j--; attach(); seek(S.segs[j].start,'nav'); }
-function navNext(){ if(S.i<S.segs.length-1){ attach(); seek(S.segs[S.i+1].start,'nav'); } }
-function replaySeg(){ const s=S.segs[S.i]; if(!s)return; attach(); seek(s.start,'replay'); play(); }
+function navPrev(){ const s=S.segs[S.i]; let j=S.i; if(cur()-s.start<3&&j>0)j--; seek(S.segs[j].start,'nav'); }
+function navNext(){ if(S.i<S.segs.length-1){ seek(S.segs[S.i+1].start,'nav'); } }
+function replaySeg(){ const s=S.segs[S.i]; if(!s)return; seek(s.start,'replay'); play(); }
 function stepRate(d){ const i=clamp(SPEEDS.indexOf(S.rate)+d,0,SPEEDS.length-1); setRate(SPEEDS[i]); say(`Speed ${SPEEDS[i]}×`); }
 function setRate(r){ S.rate=r; S.video.defaultPlaybackRate=S.video.playbackRate=r; S.speed.value=String(r); save(); }
 function retry(){ S.err=false; S.pendingT=S.prevT; S.meta=false; paintCards(); paintIntro(); S.video.load(); }
@@ -659,7 +617,7 @@ function readFrom(){
   const b=S.sync?S.targets[S.i]:null;
   if(!S.video.paused)S.video.pause();
   if(S.mode==='watch')setMode('read');
-  if(b){ attach(); scrollByAuto(snapDy(b),false); flash(b); }
+  if(b){ scrollByAuto(snapDy(b),false); flash(b); }
 }
 function loop(){ if(S.raf)return; const f=()=>{ S.raf=0; if(S.video.paused)return; tick(); S.raf=requestAnimationFrame(f); }; S.raf=requestAnimationFrame(f); }
 function tick(){
@@ -673,14 +631,12 @@ function tick(){
 }
 function setSeg(i,why){
   if(i===S.i||!S.segs[i])return;
-  const old=S.targets[S.i]; S.i=i; const s=S.segs[i];
+  S.i=i;
   S.nextBtn.disabled=i>=S.segs.length-1;
   S.list.querySelectorAll('[aria-current]').forEach(x=>x.removeAttribute('aria-current'));
   const li=S.list.querySelector(`[data-i="${i}"]`);
   if(li){ li.setAttribute('aria-current','true'); const L=S.list, y=li.parentElement.offsetTop; if(S.mode==='watch'&&L.clientHeight&&(y<L.scrollTop||y+li.offsetHeight>L.scrollTop+L.clientHeight))L.scrollTop=Math.max(0,y-L.clientHeight/3); }
-  paintHighlight(); applyStep(i); emit();
-  const b=S.targets[i];
-  if(why==='play'&&S.mode==='both'&&S.sync&&S.follow&&b&&(b!==old||S.band))followTo(b);   // next block, or the next row of the same derivation
+  applyStep(i); emit();
 }
 function onError(){
   const e=S.video.error; if(!e)return;
@@ -759,7 +715,6 @@ function paintMenu(){
 function paintFoot(){
   if(!S.readBtn)return;
   S.readBtn.hidden=!S.sync;
-  S.followBtn.hidden=!(S.sync&&S.mode==='both'&&!S.follow);
 }
 function paintFs(){
   const on=fsOn();
@@ -810,13 +765,12 @@ function act(a,el){
     case 'mute': S.video.muted=!S.video.muted; paintMenu(); return save();
     case 'pip': closeMenu(); return togglePip();
     case 'read': closeMenu(); exitFs(); return readFrom();
-    case 'follow': attach(); return snapCurrent(true);
     case 'continue': return cont();
     case 'replayq': return replayQ();
     case 'retry': return retry();
     case 'toread': exitFs(); return setMode('read');
-    case 'restart': S.ended=false; attach(); seek(0,'nav'); return play();
-    case 'seg': attach(); seek(S.segs[+el.dataset.i].start,'nav'); return play();
+    case 'restart': S.ended=false; seek(0,'nav'); return play();
+    case 'seg': seek(S.segs[+el.dataset.i].start,'nav'); return play();
   }
 }
 function owns(e){
@@ -827,20 +781,17 @@ function owns(e){
   const fs=fsEl(); if(fs)return false;
   if(S.panel.contains(t))return true;
   if(t.closest('#toc,#topresults,.lv-modes'))return false;
-  // Both: once the video has been played or sought on this page, its keys work from anywhere in the lesson, like
-  // YouTube's; a button, link or quiz control keeps its own Space and arrows
-  if(S.mode==='both')return !!S.touched&&!t.closest('button,a,summary,label,.mcq,.checkin');
   return S.mode==='watch';
 }
 function volume(d){ const v=S.video; v.muted=false; v.volume=clamp(Math.round((v.volume+d)*20)/20,0,1); paintMenu(); save(); say(`Volume ${Math.round(v.volume*100)}%`); }
 function mute(){ S.video.muted=!S.video.muted; paintMenu(); save(); say(S.video.muted?'Muted':'Unmuted'); }
-function seekPct(n){ const d=S.dur||S.video.duration; if(!num(d)||d<=0)return; attach(); seek(d*n/10,'nav'); }
+function seekPct(n){ const d=S.dur||S.video.duration; if(!num(d)||d<=0)return; seek(d*n/10,'nav'); }
 function wire(){
   const v=S.video, p=S.panel;
   v.addEventListener('loadedmetadata',()=>{ fitCaptions(); S.meta=true; if(num(v.duration)&&v.duration>0)S.dur=v.duration; S.range.max=String(S.dur); buildZones(); v.defaultPlaybackRate=v.playbackRate=S.rate; seek(S.pendingT,'restore'); });
   v.addEventListener('play',()=>{ if(S.gate)return cont(); S.ended=false; S.touched=true; paintPlay(); loop(); wake(); emit(); });   // Play from system controls at the gate = Continue
   v.addEventListener('playing',()=>{ waiting(false); paintPlay(); });
-  v.addEventListener('pause',()=>{ wake(); paintPlay(); save(); paintIntro(); if(!S.scrub)snapCurrent(); emit(); });
+  v.addEventListener('pause',()=>{ wake(); paintPlay(); save(); paintIntro(); emit(); });
   v.addEventListener('waiting',()=>waiting(true));
   v.addEventListener('canplay',()=>waiting(false));
   v.addEventListener('seeked',()=>{
@@ -914,7 +865,7 @@ function wire(){
     else if(k==='ArrowUp'||k==='ArrowDown')volume(k==='ArrowUp'?.05:-.05);
     else if(k==='m'||k==='M')mute();
     else if(/^[0-9]$/.test(k))seekPct(+k);
-    else if(k==='Home'||k==='End'){ if(k==='Home'){ attach(); seek(0,'nav'); } else seekPct(10); }
+    else if(k==='Home'||k==='End'){ if(k==='Home'){ seek(0,'nav'); } else seekPct(10); }
     else if(k==='i'||k==='I')togglePip();
     else if(k===']')navNext(); else if(k==='[')navPrev();
     else if(k==='f'||k==='F')toggleFs();
@@ -924,28 +875,13 @@ function wire(){
     else done=false;
     if(done){ e.preventDefault(); e.stopPropagation(); }
   });
-  // the reader taking over the scroll releases the follow; "Follow the video" re-attaches
-  const intent=e=>{ if(S.mode!=='both'||!S.follow)return; if(e.target instanceof Element&&e.target.closest('#lvpanel,#chat,#toc,#topresults'))return; detach('user'); };
-  window.addEventListener('wheel',intent,{passive:true});
-  window.addEventListener('touchmove',intent,{passive:true});
-  document.addEventListener('keydown',e=>{
-    if(!['PageUp','PageDown','Home','End','ArrowUp','ArrowDown',' '].includes(e.key)||e.defaultPrevented||owns(e))return;
-    if(e.target instanceof Element&&e.target.closest('input,textarea,select,button,[contenteditable],#chat'))return;
-    intent(e);
-  });
-  document.addEventListener('pointerdown',e=>{ if(e.target instanceof Element&&e.target.closest('.rail'))intent({target:document.body}); },true);
-  // a jump from Contents: in Watch it brings the text back first, in Both it is the reader leaving the video
+  // a jump from Contents in Watch brings the text back first
   document.addEventListener('click',e=>{
     if(!(e.target instanceof Element)||!e.target.closest('#toc a[data-id],#toc-ticks .tick'))return;
-    if(S.mode==='watch')setMode('read'); else if(S.mode==='both'&&S.follow)detach('user');
+    if(S.mode==='watch')setMode('read');
   },true);
-  window.addEventListener('scroll',()=>{
-    if(S.mode!=='both')return;
-    if(performance.now()<S.ignoreUntil){ S.autoY=window.scrollY; return; }
-    if(S.follow&&Math.abs(window.scrollY-S.autoY)>160)detach('user');
-  },{passive:true});
   if('ResizeObserver' in window)new ResizeObserver(fitCaptions).observe(S.stage);
-  let rt=0; window.addEventListener('resize',()=>{ layout(); fitCaptions(); clearTimeout(rt); rt=setTimeout(()=>{ applyStep(S.i); if(S.mode==='both')S.autoY=window.scrollY; },160); });
+  let rt=0; window.addEventListener('resize',()=>{ layout(); fitCaptions(); clearTimeout(rt); rt=setTimeout(()=>applyStep(S.i),160); });
   window.addEventListener('pagehide',save);
   document.addEventListener('visibilitychange',()=>{ if(document.hidden)save(); });
   if('mediaSession' in navigator){

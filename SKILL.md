@@ -42,7 +42,6 @@ Every new full lesson includes both the written lesson and its video unless the 
 `$ARGUMENTS` starts with one of:
 
 - `learn <topic> [for <course>]` — write and render a lesson (default when the first word is not a mode).
-- `explain <id> <line> "<text>"` — answer an Explain request from the board (see Explain).
 - `remove <id>` — delete an explanation block.
 - `add <path|url>` — add material to the workspace and re-tier.
 - `sync` — re-pull the LMS course.

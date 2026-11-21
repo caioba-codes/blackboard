@@ -177,7 +177,6 @@ Block syntax the renderer understands:
 - `::: contents` / numbered chapter links with a one-line description each / `:::` → the collapsed **Contents** drop-down right under the title. A plain `**Contents**` line over a list (older lessons) renders the same way.
 - `::: checkin … :::` with `- question || answer` items → Notion-style toggles. An item may continue on lines indented two spaces and hold a fenced code block; the first `||` outside code splits question from answer.
 - `units: …` on the line after a display equation → "symbols & units" toggle.
-- `::: numeric … :::` → collapsed numeric detail under an abstract step.
 - `::: predict` / option lines / `reveal: …` / `:::` → prediction buttons; the reveal opens after a click. Older lessons only: new lessons do not write one.
 - `\why{math}{rule}` inside any `$…$` → the math with a dotted underline; a tap shows the rule (BLUEPRINT-STEM.md **STEM writing rules**).
 - `::: sheet` / `::: group <label>` cards / `:::` → a cheat-sheet chapter: cards of formulas with small-caps labels, two columns when there is room (BLUEPRINT-STEM.md **STEM writing rules**).

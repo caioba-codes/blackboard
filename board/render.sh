@@ -80,11 +80,11 @@ PY
   fi
 fi
 
-# keep previous "opened" + surface ids
+# keep previous "opened"
 PREV=$(cat "$STATE" 2>/dev/null || echo '{}')
-SLUG=$(python3 - "$STATE" "$WS" "$ID" "$AGENT" "$LAYOUT" "$([ "$STREAM" = 1 ] || [ "$LIVE" = 1 ] && echo 1 || echo 0)" "${CMUX_SURFACE_ID:-}" <<'PY'
+SLUG=$(python3 - "$STATE" "$WS" "$ID" "$AGENT" "$LAYOUT" "$([ "$STREAM" = 1 ] || [ "$LIVE" = 1 ] && echo 1 || echo 0)" <<'PY'
 import json,sys,time,os,re,hashlib
-p,ws,lid,agent,layout,stream,cli=sys.argv[1:]
+p,ws,lid,agent,layout,stream=sys.argv[1:]
 try: st=json.load(open(p))
 except Exception: st={}
 base=os.path.basename(ws); base=os.path.basename(os.path.dirname(ws)) if base=="learn" else base
@@ -94,10 +94,8 @@ for k,w in list(wss.items()):
     if k==slug and os.path.abspath(w.get("path",""))!=os.path.abspath(ws): slug=slug+"-"+hashlib.md5(ws.encode()).hexdigest()[:4]
 w=wss.setdefault(slug,{"path":ws})
 w.update({"path":ws,"current":lid or w.get("current",""),"agent":agent,"layout":layout,"streaming":stream=="1","rev":int(time.time()*1000)})
-if cli: w["cli_surface"]=cli
 # top level = the last rendered workspace (older pages and tools read these)
 st.update({"ws":ws,"current":lid or st.get("current",""),"agent":agent,"layout":layout,"streaming":stream=="1","rev":int(time.time()*1000)})
-if cli: st["cli_surface"]=cli
 json.dump(st,open(p,"w")); print(slug)
 PY
 )

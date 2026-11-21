@@ -461,8 +461,6 @@ hr{border:0;border-top:1px solid var(--rule);margin:40px 0}
 .mcqi .fbb .fbmiss{color:#ece8da;margin-bottom:2px}
 @media print{.rv .rv-off{display:revert!important}.rv .mathrow{height:auto!important}.rv .katex *{visibility:visible!important}.stepctl{display:none!important}.check>details>div{display:block}}
 .toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:#1a1a1a;border:1px solid var(--rule);color:var(--chalk);padding:12px 16px;border-radius:6px;font-size:16px;max-width:90vw;display:none;z-index:8}
-.toast code{font-family:ui-monospace,Menlo,monospace;font-size:14px;color:var(--dim)}
-.toast .btn{margin-left:10px;font-size:14px;padding:3px 10px}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:22px;margin-top:24px}
 .hubbar{display:flex;flex-wrap:wrap;gap:14px;align-items:center;margin:6px 0 10px}
 .hubq{flex:1;min-width:220px;background:#101010;border:1px solid var(--rule);border-radius:6px;color:var(--chalk);font:inherit;font-size:18px;padding:9px 14px;outline:none}
@@ -516,16 +514,6 @@ main pre code{font:inherit}
 .interactive svg{display:block;width:100%;max-width:640px;height:auto}
 .interactive .axis{stroke:#777c70;stroke-width:1}.interactive .curve{fill:none;stroke:#d1bb83;stroke-width:3}
 
-/* chalk write-in */
-.w{display:inline-block;clip-path:inset(0 100% 0 0);animation:chalk-write var(--duration,150ms) steps(var(--letters,5),end) var(--delay,0ms) both}
-@keyframes chalk-write{from{clip-path:inset(0 100% 0 0);filter:blur(.5px)}to{clip-path:inset(0 0 0 0);filter:blur(0)}}
-@keyframes settle{from{opacity:0;filter:blur(3px);transform:translateY(2px)}60%{opacity:.85;filter:blur(.6px)}to{opacity:1;filter:blur(0)}}
-h1.new,h2.new,h3.new{--wipe:linear-gradient(90deg,#000 40%,transparent 60%);mask-image:var(--wipe);-webkit-mask-image:var(--wipe);mask-size:250% 100%;-webkit-mask-size:250% 100%;animation:wipe var(--d,900ms) cubic-bezier(.3,0,.2,1) forwards}
-@keyframes wipe{from{mask-position:100% 0;-webkit-mask-position:100% 0}to{mask-position:0 0;-webkit-mask-position:0 0}}
-.mathrow.new{clip-path:inset(0 100% 0 0);animation:sweep var(--d,1200ms) linear forwards}
-@keyframes sweep{to{clip-path:inset(0 0 0 0)}}
-.blk.new{animation:rise .5s ease-out both}
-@keyframes rise{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
 /* while a lesson is being written: finished chapters show normally, each planned one is a quiet row; only the bar's width moves */
 #writing{margin:34px 0 80px;color:var(--dim);font:15px/1.5 var(--body)}
 #writing .wprog{display:flex;align-items:baseline;gap:14px;margin-bottom:8px}
@@ -534,11 +522,9 @@ h1.new,h2.new,h3.new{--wipe:linear-gradient(90deg,#000 40%,transparent 60%);mask
 #writing .wbar>i{display:block;height:100%;background:var(--acc);transition:width .6s ease-out}
 #writing .wrow{display:flex;justify-content:space-between;gap:16px;padding:10px 0;border-top:1px solid var(--rule)}
 #writing .wrow .wst{font-style:italic;white-space:nowrap}
-#nub{position:fixed;width:9px;height:20px;border-radius:2px;background:#f2eee4;box-shadow:0 0 6px #fff6;transform:rotate(20deg);pointer-events:none;transition:left .12s,top .12s,opacity .4s;z-index:9;opacity:0}
-#nub.on{opacity:1}
 @keyframes blink{50%{opacity:.2}}
 /* The XP celebration plays even with Reduce Motion on (it was asked for): it is short and never loops. */
-@media (prefers-reduced-motion:reduce){.btn.ok,.mcqi.done label.right::after{animation:none!important;mask:none!important;-webkit-mask:none!important;clip-path:none!important;opacity:1!important;filter:none!important;transform:none!important}#nub{display:none}}
+@media (prefers-reduced-motion:reduce){.btn.ok,.mcqi.done label.right::after{animation:none!important;mask:none!important;-webkit-mask:none!important;clip-path:none!important;opacity:1!important;filter:none!important;transform:none!important}}
 
 /* contents: drawer from the left + section ticks on the reading-progress bar */
 main h2,main h3{scroll-margin-top:70px}
@@ -561,17 +547,6 @@ html.slate #title,html.slate main header h1{-webkit-mask:var(--chalkmask) 0 0/12
 .katex .mnote.first::before{content:'why';position:absolute;left:.85em;top:-1.35em;font:600 11px var(--body);letter-spacing:.14em;text-transform:uppercase;color:var(--acc);opacity:.75}
 /* Step lead-ins: boxed in a hand-drawn chalk frame in the lesson's accent */
 main p > strong.step{position:relative;display:inline-block;padding:1px 9px 2px;margin:0 4px 0 -2px;color:var(--chalk)}
-/* ---------- one pen ----------
-   Everything new is written by a single pen, top to bottom: words letter by letter (.w), math swept left to right (.ink),
-   shapes and diagram strokes drawn along their path (.drawn), figure labels faded in (.ink-fade). JS gives each piece its
-   --delay/--duration on one shared clock, so two blocks never write at the same time. */
-.ink{clip-path:inset(-4px 100% -4px 0);animation:inksweep var(--duration,600ms) linear var(--delay,0ms) both}
-.katex.ink{display:inline-block}
-@keyframes inksweep{from{clip-path:inset(-4px 100% -4px 0)}to{clip-path:inset(-4px 0 -4px 0)}}
-.drawn{stroke-dasharray:100;stroke-dashoffset:100;animation:draw var(--duration,600ms) cubic-bezier(.45,.05,.4,1) var(--delay,0ms) forwards}
-@keyframes draw{to{stroke-dashoffset:0}}
-.ink-fade{opacity:0;animation:inkfade var(--duration,250ms) ease-out var(--delay,0ms) forwards}
-@keyframes inkfade{to{opacity:1}}
 /* chalk shapes: hand-drawn SVG paths sized to their text (JS), so they can be drawn like a hand draws them */
 #toc .chalkdeco{display:none}
 .chalkdeco{position:absolute;pointer-events:none;overflow:visible}
@@ -579,8 +554,6 @@ main p > strong.step{position:relative;display:inline-block;padding:1px 9px 2px;
 main h3>.chalkdeco.ul{left:-4px;bottom:-4px;width:calc(100% + 12px);height:12px}
 main p>strong.step>.chalkdeco.box{left:-3px;top:-4px;width:calc(100% + 6px);height:calc(100% + 8px)}
 html.slate .chalkdeco{-webkit-mask:var(--chalkmask) 0 0/128px 128px repeat;mask:var(--chalkmask) 0 0/128px 128px repeat}
-/* the chalk stick that follows the pen */
-#nub{transition:left .09s linear,top .09s linear,opacity .4s}
 /* ### subtitles: underlined with a hand-drawn chalk stroke in the lesson's accent, so they read as sub-steps of the ## above */
 main h3{display:table;position:relative;padding-bottom:9px}
 /* one control, top right: the ring is the lesson's XP and the button that opens Contents */
@@ -935,7 +908,6 @@ details.flagged>summary .flcount{margin-left:10px;margin-right:auto;font:600 12p
 <div class="defpop" id="defpop" role="dialog" aria-live="polite"></div>
 <div class="defpop whypop" id="whypop" role="dialog" aria-label="The rule behind this step"></div>
 <div class="toast" id="toast"></div>
-<div id="nub"></div>
 <button id="tocbtn" type="button" aria-label="Contents and XP (t)" title="Contents (t)" aria-controls="toc" aria-expanded="false"><svg class="ring" viewBox="0 0 38 38" aria-hidden="true"><circle class="trk" cx="19" cy="19" r="16"/><circle class="arc" cx="19" cy="19" r="16"/></svg><svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M3 4h10M3 8h10M3 12h6"/></svg><span class="hplbl" hidden>XP</span><span class="hp" aria-hidden="true" hidden></span><span class="rl" hidden></span></button>
 <div id="topbar"><a id="toplessons" href="/lessons" title="Back" aria-label="Back"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3.5 5.5 8l4.5 4.5"/></svg></a><div id="zoomctl" role="group" aria-label="Zoom"><button type="button" data-z="-1" aria-label="Zoom out (-)" title="Zoom out (-)">&minus;</button><button type="button" class="zv" data-z="0" aria-label="Reset zoom (0)" title="Reset zoom (0)">100%</button><button type="button" data-z="1" aria-label="Zoom in (+)" title="Zoom in (+)">+</button></div><div id="topsearch" role="search"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><circle cx="7" cy="7" r="4.8"/><path d="M10.6 10.6 14 14"/></svg><input id="topq" type="search" placeholder="Search every lesson" autocomplete="off" aria-label="Search every lesson" aria-controls="topresults"><kbd>/</kbd><div id="topresults" role="listbox"></div></div></div>
 <button id="chatbtn" type="button" hidden aria-label="Chat about this lesson" aria-controls="chat" aria-expanded="false"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 3.5a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v6.5a1 1 0 0 1-1 1H7l-3 2.5V11h-.5a1 1 0 0 1-1-1z"/></svg></button>
@@ -947,8 +919,8 @@ details.flagged>summary .flcount{margin-left:10px;margin-right:auto;font:600 12p
 const MODE="__MODE__", LESSON_ARG="__LESSON__", WS="__WS__";
 const WSB=WS?"/w/"+WS:"", WSQ=WS?"&ws="+WS:"";  // pages under /w/<slug>/ stay pinned to that workspace
 const $=s=>document.querySelector(s);
-const main=$('#main'), pill=$('#pill'), toast=$('#toast'), nub=$('#nub');
-let lessonId=LESSON_ARG, offset=0, hash='', blocks=0, srcLines=[], streaming=false, expCount=0, nubTimer=null, state={};
+const main=$('#main'), pill=$('#pill'), toast=$('#toast');
+let lessonId=LESSON_ARG, offset=0, hash='', blocks=0, srcLines=[], streaming=false, expCount=0, state={};
 const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 // Reading position only; never records lesson completion or mastery.
@@ -1089,7 +1061,6 @@ function container(raw){
     case 'prerequisites': return `<details class="prerequisites"><summary>Prerequisites</summary><div>${md(inner)}</div></details>`;
     case 'sources': return `<details class="prerequisites sources"><summary>Sources</summary><div>${md(inner)}</div></details>`;
     case 'contents': return `<details class="prerequisites contents"><summary>Contents</summary><div>${md(inner)}</div></details>`;
-    case 'numeric': return `<details><summary>numeric detail</summary><div>${md(inner)}</div></details>`;
     case 'predict':{
       const ls=inner.split('\n').filter(l=>l.trim()); const reveal=ls.find(l=>/^reveal:/.test(l));
       const raw=ls.filter(l=>!/^reveal:/.test(l)).map(l=>l.replace(/^\s*-\s*/,''));
@@ -1168,8 +1139,6 @@ function container(raw){
       return `<div class="score" data-item="${esc(/^\d+$/.test(it||'')?'':it)}" data-n="${n}"><p class="grade${n<=2?' low':''}"><b>Score ${n} / 5</b>${pips(n)}</p>${md(inner)}</div>`;
     }
     case 'card':{ return deckHtml([parseCard(raw)],{}); }
-    case 'recall':{ return deckHtml([{id:arg||'r',q:inner.trim(),answer:'',must:[]}],{}); }
-    case 'trap': return calloutHtml(inner);
     // size encodes importance: ::: big (level 1) for the one or two rules a chapter rests on, ::: key (level 2) for a
     // tool formula; everything else is level 3, the normal size. Writers never hand-size with \Large or \Huge.
     // cheat sheet: ::: sheet holds ::: group <label> cards (a 2-column grid on wide screens), formulas only
@@ -1302,13 +1271,6 @@ function wireInteractive(el){
   }
 }
 
-// ---------- animation ----------
-// ---------- one pen ----------
-// A single clock for the whole page: each new block starts where the previous one stopped, so the board fills top to
-// bottom like a person writing. If the pen falls far behind (a big rebuild), it writes faster instead of lagging.
-const pen={free:0};
-function penReserve(ms){ const now=performance.now(), start=Math.max(now,pen.free); pen.free=start+ms; return start-now; }
-function penSpeed(){ const backlog=Math.max(0,pen.free-performance.now()); return backlog>5000?Math.max(.2,5000/backlog):1; }
 function seeded(str){ let h=2166136261; for(const c of str) h=Math.imul(h^c.charCodeAt(0),16777619); return ()=>{ h=Math.imul(h^(h>>>15),2246822507); h=Math.imul(h^(h>>>13),3266489909); return ((h^=h>>>16)>>>0)/4294967296; }; }
 // chalk shapes: a real path per shape, sized to its text, redrawn when the text reflows
 const decoRO=('ResizeObserver' in window)?new ResizeObserver(es=>es.forEach(e=>shapeDeco(e.target))):null;
@@ -1331,48 +1293,6 @@ function decorate(root){
     svg.innerHTML=box?'<path pathLength="100" stroke-width="2.4"/>':'<path pathLength="100" stroke-width="3.2"/><path pathLength="100" stroke-width="1.4" opacity=".55"/>';
     el.appendChild(svg); shapeDeco(svg); decoRO&&decoRO.observe(svg);
   });
-}
-function animate(el){
-  if(!el||el.dataset.writing==='1')return;
-  el.dataset.writing='1'; decorate(el);
-  const k=penSpeed(), CH=16*k, units=[];
-  const visit=n=>{
-    if(n.nodeType===3){
-      if(!n.data.trim()||n.parentElement.closest('svg,script,style,button,select,textarea,.interactive-stage,.pending,.w,.katex'))return;
-      const frag=document.createDocumentFragment();
-      for(const part of n.data.split(/(\s+)/)){ if(!part)continue; if(/^\s+$/.test(part)){frag.append(part);continue;}
-        const sp=document.createElement('span'); sp.className='w'; sp.textContent=part; sp.style.setProperty('--letters',String([...part].length));
-        units.push({el:sp,dur:Math.max(40,[...part].length*CH),kind:'w'}); frag.append(sp); }
-      n.replaceWith(frag); return;
-    }
-    if(n.nodeType!==1||n.matches('script,style,button,select,textarea,input,img,.interactive-stage,.pending'))return;
-    if(n.classList.contains('mathrow')){ units.push({el:n,dur:Math.min(3200,Math.max(500,n.textContent.length*CH*.55)),kind:'ink'}); return; }
-    if(n.classList.contains('katex')){ units.push({el:n,dur:Math.min(1500,Math.max(180,n.textContent.length*CH*.6)),kind:'ink'}); return; }
-    if(n instanceof SVGSVGElement){
-      if(n.classList.contains('chalkdeco'))return;
-      n.querySelectorAll('path,line,polyline,polygon,rect,circle,ellipse').forEach(p=>{ let L=60; try{L=p.getTotalLength()}catch(_){} units.push({el:p,dur:Math.min(900,Math.max(120,L*2.2*k)),kind:'draw'}); });
-      n.querySelectorAll('text').forEach(t=>units.push({el:t,dur:160,kind:'fade'})); return;
-    }
-    [...n.childNodes].forEach(visit);
-    n.querySelectorAll(':scope>.chalkdeco path').forEach(p=>units.push({el:p,dur:(n.matches('strong')?650:420)*Math.max(.5,k),kind:'draw'}));
-  };
-  visit(el);
-  if(!units.length){ delete el.dataset.writing; return; }
-  const gap=120*k, total=units.reduce((a,u)=>a+u.dur,0)+gap;
-  let t=penReserve(total);
-  const t0=t;
-  for(const u of units){
-    u.el.style.setProperty('--delay',t+'ms'); u.el.style.setProperty('--duration',u.dur+'ms');
-    if(u.kind==='ink')u.el.classList.add('ink'); else if(u.kind==='draw'){u.el.setAttribute('pathLength','100');u.el.classList.add('drawn');} else if(u.kind==='fade')u.el.classList.add('ink-fade');
-    u.at=t; t+=u.dur;
-  }
-  // the chalk stick hops along with the pen (a few stops per line is enough)
-  let last=-1e9; for(const u of units){ if(u.at-last<140)continue; last=u.at; setTimeout(()=>{ if(!u.el.isConnected)return; const r=u.el.getBoundingClientRect(); if(r.bottom<0||r.top>innerHeight)return; nub.style.left=(r.right-3)+'px'; nub.style.top=(r.bottom-18)+'px'; nub.classList.add('on'); clearTimeout(nubTimer); nubTimer=setTimeout(()=>nub.classList.remove('on'),700); },u.at); }
-  setTimeout(()=>{
-    el.querySelectorAll('.w').forEach(x=>x.replaceWith(...x.childNodes));
-    el.querySelectorAll('.ink,.drawn,.ink-fade').forEach(x=>{ x.classList.remove('ink','drawn','ink-fade'); x.style.removeProperty('--delay'); x.style.removeProperty('--duration'); });
-    el.normalize(); delete el.dataset.writing;
-  },t+250);
 }
 function inlineSvgs(){
   // a figure file can land after the page rendered (the writer draws it last): retry a missing one every 4s for a minute
@@ -1516,8 +1436,7 @@ function grid(st){
 async function ask(req){
   req.lesson=lessonId; if(WS)req.ws=WS;
   const r=await fetch('/ask',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(req)}).then(r=>r.json()).catch(()=>({error:'bridge down'}));
-  if(r.fallback==='paste'){toast.innerHTML=`Paste in chat: <code>${esc(r.command)}</code><button class="btn" id="copy">copy</button>`;toast.style.display='block';$('#copy').onclick=()=>{navigator.clipboard.writeText(r.command);toast.style.display='none'};setTimeout(()=>toast.style.display='none',20000);}
-  else if(r.error){toast.textContent='Bridge not running. Run render.sh again.';toast.style.display='block';setTimeout(()=>toast.style.display='none',5000);}
+  if(r.error){toast.textContent='Bridge not running. Run render.sh again.';toast.style.display='block';setTimeout(()=>toast.style.display='none',5000);}
   return r;
 }
 // ---------- math selection: whole visual lines, not glyph fragments ----------
@@ -1674,7 +1593,7 @@ pill.addEventListener('mousedown',e=>{e.preventDefault();const k=e.target.datase
   // same words already explained under this block: open that note, do not write a second one
   if(!exp&&blk){ const lab=text.split(/\s+/).slice(0,6).join(' ').toLowerCase(); const hit=notesAfter(blk).find(f=>f.dataset.label===lab); if(hit){ hit.classList.remove('closed'); hit.querySelector('.exp').scrollIntoView({behavior:'smooth',block:'center'}); ask({kind:'fold',id:hit.dataset.for,folded:false}); window.getSelection().removeAllRanges(); pill.style.display='none'; return; } }
   const pending='p'+Date.now();
-  const req={kind:'explain',depth:k,text,block:blk?blk.id:'',line:blk?+blk.dataset.line:0,pending};
+  const req={kind:'explain',text,block:blk?blk.id:'',line:blk?+blk.dataset.line:0,pending};
   if(exp)req.parent=exp.dataset.id;
   // placeholder unfolds immediately
   const label=noteLabel(text);
@@ -1713,7 +1632,7 @@ function showDefine(text,blk,r){
       if(seq!==defSeq)return;                                   // a newer selection won
       const body=defpop.querySelector('.body');
       if(d&&d.error){ defpop.classList.add('err'); body.textContent=d.error; return; }
-      body.innerHTML=mdInline(d.text||'');animate(body);
+      body.innerHTML=mdInline(d.text||'');
       const hh=defpop.offsetHeight;
       if(r.bottom+hh+14>innerHeight)defpop.style.top=(r.top+window.scrollY-hh-8)+'px';
     });

@@ -46,10 +46,6 @@ html{--lv-acc:color-mix(in srgb,var(--acc) 72%,var(--chalk));--lv-acc-line:color
 html.lv-on .mcqi{position:relative}
 
 /* ---------- what the video is saying now: an accent rule and a faint wash, never over the math ---------- */
-.blk.lv-cur,.mcqi.lv-cur{background:color-mix(in srgb,var(--acc) 9%,transparent);box-shadow:-14px 0 0 color-mix(in srgb,var(--acc) 9%,transparent),14px 0 0 color-mix(in srgb,var(--acc) 9%,transparent);border-radius:3px}
-.blk.lv-cur::before,.mcqi.lv-cur::before{content:'';position:absolute;left:-9px;top:4px;bottom:4px;width:3px;border-radius:2px;background:var(--lv-acc);box-shadow:0 0 8px color-mix(in srgb,var(--acc) 55%,transparent)}
-@media (max-width:760px){.blk.lv-cur::before,.mcqi.lv-cur::before{left:-6px;width:2px}}
-.lv-band{position:absolute;pointer-events:none;border-radius:4px;background:color-mix(in srgb,var(--acc) 16%,transparent);box-shadow:inset 3px 0 0 var(--lv-acc)}
 .blk.lv-flash,.mcqi.lv-flash{animation:lvflash 1.6s ease-out}
 @keyframes lvflash{0%,35%{background:color-mix(in srgb,var(--acc) 22%,transparent);box-shadow:-14px 0 0 color-mix(in srgb,var(--acc) 22%,transparent),14px 0 0 color-mix(in srgb,var(--acc) 22%,transparent)}100%{background:transparent;box-shadow:none}}
 
@@ -137,8 +133,6 @@ html.lv-on .mcqi{position:relative}
 .lv-du{white-space:pre}
 .lv-ch{min-width:0;overflow:hidden;text-overflow:ellipsis;color:var(--chalk)}
 .lv-ch::before{content:'·';margin:0 7px;color:var(--dim)}
-.lv-chip{flex:0 0 auto;height:28px;padding:0 11px;border:1px solid var(--lv-acc-line);border-radius:999px;background:#000;color:var(--chalk);font:14px/1 var(--body);cursor:pointer}
-.lv-chip:hover,.lv-chip:focus-visible{border-color:var(--lv-acc);outline:none}
 .lv-speed{display:inline-flex;flex:0 0 auto}
 .lv-speed select{height:28px;padding:0 20px 0 8px;border:0;border-radius:999px;background:transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23a8a49a' stroke-width='1.4'/%3E%3C/svg%3E") right 7px center/9px 6px no-repeat;color:#d6d2c7;font:500 14px var(--body);font-variant-numeric:lining-nums tabular-nums;cursor:pointer;-webkit-appearance:none;appearance:none}
 .lv-speed select:hover{background-color:rgba(255,255,255,.08);color:var(--chalk)}
@@ -175,14 +169,6 @@ html.lv-watch .lv-list{display:block;max-height:min(46vh,520px);overflow:auto;bo
 html.lv-watch.lv-wwide #lvpanel{display:grid;grid-template-columns:var(--lvtw) 340px;width:calc(var(--lvtw) + 342px)}
 html.lv-watch.lv-wwide #lvpanel>:not(.lv-list){grid-column:1}
 html.lv-watch.lv-wwide .lv-list{grid-column:2;grid-row:1;max-height:none;contain:size;border-top:0;border-left:1px solid var(--lv-line)}
-/* Both, wide: video fixed on the left, the text column beside it */
-html.lv-side #lvpanel{position:fixed;left:24px;top:84px;z-index:1000;width:var(--lvw);max-height:calc(100vh - 100px);overflow:auto;scrollbar-width:none}
-html.lv-side main#main{margin-left:calc((var(--lvw) + 64px) / var(--z,1));margin-right:auto;max-width:min(860px,calc((100vw - var(--chatw) - var(--lvw) - 84px) / var(--z,1)))}
-html.lv-side .sheet{left:0;transform:none;width:100%;max-width:100%}
-/* Both, narrow: video stays above the text while it scrolls; the text keeps its usual width */
-html.lv-stack #lvpanel{position:sticky;top:70px;z-index:1000;width:min(796px,calc(100% - 24px));margin:78px auto 0}
-html.lv-stack .lv-stage{max-height:min(40vh,448px)}
-html.railmode.lv-stack main#main{padding-top:22px}
 @media (max-width:560px){
   .lv-intro .lv-modes{width:100%;justify-content:space-between}.lv-intro .lv-modes button{flex:1;justify-content:center}
 }
@@ -201,7 +187,7 @@ html.lv-fsmode:has(.lv-panel.lv-idle):not(.chatopen) #chatbtn:focus-visible{opac
   .blk.lv-flash,.mcqi.lv-flash{animation:none;outline:1px solid color-mix(in srgb,var(--acc) 50%,transparent)}
   .lv-big,.lv-range::-webkit-slider-thumb,.lv-modes button,.lv-z,.lv-bar{transition:none}
 }
-@media print{#lvpanel,.lv-intro,.lv-topmodes,.lv-band{display:none!important}html.lv-watch main#main{display:block!important}html.lv-side main#main{margin:0 auto!important;max-width:860px!important}.lv-cur{background:none!important;box-shadow:none!important}.lv-cur::before{content:none!important}}
+@media print{#lvpanel,.lv-intro,.lv-topmodes{display:none!important}html.lv-watch main#main{display:block!important}}
 
 /* chapter videos: one quiet row under each chapter heading (Read mode) */
 .lv-chrow{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;margin:-6px 0 18px;font:14px/1.4 var(--body);color:var(--dim,#9a978f)}
