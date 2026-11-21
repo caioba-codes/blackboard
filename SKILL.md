@@ -76,7 +76,7 @@ Course mode vs self-study: a course is named in the command, or `MISSION.md` nam
 
 The board is a web page served by `board/bridge.py` at `http://127.0.0.1:7331`. Explain, quiz generation and quiz grading all run headless inside the bridge, so they behave the same in every host and never type into the chat. `board/render.sh <lesson.md>` starts the bridge if needed, opens the board once per host, and renders the file. The page updates itself (SSE); never open a second tab or pane. Hosts are auto-detected ([HOSTS.md](./HOSTS.md)), except the Codex desktop app: there run `BLACKBOARD_LAYOUT=app board/render.sh …` and open `http://127.0.0.1:7331/` in the in-app browser with the browser tool, once per session, so the board sits beside the chat. A read-only sandbox cannot run the board: say so in one line and stop; never answer the lesson in chat instead.
 
-**One bridge, every workspace.** A single bridge on 7331 serves every course; each workspace gets its own slug and URL (`/w/<slug>/`), and `/lessons` is the hub across every folder. Never start a second bridge or use another port for lessons (the only exception is the dev board of `bin/dev.sh`). How the page behaves (top bar, XP bar, reading scale, chalk writing, sounds, quiz cards, Explain and Definition popups, chat panel, slate surface): [board/README.md](./board/README.md).
+**One bridge, every workspace.** A single bridge on 7331 serves every course; each workspace gets its own slug and URL (`/w/<slug>/`), and `/lessons` is the hub across every folder. Never start a second bridge or use another port for lessons (the only exception is the dev board of `bin/dev.sh`). How the page behaves (top bar, XP bar, reading scale, the being-written state, sounds, quiz cards, Explain and Definition popups, chat panel, slate surface): [board/README.md](./board/README.md).
 
 Headings are the navigation: name them by what the section does, and put each problem or major part at `##` so it gets a mark on the reading scale. `**Step N · …**` at the start of a paragraph is boxed as a sub-step. `board: slate` in front matter gives the lesson a real-blackboard surface (on trial).
 
@@ -87,11 +87,11 @@ Headings are the navigation: name them by what the section does, and put each pr
 
 The tools may be deferred, so find them by exact name before concluding they are unavailable. Do not pass an app/provider tab id discovered elsewhere and do not call macOS `open`; both paths can leave a blank tab. Reuse the same Browser tab for later renders because SSE refreshes it.
 
-**Streaming rule.** Write a lesson by appending to the `.md` block by block, never in one write at the end:
+**Streaming rule.** Show the lesson while it is written:
 
-1. Write the front matter (`title`, `course`, `exam`, `model`, `image`) and run `board/render.sh <lesson.md> --live` (opens the board, marks the lesson as being written). **The parent does this first, before course research**, while picking the writer model; leave the byline pending until then, and let the writer author the body.
-2. `image:` names the lesson's literal subject; the banner rules are in TEMPLATES.md **Photos**. Before finishing, check that the front matter has `photo:`.
-3. Append each block (title, Contents, Sources, each section) with its own write, separated by blank lines, and never rewrite earlier blocks while writing (a rewrite rebuilds the page).
+1. Write the front matter (`title`, `course`, `exam`, `model`, `image`) and run `board/render.sh <lesson.md> --live`. **The parent does this first, before course research.** The banner rules are in TEMPLATES.md **Photos**; before finishing, check that the front matter has `photo:`.
+2. Write the `::: contents` block with every planned chapter first. The board shows each planned chapter as a "being written" row and counts progress from it.
+3. Append the rest block by block, each with its own write, and never rewrite earlier blocks while writing (a rewrite rebuilds the page).
 4. When the lesson is complete, run `board/render.sh <lesson.md>` (clears the live flag).
 
 **One-line delivery messages.** After rendering: `On the board: 0004 Sum of Products from a Truth Table`. After a board explanation: `explained on board`. After a board quiz item: the score, one line.

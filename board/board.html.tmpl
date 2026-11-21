@@ -526,16 +526,16 @@ h1.new,h2.new,h3.new{--wipe:linear-gradient(90deg,#000 40%,transparent 60%);mask
 @keyframes sweep{to{clip-path:inset(0 0 0 0)}}
 .blk.new{animation:rise .5s ease-out both}
 @keyframes rise{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
-#writing{margin:28px 0 80px}
-#writing .sk span{display:block;height:13px;border-radius:3px;margin:13px 0;background:linear-gradient(90deg,#181818 0%,#2b2b28 45%,#181818 90%);background-size:220% 100%;animation:shimmer 1.8s linear infinite}
-#writing .sk span:nth-child(1){width:88%}#writing .sk span:nth-child(2){width:96%;animation-delay:.15s}#writing .sk span:nth-child(3){width:62%;animation-delay:.3s}
-#writing .wl{color:var(--dim);font-style:italic;font-size:16px;margin-top:18px}
-#writing .wl::after{content:'';display:inline-block;width:1.4em;text-align:left;animation:ellipsis 1.6s steps(1) infinite}
-@keyframes shimmer{from{background-position:200% 0}to{background-position:-20% 0}}
-@keyframes ellipsis{0%{content:''}25%{content:'.'}50%{content:'..'}75%{content:'...'}}
+/* while a lesson is being written: finished chapters show normally, each planned one is a quiet row; only the bar's width moves */
+#writing{margin:34px 0 80px;color:var(--dim);font:15px/1.5 var(--body)}
+#writing .wprog{display:flex;align-items:baseline;gap:14px;margin-bottom:8px}
+#writing .wcount{color:var(--chalk)}
+#writing .wbar{height:3px;background:#222;border-radius:2px;overflow:hidden;margin-bottom:18px}
+#writing .wbar>i{display:block;height:100%;background:var(--acc);transition:width .6s ease-out}
+#writing .wrow{display:flex;justify-content:space-between;gap:16px;padding:10px 0;border-top:1px solid var(--rule)}
+#writing .wrow .wst{font-style:italic;white-space:nowrap}
 #nub{position:fixed;width:9px;height:20px;border-radius:2px;background:#f2eee4;box-shadow:0 0 6px #fff6;transform:rotate(20deg);pointer-events:none;transition:left .12s,top .12s,opacity .4s;z-index:9;opacity:0}
 #nub.on{opacity:1}
-#nub.idle{animation:blink 1s steps(2) infinite}
 @keyframes blink{50%{opacity:.2}}
 /* The chalk-writing reveal plays even with Reduce Motion on (Caio asked for it, like the XP celebration): it is short and never loops. */
 @media (prefers-reduced-motion:reduce){.btn.ok,.mcqi.done label.right::after{animation:none!important;mask:none!important;-webkit-mask:none!important;clip-path:none!important;opacity:1!important;filter:none!important;transform:none!important}#nub{display:none}}
@@ -581,14 +581,6 @@ main p>strong.step>.chalkdeco.box{left:-3px;top:-4px;width:calc(100% + 6px);heig
 html.slate .chalkdeco{-webkit-mask:var(--chalkmask) 0 0/128px 128px repeat;mask:var(--chalkmask) 0 0/128px 128px repeat}
 /* the chalk stick that follows the pen */
 #nub{transition:left .09s linear,top .09s linear,opacity .4s}
-/* ---------- brainstorm: notes on the board while the lesson is researched; erased with a felt eraser ---------- */
-#brainstorm{position:relative;margin:30px 0 70px;min-height:160px}
-#brainstorm .bl{position:relative;width:max-content;max-width:100%;margin:4px 0 8px;font:30px/1.3 'Patrick Hand',cursive;color:#ecebe3;transform:rotate(var(--tilt,0deg))}
-#brainstorm .bl.head{color:color-mix(in srgb,var(--acc) 65%,#ecebe3)}
-#brainstorm .bl.sub{margin-left:34px;font-size:26px}
-#brainstorm .smudge{position:absolute;margin:0;filter:blur(4px);opacity:.2;transition:opacity 1.6s ease-out;pointer-events:none}
-.eraser{position:absolute;left:0;top:0;width:78px;height:36px;border-radius:6px;pointer-events:none;z-index:5;
-  background:linear-gradient(#4a4036 0 58%,#b9ad97 58% 100%);box-shadow:0 3px 8px #000b,inset 0 1px 0 #ffffff22}
 /* ### subtitles: underlined with a hand-drawn chalk stroke in the lesson's accent, so they read as sub-steps of the ## above */
 main h3{display:table;position:relative;padding-bottom:9px}
 /* one control, top right: the ring is the lesson's XP and the button that opens Contents */
@@ -1390,61 +1382,21 @@ function inlineSvgs(){
       .then(t=>{ if(!/<svg[\s>]/.test(t)) throw new Error('not svg'); sl.outerHTML=t.replace(/<\?xml[^>]*>/,'').replace(/<svg /,'<svg class="fig" '); })
       .catch(()=>{ if(tries<15){ sl.dataset.tries=tries+1; sl.innerHTML='<p class="fail">drawing…</p>'; setTimeout(()=>{ delete sl.dataset.done; inlineSvgs(); },4000); } else sl.innerHTML='<p class="fail">could not load '+esc(sl.dataset.src)+'</p>'; });});
 }
-// ---------- brainstorm ----------
-// While a lesson is being researched (it has a title but no body yet), the agent posts notes with bin/brainstorm.sh:
-// the page writes new lines by hand, wipes removed or moved lines with a felt eraser, and when the first real block
-// lands it wipes the whole board and starts the lesson. Same pen clock, so writing and erasing never overlap.
-function bsBox(){ let b=document.getElementById('brainstorm'); if(!b){ b=document.createElement('div'); b.id='brainstorm'; b.setAttribute('aria-label','Planning the lesson'); } return b; }
-function bodyStarted(){ return !!main.querySelector(':scope > .blk:not(.hdr)'); }
-function bsLine(t){ const d=document.createElement('div'); d.className='bl'+(/^[A-Z][^:]{0,24}:/.test(t)?' head':'')+(/^\s*[-•·]/.test(t)?' sub':''); d.dataset.t=t; d.textContent=t.replace(/^\s*[-•·]\s*/,'– '); d.style.setProperty('--tilt',((seeded(t)()-.5)*1.2).toFixed(2)+'deg'); return d; }
-function eraseLine(el,box){
-  const dur=Math.min(1200,Math.max(450,el.offsetWidth*1.2)), wait=penReserve(dur+90);
-  el.dataset.gone='1';
-  setTimeout(()=>{
-    if(!el.isConnected)return;
-    const x0=el.offsetLeft-44, x1=el.offsetLeft+el.offsetWidth-34, y=el.offsetTop+el.offsetHeight/2-18;
-    const sm=el.cloneNode(true); sm.classList.add('smudge'); sm.style.left=el.offsetLeft+'px'; sm.style.top=el.offsetTop+'px'; box.appendChild(sm);
-    const er=document.createElement('div'); er.className='eraser'; box.appendChild(er);
-    const path=[0,.2,.4,.6,.8,1].map((f,i)=>({transform:`translate(${x0+(x1-x0)*f}px,${y+(i%2?-7:6)}px) rotate(${i%2?5:-5}deg)`}));
-    er.animate(path,{duration:dur,easing:'ease-in-out',fill:'forwards'});
-    el.animate([{clipPath:'inset(-12px 0 -12px 0)'},{clipPath:'inset(-12px 0 -12px 100%)'}],{duration:dur,easing:'ease-in-out',fill:'forwards'});
-    setTimeout(()=>{ er.animate([{opacity:1},{opacity:0}],{duration:220,fill:'forwards'}).onfinish=()=>er.remove(); el.remove(); requestAnimationFrame(()=>sm.style.opacity='0'); setTimeout(()=>sm.remove(),1800); },dur);
-  },wait);
-}
-function applyBrainstorm(b){
-  if(MODE!=='lesson'||!b||String(b.lesson)!==String(lessonId)||bodyStarted())return;
-  const box=bsBox();
-  if(!box.isConnected){ const hdr=main.querySelector('.top'); (hdr&&hdr.parentElement===main)?main.appendChild(box):main.appendChild(box); setWriting(false); }
-  if((b.rev||0)<=(+box.dataset.rev||0))return; box.dataset.rev=b.rev||0;
-  const want=(b.lines||[]).map(x=>String(x)).filter(x=>x.trim());
-  if(!want.length&&fmCache&&fmCache.title) want.push('Explain: '+fmCache.title); // the board is never blank before the lesson starts
-  const cur=[...box.querySelectorAll(':scope>.bl:not(.smudge)')].filter(x=>!x.dataset.gone);
-  const old=cur.map(x=>x.dataset.t);
-  // longest common subsequence: lines that stay in the same relative order are kept, the rest are erased/rewritten
-  const L=Array.from({length:old.length+1},()=>new Array(want.length+1).fill(0));
-  for(let i=old.length-1;i>=0;i--)for(let j=want.length-1;j>=0;j--)L[i][j]=old[i]===want[j]?L[i+1][j+1]+1:Math.max(L[i+1][j],L[i][j+1]);
-  const keepOld=new Set(), pair={}; for(let i=0,j=0;i<old.length&&j<want.length;){ if(old[i]===want[j]){keepOld.add(i);pair[j]=cur[i];i++;j++;} else if(L[i+1][j]>=L[i][j+1])i++; else j++; }
-  cur.forEach((el,i)=>{ if(!keepOld.has(i)) eraseLine(el,box); });
-  let prev=null;
-  want.forEach((t,j)=>{ if(pair[j]){prev=pair[j];return;} const el=bsLine(t); if(prev)prev.after(el); else box.prepend(el); prev=el; animate(el); });
-  if(!want.length&&!cur.length) box.remove();
-}
-function bsWipeAll(){
-  const box=document.getElementById('brainstorm'); if(!box||!box.isConnected)return;
-  box.dataset.rev=1e15; // ignore further notes for this lesson
-  box.querySelectorAll(':scope>.bl:not(.smudge)').forEach(el=>{ if(!el.dataset.gone) eraseLine(el,box); });
-  setTimeout(()=>box.remove(),Math.max(0,pen.free-performance.now())+400);
-}
+// While the lesson is live: one progress line, a bar, and a quiet row per planned chapter not written yet.
+let writingInfo=null, writingAt=0;
+function fmtLeft(s){ if(s<90)return 'about a minute left'; const m=Math.round(s/60); return m<90?`about ${m} min left`:`about ${Math.round(m/6)/10} h left`; }
 function setWriting(on){
-  document.getElementById('writing')?.remove();
-  if(!on||MODE!=='lesson'){ nub.classList.remove('idle'); return; }
-  if(!bodyStarted()){
-    // nothing written yet: never an empty board or a loading bar; write the title as the first brainstorm note
-    if(!document.getElementById('brainstorm')?.isConnected&&fmCache&&fmCache.title) applyBrainstorm({lesson:lessonId,lines:['Explain: '+fmCache.title],rev:1});
-    return;
-  }
-  // between blocks: the chalk stick rests where the writing stopped, until the next block starts
-  if(pen.free<=performance.now()){ const last=[...main.querySelectorAll(':scope>.blk')].pop(); if(last){ const r=last.getBoundingClientRect(); if(r.bottom>0&&r.bottom<innerHeight+40){ nub.style.left=(r.left+8)+'px'; nub.style.top=(r.bottom+6)+'px'; nub.classList.add('on','idle'); } } }
+  let box=document.getElementById('writing');
+  if(!on||MODE!=='lesson'){ box?.remove(); return; }
+  if(!box){ box=document.createElement('div'); box.id='writing'; box.setAttribute('aria-live','polite'); }
+  const end=document.getElementById('endcard'), at=end&&end.parentElement===main?end:null;
+  if(box.nextElementSibling!==at||box.parentElement!==main) main.insertBefore(box,at);
+  const w=writingInfo||{chapters:[],finished:0,total:0,eta_s:null};
+  const left=w.eta_s==null?'':fmtLeft(Math.max(0,w.eta_s-(Date.now()-writingAt)/1000));
+  const pct=w.total?Math.round(100*w.finished/w.total):0;
+  const rows=w.chapters.filter(c=>c.state==='planned').map(c=>`<div class="wrow"><span>${esc(c.title)}</span><span class="wst">being written</span></div>`).join('');
+  box.innerHTML=`<div class="wprog"><span class="wcount">${w.total?`${w.finished} of ${w.total} chapters`:'Being written'}</span>${left?`<span>${left}</span>`:''}</div>`
+    +`<div class="wbar"><i style="width:${pct}%"></i></div>${rows}`;
 }
 function followIfAtBottom(el){
   const gap=document.documentElement.scrollHeight-window.innerHeight-window.scrollY;
@@ -1521,7 +1473,7 @@ async function loadLesson(){
   const segs=segments(b,bodyStart);
   const fresh=segs.slice(renderedUpto);
   fresh.forEach((s,k)=>{ if(fmCache.title&&/^# /.test(s.raw)&&renderedUpto+k===0)return; // title already in header
-    const el=renderSegment(s); main.appendChild(el); if(r.reset&&!streaming)return; animate(el);});
+    const el=renderSegment(s); main.appendChild(el);});
   renderedUpto=segs.length;
   imageCredits(b); srcFiles();
   wire(); endCard();
@@ -1831,7 +1783,6 @@ function restoreDefinitions(){
 }
 let lastRaws=[];
 // Which top-level segments changed between two renders: [first, lastExclusive) in the new list.
-function writingContent(raw){return raw.replace(/^(::: exp[^\n]*)/gm,line=>line.replace(/\s+folded\b/g,'')).trim();}
 function changedRange(prev,next){
   if(!prev.length)return null;
   let p=0; while(p<prev.length&&p<next.length&&prev[p]===next[p])p++;
@@ -2668,7 +2619,7 @@ async function boot(){
     if(d){streaming=d.streaming; if(MODE==='lesson'&&!LESSON_ARG&&d.current&&d.current!==lessonId){location.href=WSB+'/';return}}
     const r=await fetch(`/api/lesson?id=${lessonId}&from=${offset}&hash=${hash}${WSQ}`).then(r=>r.json());
     if(r.reset){offset=0;hash='';await loadLessonWith(r);} else if(r.text){await loadLessonWith(r);}
-    if(d&&d.brainstorm)applyBrainstorm(d.brainstorm);
+    if(d&&'writing' in d){writingInfo=d.writing; writingAt=Date.now();}
     if(!was&&streaming)sfx('start'); else if(was&&!streaming)sfx('done'); else if(streaming&&main.querySelectorAll('h2').length>h2s)sfx('section');
     setWriting(streaming); endCard();
   } finally{busy=false} }
@@ -2679,7 +2630,7 @@ async function boot(){
   try{ const k='bb-scroll:'+location.pathname, y=sessionStorage.getItem(k); if(y!==null){ sessionStorage.removeItem(k); let n=0; const go=()=>{ window.scrollTo(0,+y); if(Math.abs(window.scrollY-(+y))>4&&n++<20) setTimeout(go,150); }; setTimeout(go,300); } }catch(_){}
   try{ window.es=new EventSource('/events?id='+lessonId+WSQ); window.es.addEventListener('change',e=>sync(JSON.parse(e.data))); }catch(_){}
   // polling fallback (covers webviews where EventSource is flaky)
-  setInterval(async()=>{ try{const st=await fetch('/api/state?x=1'+WSQ).then(r=>r.json()); if(state.page_version&&st.page_version!==state.page_version){boardUpdated();}  if(!(window.es&&window.es.readyState===1)) await sync({current:st.current,brainstorm:st.brainstorm,streaming:st.streaming});}catch(_){} },1500);
+  setInterval(async()=>{ try{const st=await fetch('/api/state?x=1'+WSQ).then(r=>r.json()); if(state.page_version&&st.page_version!==state.page_version){boardUpdated();}  if(!(window.es&&window.es.readyState===1)) await sync({current:st.current,writing:st.writing,streaming:st.streaming});}catch(_){} },1500);
 }
 async function loadLessonWith(r){
   // A reset rebuilds the page (a callout was written or folded, the file changed mid-way). Keep the reader where they
@@ -2688,14 +2639,12 @@ async function loadLessonWith(r){
   if(r.reset&&main.children.length){ const bl=[...main.querySelectorAll(':scope > .blk')]; const a=bl.find(b=>b.getBoundingClientRect().bottom>80);
     if(a) place={sig:a.textContent.slice(0,160),i:bl.indexOf(a),top:a.getBoundingClientRect().top}; main.style.minHeight=main.offsetHeight+'px'; }
   const isFirst=!!window.__firstLoad;
-  if(r.reset){const keep=[...main.querySelectorAll('.fold[data-pending]')]; window.__bsKeep=document.getElementById('brainstorm'); main.innerHTML='';blocks=0;headerDone=false;body='';renderedUpto=0; window.__ph=keep;}
+  if(r.reset){const keep=[...main.querySelectorAll('.fold[data-pending]')]; main.innerHTML='';blocks=0;headerDone=false;body='';renderedUpto=0; window.__ph=keep;}
   body+=r.text; offset=r.offset; if(r.hash)hash=r.hash;
-  if(!headerDone){const {fm,fmLines}=frontMatter(body); if(/^---\n[\s\S]*?\n---\n/.test(body)||!body.startsWith('---')){main.insertAdjacentHTML('afterbegin',header(fm,null));headerDone=true;document.title=(fm.title?fm.title+' · ':'')+'Blackboard';bodyStart=fmLines;fmCache=fm;applyAccent(fm);setWriting(streaming);if(streaming)animate(main.querySelector('#title'));} else {setWriting(streaming);return;}}
-  if(window.__bsKeep){ main.appendChild(window.__bsKeep); window.__bsKeep=null; } // a rebuild keeps the brainstorm notes
+  if(!headerDone){const {fm,fmLines}=frontMatter(body); if(/^---\n[\s\S]*?\n---\n/.test(body)||!body.startsWith('---')){main.insertAdjacentHTML('afterbegin',header(fm,null));headerDone=true;document.title=(fm.title?fm.title+' · ':'')+'Blackboard';bodyStart=fmLines;fmCache=fm;applyAccent(fm);setWriting(streaming);} else {setWriting(streaming);return;}}
   const {body:b}=frontMatter(body); const segs=segments(b,bodyStart); const fresh=segs.slice(renderedUpto);
   const raws=segs.map(s=>s.raw); const chg=r.reset?changedRange(lastRaws,raws):null; const hot=[];
-  if(document.getElementById('brainstorm')?.isConnected&&fresh.some(sg=>sg.raw.trim()&&!/^# /.test(sg.raw)))bsWipeAll();
-  fresh.forEach((s,k)=>{ const idx=renderedUpto+k; if(fmCache.title&&/^# /.test(s.raw)&&idx===0)return; const el=renderSegment(s); main.appendChild(el); if(chg&&idx>=chg[0]&&idx<chg[1])hot.push(el); if(!isFirst&&(!r.reset||streaming||(chg&&idx>=chg[0]&&idx<chg[1]&&!lastRaws.some(raw=>writingContent(raw)===writingContent(s.raw))))){animate(el);} if(streaming)followIfAtBottom(el); });
+  fresh.forEach((s,k)=>{ const idx=renderedUpto+k; if(fmCache.title&&/^# /.test(s.raw)&&idx===0)return; const el=renderSegment(s); main.appendChild(el); if(chg&&idx>=chg[0]&&idx<chg[1])hot.push(el); if(streaming)followIfAtBottom(el); });
   lastRaws=raws;
   setWriting(streaming);
   // Keep in-flight callouts across unrelated SSE updates; replace them in place on completion.

@@ -8,7 +8,7 @@ Routes
   GET  /<prefix>[/N]     short link: unique slug prefix -> /w/<slug>/lessons[/000N] (e.g. /m/3)
   GET  /w/<slug>/        board page pinned to one workspace: follows that workspace's current lesson
   GET  /w/<slug>/lessons/NNNN, /w/<slug>/assets/<file>, and every /api route accepts ?ws=<slug>
-  GET  /api/state        {ws, slug, current, page_version, lessons:[...], brainstorm:{lesson,lines,rev}, workspaces:[{slug,name,path,current,count,last,lessons}]}
+  GET  /api/state        {ws, slug, current, page_version, lessons:[...], writing:{chapters,finished,total,eta_s}|null, workspaces:[{slug,name,path,current,count,last,lessons}]}
   GET  /api/lesson?id=NNNN&from=N&hash=H   {text, offset, reset}  (text = new bytes cut at last blank line)
   GET  /api/video-status?id=NNNN   live progress of the lesson's video while it is made (bin/video_status.py status)
   GET  /events?id=NNNN   SSE: `change` when the lesson file or state changes
@@ -606,6 +606,68 @@ def cut_at_blank(text):
         prev_blank = head.rfind("\n\n", 0, last_open)
         head = head[: prev_blank + 2] if prev_blank >= 0 else ""
     return head
+
+
+# While a lesson is being written (render.sh --live), the page shows the finished chapters and a quiet row for each
+# planned one. The plan is the lesson's Contents block; a chapter is finished once the next `##` heading (or the end
+# of the lesson) is written. Heading times are first-seen times in this bridge, so an ETA needs two chapters that
+# finished while the bridge was watching.
+WRITE_SEEN = {}
+WRITE_LOCK = threading.Lock()
+
+
+def planned_chapters(text):
+    """Chapter titles listed in the `::: contents` block, in order."""
+    m = re.search(r"(?ms)^::: contents[^\n]*\n(.*?)^:::\s*$", text)
+    out = []
+    for line in (m.group(1).splitlines() if m else []):
+        item = re.match(r"\s*\d+\.\s*(?:\[(.+?)\]\([^)]*\)|(.+?))(?:\s+[—–-]\s+.*)?$", line)
+        if item:
+            out.append((item.group(1) or item.group(2) or "").strip())
+    return [t for t in out if t]
+
+
+def written_chapters(text):
+    """`##` headings outside fenced code, in order."""
+    heads, fence = [], False
+    for line in text.splitlines():
+        if line.lstrip().startswith("```"):
+            fence = not fence
+        elif not fence and line.startswith("## "):
+            heads.append(line[3:].strip())
+    return heads
+
+
+def write_progress(path, streaming, now=None):
+    """{"chapters": [{title, state}], "finished", "total", "eta_s"} while the lesson is live, else None."""
+    now = time.time() if now is None else now
+    with WRITE_LOCK:
+        if not streaming or not path or not os.path.isfile(path):
+            WRITE_SEEN.pop(path, None)
+            return None
+        text = open(path, encoding="utf-8", errors="replace").read()
+        plan, heads = planned_chapters(text), written_chapters(text)
+        seen = WRITE_SEEN.setdefault(path, {})
+        batch = [h for h in heads if h not in seen]
+        for h in batch:
+            seen[h] = (now, len(batch) == 1)   # (first seen, seen alone: its time is real)
+    finished = max(0, len(heads) - 1)
+    key = lambda t: re.sub(r"\W+", " ", t).strip().lower()
+    written = {key(h) for h in heads}
+    chapters = [{"title": h, "state": "done" if i < finished else "writing"} for i, h in enumerate(heads)]
+    chapters += [{"title": t, "state": "planned"} for t in plan if key(t) not in written][: max(0, len(plan) - len(heads))]
+    durations = []
+    for a, b in zip(heads, heads[1:]):
+        (ta, ra), (tb, rb) = seen.get(a, (0, False)), seen.get(b, (0, False))
+        if ra and rb and tb > ta:
+            durations.append(tb - ta)
+    eta = None
+    if finished >= 2 and len(durations) >= 2:
+        avg = sum(durations) / len(durations)
+        left = len(chapters) - finished
+        started = seen.get(heads[-1], (now, False))[0] if heads else now
+        eta = max(avg * (left - 1), avg * left - (now - started))
+    return {"chapters": chapters, "finished": finished, "total": len(chapters), "eta_s": None if eta is None else round(eta)}
 
 
 def read_lesson(lid, frm, h, wsp=None):
@@ -1496,7 +1558,8 @@ class H(BaseHTTPRequestHandler):
             body = {"ws": wsp, "slug": slug or slug_of(wsp), "current": current(slug), "agent": w.get("agent", st.get("agent", "claude")),
                     "page_version": int(max(os.path.getmtime(p) for p in page_files if os.path.isfile(p))),
                     "layout": w.get("layout", st.get("layout", "tab")), "streaming": bool(w.get("streaming", st.get("streaming"))),
-                    "lessons": lessons_meta(wsp), "brainstorm": w.get("brainstorm"),
+                    "lessons": lessons_meta(wsp),
+                    "writing": write_progress(lesson_path(current(slug), wsp), bool(w.get("streaming", st.get("streaming")))),
                     "end_card": {"image": bool(end_card_path()), "key": slug_of(wsp) if wsp else ""}}
             if qs.get("all"):
                 body["workspaces"] = hub()
@@ -1680,11 +1743,12 @@ class H(BaseHTTPRequestHandler):
                 if p and os.path.exists(p):
                     s = os.stat(p)
                     sig = (s.st_mtime_ns, s.st_size)
-                bs = w.get("brainstorm") or {}
-                ssig = (cur, w.get("streaming", st.get("streaming")), w.get("rev", st.get("rev")), bs.get("rev"))
+                streaming = bool(w.get("streaming", st.get("streaming")))
+                ssig = (cur, streaming, w.get("rev", st.get("rev")))
                 if sig != last or ssig != last_state:
                     last, last_state = sig, ssig
-                    payload = json.dumps({"current": cur, "streaming": bool(w.get("streaming", st.get("streaming"))), "size": sig[1] if sig else 0, "brainstorm": bs or None})
+                    payload = json.dumps({"current": cur, "streaming": streaming, "size": sig[1] if sig else 0,
+                                          "writing": write_progress(p, streaming and (lid or cur) == cur)})
                     self.wfile.write(f"event: change\ndata: {payload}\n\n".encode())
                     self.wfile.flush()
                 else:
