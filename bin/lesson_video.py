@@ -4,7 +4,11 @@
 The caption track (captions.json from video_pipeline.py build-map, the cues' `show` texts in lesson notation) is
 installed beside the MP4 as lessons/assets/NNNN-lecture.captions.json, where the board player fetches it and overlays
 it on the video. `import` carries it when the map's folder has captions.json (or --captions names one); the
-`captions` command installs or replaces just the track, for an installed video, without touching the video or map."""
+`captions` command installs or replaces just the track, for an installed video, without touching the video or map.
+
+`--chapter N` works on one chapter's video instead (files NNNN-chNN-lecture.mp4, video-NNNN-chNN.json; the map's
+SHA and lines are the chapter's, see bin/lesson_chapters.py). `join` copies the installed chapter videos, in
+chapter order, into one MP4 without re-encoding (ffmpeg concat), for an upload; the board never needs it."""
 
 import argparse
 import hashlib
@@ -21,6 +25,7 @@ import uuid
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import captions as caption_lib  # noqa: E402
+import lesson_chapters  # noqa: E402
 
 
 class ImportError_(ValueError):
@@ -62,7 +67,22 @@ def lesson_bytes(bridge, workspace, lid):
     return path.read_bytes()
 
 
-def load_map(path, lid, lesson):
+def source_bytes(bridge, workspace, lid, chapter=None):
+    """What a map's SHA and lines refer to: the lesson, or one chapter's text."""
+    lesson = lesson_bytes(bridge, workspace, lid)
+    if chapter is None:
+        return lesson
+    text = lesson.decode("utf-8")
+    if not 1 <= chapter <= len(lesson_chapters.spans(text)):
+        raise ImportError_(f"lesson {lid} has no chapter {chapter}")
+    return lesson_chapters.chapter_text(text, chapter).encode("utf-8")
+
+
+def verdict(bridge, workspace, lid, chapter=None):
+    return bridge.lesson_video(lid, str(workspace)) if chapter is None else bridge.chapter_video(lid, chapter, str(workspace))
+
+
+def load_map(path, lid, lesson, chapter=None):
     try:
         raw = path.read_bytes()
         manifest = json.loads(raw.decode("utf-8"))
@@ -72,11 +92,14 @@ def load_map(path, lid, lesson):
         raise ImportError_("map must be a JSON object")
     if manifest.get("lessonId") != lid:
         raise ImportError_(f"map lessonId must be {lid}")
-    if manifest.get("video") != f"{lid}-lecture.mp4":
-        raise ImportError_(f"map video must be {lid}-lecture.mp4")
+    vk = lesson_chapters.key(lid, chapter)
+    if manifest.get("video") != f"{vk}-lecture.mp4":
+        raise ImportError_(f"map video must be {vk}-lecture.mp4")
+    if chapter is not None and manifest.get("chapter") != chapter:
+        raise ImportError_(f"map chapter must be {chapter}")
     actual = hashlib.sha256(lesson).hexdigest()
     if not isinstance(manifest.get("lessonSha256"), str) or manifest["lessonSha256"].lower() != actual:
-        raise ImportError_(f"map lessonSha256 differs from current lesson (actual {actual})")
+        raise ImportError_(f"map lessonSha256 differs from current {'lesson' if chapter is None else f'chapter {chapter}'} (actual {actual})")
     return raw, manifest
 
 
@@ -118,28 +141,30 @@ def check_captions(path, lid, duration):
     return data
 
 
-def validate(bridge, workspace, lid, video, mapping, require_probe=False, captions=None):
-    lesson = lesson_bytes(bridge, workspace, lid)
+def validate(bridge, workspace, lid, video, mapping, require_probe=False, captions=None, chapter=None):
+    whole = lesson_bytes(bridge, workspace, lid)
+    lesson = source_bytes(bridge, workspace, lid, chapter)
+    vk = lesson_chapters.key(lid, chapter)
     if not video.is_file() or video.suffix.lower() != ".mp4":
         raise ImportError_(f"existing MP4 not found: {video}")
-    raw, manifest = load_map(mapping, lid, lesson)
+    raw, manifest = load_map(mapping, lid, lesson, chapter)
     # The installed server is the source of truth for schema, source line,
     # interval, and practice gate checks. Its media check needs only a file.
     with tempfile.TemporaryDirectory(prefix="lesson-video-check-") as root:
         staged = Path(root)
         (staged / "lessons" / "assets").mkdir(parents=True)
         (staged / "reference").mkdir()
-        (staged / "lessons" / f"{lid}-validation.md").write_bytes(lesson)
-        (staged / "lessons" / "assets" / f"{lid}-lecture.mp4").touch()
-        (staged / "reference" / f"video-{lid}.json").write_bytes(raw)
-        result = bridge.lesson_video(lid, str(staged))
+        (staged / "lessons" / f"{lid}-validation.md").write_bytes(whole)
+        (staged / "lessons" / "assets" / f"{vk}-lecture.mp4").touch()
+        (staged / "reference" / f"video-{vk}.json").write_bytes(raw)
+        result = verdict(bridge, staged, lid, chapter)
     if not result.get("available") or not result.get("mappingValid"):
         raise ImportError_("map rejected by board validator; check schema, source lines, intervals and practice gates")
     duration = probe_duration(video, required=require_probe)
     if duration is not None and abs(duration - manifest["duration"]) > 0.5:
         raise ImportError_(f"map duration {manifest['duration']}s differs from MP4 duration {duration:.3f}s (>0.5s)")
     if captions is not None:
-        check_captions(captions, lid, manifest["duration"])
+        check_captions(captions, vk, manifest["duration"])
     return lesson, raw, duration
 
 
@@ -187,14 +212,15 @@ def staged_copy(source, directory):
         raise
 
 
-def install(bridge, workspace, lid, video, mapping, replace, dry_run, captions=None):
-    lesson, _, duration = validate(bridge, workspace, lid, video, mapping, require_probe=True, captions=captions)
+def install(bridge, workspace, lid, video, mapping, replace, dry_run, captions=None, chapter=None):
+    lesson, _, duration = validate(bridge, workspace, lid, video, mapping, require_probe=True, captions=captions, chapter=chapter)
+    vk = lesson_chapters.key(lid, chapter)
     asset_dir, ref_dir = workspace / "lessons" / "assets", workspace / "reference"
-    media_target = safe_destination(workspace, asset_dir, f"{lid}-lecture.mp4")
-    map_target = safe_destination(workspace, ref_dir, f"video-{lid}.json")
+    media_target = safe_destination(workspace, asset_dir, f"{vk}-lecture.mp4")
+    map_target = safe_destination(workspace, ref_dir, f"video-{vk}.json")
     targets = [(video, media_target), (mapping, map_target)]
     if captions is not None:
-        targets.append((captions, safe_destination(workspace, asset_dir, f"{lid}-lecture.captions.json")))
+        targets.append((captions, safe_destination(workspace, asset_dir, f"{vk}-lecture.captions.json")))
     changed = [(src, dst) for src, dst in targets if not same_file(src, dst)]
     conflicts = [str(dst) for _, dst in changed if dst.exists()]
     if conflicts and not replace:
@@ -204,7 +230,7 @@ def install(bridge, workspace, lid, video, mapping, replace, dry_run, captions=N
 
     # Recheck the lesson just before writes. Staged files and backups are
     # complete before the first publication, so failure can restore both paths.
-    if lesson_bytes(bridge, workspace, lid) != lesson:
+    if source_bytes(bridge, workspace, lid, chapter) != lesson:
         raise ImportError_("lesson changed during validation; retry with a reviewed map")
     for directory in (asset_dir, ref_dir):
         directory.mkdir(exist_ok=True)
@@ -221,14 +247,14 @@ def install(bridge, workspace, lid, video, mapping, replace, dry_run, captions=N
                 pending_backup = None
                 backups[dst] = backup
                 fsync_dir(dst.parent)
-        if lesson_bytes(bridge, workspace, lid) != lesson:
+        if source_bytes(bridge, workspace, lid, chapter) != lesson:
             raise ImportError_("lesson changed during staging; no files imported")
         for _, dst in changed:
             os.replace(staged[dst], dst)
             del staged[dst]
             published.append(dst)
             fsync_dir(dst.parent)
-        verified = bridge.lesson_video(lid, str(workspace))
+        verified = verdict(bridge, workspace, lid, chapter)
         if not verified.get("available") or not verified.get("mappingValid"):
             raise ImportError_("installed files failed board validation")
         return {"result": "imported", "files": [str(dst) for _, dst in changed],
@@ -252,9 +278,10 @@ def install(bridge, workspace, lid, video, mapping, replace, dry_run, captions=N
             path.unlink(missing_ok=True)
 
 
-def install_captions(workspace, lid, captions, replace, dry_run):
+def install_captions(workspace, lid, captions, replace, dry_run, chapter=None):
     """Install or replace only the caption track of an installed video (no render, no new map, no video copy)."""
     asset_dir = workspace / "lessons" / "assets"
+    lid = lesson_chapters.key(lid, chapter)
     media = safe_destination(workspace, asset_dir, f"{lid}-lecture.mp4")
     map_path = safe_destination(workspace, workspace / "reference", f"video-{lid}.json")
     if not media.is_file() or not map_path.is_file():
@@ -280,20 +307,40 @@ def install_captions(workspace, lid, captions, replace, dry_run):
     return {"result": "imported", "files": [str(target)], "backups": [str(backup)] if backup else []}
 
 
-def status(bridge, workspace, lid):
-    lesson_bytes(bridge, workspace, lid)
-    media = safe_destination(workspace, workspace / "lessons" / "assets", f"{lid}-lecture.mp4")
-    mapping = safe_destination(workspace, workspace / "reference", f"video-{lid}.json")
-    track = safe_destination(workspace, workspace / "lessons" / "assets", f"{lid}-lecture.captions.json")
-    result = bridge.lesson_video(lid, str(workspace))
-    return {"lesson": lid, "videoExists": media.is_file(), "mapExists": mapping.is_file(), "captionsExist": track.is_file(),
+def status(bridge, workspace, lid, chapter=None):
+    source_bytes(bridge, workspace, lid, chapter)
+    vk = lesson_chapters.key(lid, chapter)
+    media = safe_destination(workspace, workspace / "lessons" / "assets", f"{vk}-lecture.mp4")
+    mapping = safe_destination(workspace, workspace / "reference", f"video-{vk}.json")
+    track = safe_destination(workspace, workspace / "lessons" / "assets", f"{vk}-lecture.captions.json")
+    result = verdict(bridge, workspace, lid, chapter)
+    return {"lesson": vk, "videoExists": media.is_file(), "mapExists": mapping.is_file(), "captionsExist": track.is_file(),
             "available": result.get("available", False), "mappingValid": result.get("mappingValid", False),
             **({"error": result["error"]} if "error" in result else {})}
 
 
+def join(bridge, workspace, lid, out):
+    """Concatenate the installed, current chapter videos into one MP4 (stream copy, no re-encode)."""
+    joined = bridge.chapter_videos(lid, str(workspace))
+    ready = [c for c in (joined or {}).get("chapters", []) if c["state"] == "ready"]
+    if not ready:
+        raise ImportError_(f"lesson {lid} has no installed chapter videos")
+    missing = [c["chapter"] for c in joined["chapters"] if c["state"] != "ready"]
+    ffmpeg = shutil.which("ffmpeg")
+    if not ffmpeg:
+        raise ImportError_("ffmpeg is required to join chapter videos")
+    asset_dir = workspace / "lessons" / "assets"
+    with tempfile.TemporaryDirectory(prefix="lesson-video-join-") as root:
+        listing = Path(root) / "list.txt"
+        listing.write_text("".join(f"file '{asset_dir / (c['key'] + '-lecture.mp4')}'\n" for c in ready), encoding="utf-8")
+        subprocess.run([ffmpeg, "-v", "error", "-y", "-f", "concat", "-safe", "0", "-i", str(listing), "-c", "copy", str(out)],
+                       check=True, capture_output=True, text=True, timeout=3600)
+    return {"result": "joined", "out": str(out), "chapters": [c["chapter"] for c in ready], "missingChapters": missing}
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=("validate", "import", "status", "captions"))
+    parser.add_argument("command", choices=("validate", "import", "status", "captions", "join"))
     parser.add_argument("--workspace", type=Path, required=True, help="path to the learn workspace")
     parser.add_argument("--lesson", required=True, help="four-digit lesson ID, e.g. 0013")
     parser.add_argument("--video", type=Path, help="existing MP4; validate/import only")
@@ -302,6 +349,8 @@ def main(argv=None):
                         "with the captions command, the track to install for the installed video")
     parser.add_argument("--dry-run", action="store_true", help="show import changes without writing")
     parser.add_argument("--replace", action="store_true", help="replace different files after durable backups")
+    parser.add_argument("--chapter", type=int, help="one ## chapter's video (1-based) instead of the whole lesson's")
+    parser.add_argument("--out", type=Path, help="join: the MP4 to write")
     args = parser.parse_args(argv)
     if not args.lesson.isascii() or not (len(args.lesson) == 4 and args.lesson.isdigit()):
         parser.error("--lesson must be exactly four ASCII digits")
@@ -311,24 +360,28 @@ def main(argv=None):
         parser.error("captions requires --captions")
     if args.command in ("validate", "import") and (args.video is None or args.mapping is None):
         parser.error("validate/import require --video and --map")
+    if args.command == "join" and args.out is None:
+        parser.error("join requires --out")
     try:
         bridge = board_bridge()
         workspace = args.workspace.expanduser().resolve()
         if args.command == "status":
-            result = status(bridge, workspace, args.lesson)
+            result = status(bridge, workspace, args.lesson, args.chapter)
+        elif args.command == "join":
+            result = join(bridge, workspace, args.lesson, args.out.expanduser().resolve())
         elif args.command == "captions":
-            result = install_captions(workspace, args.lesson, args.captions, args.replace, args.dry_run)
+            result = install_captions(workspace, args.lesson, args.captions, args.replace, args.dry_run, args.chapter)
         elif args.command == "validate":
             _, _, duration = validate(bridge, workspace, args.lesson, args.video, args.mapping,
-                                      captions=captions_source(args.mapping, args.captions))
+                                      captions=captions_source(args.mapping, args.captions), chapter=args.chapter)
             result = {"result": "valid", "lesson": args.lesson, "duration": duration,
                       "warning": "ffprobe unavailable; MP4 duration unchecked" if duration is None else None}
         else:
             result = install(bridge, workspace, args.lesson, args.video, args.mapping, args.replace, args.dry_run,
-                             captions_source(args.mapping, args.captions))
+                             captions_source(args.mapping, args.captions), args.chapter)
         print(json.dumps(result, indent=2))
         return 0
-    except (ImportError_, OSError) as exc:
+    except (ImportError_, OSError, subprocess.SubprocessError) as exc:
         print(f"lesson video: {exc}", file=sys.stderr)
         return 1
 

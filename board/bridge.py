@@ -10,7 +10,8 @@ Routes
   GET  /w/<slug>/lessons/NNNN, /w/<slug>/assets/<file>, and every /api route accepts ?ws=<slug>
   GET  /api/state        {ws, slug, current, page_version, lessons:[...], writing:{chapters,finished,total,eta_s}|null, workspaces:[{slug,name,path,current,count,last,lessons}]}
   GET  /api/lesson?id=NNNN&from=N&hash=H   {text, offset, reset}  (text = new bytes cut at last blank line)
-  GET  /api/video-status?id=NNNN   live progress of the lesson's video while it is made (bin/video_status.py status)
+  GET  /api/video-status?id=NNNN[&chapter=N]   live progress of the lesson's (or one chapter's) video while it is made (bin/video_status.py status)
+  GET  /api/lesson-video-captions?id=NNNN   the chapter videos' caption tracks on the playlist's clock
   GET  /events?id=NNNN   SSE: `change` when the lesson file or state changes
   GET  /assets/<file>    $WS/lessons/assets/<file>
   GET  /api/sources?id=NNNN   {files: [...]} every file the lesson cites, with its viewer URL
@@ -42,6 +43,7 @@ ROOT = os.path.dirname(BOARD)
 HOME_DIR = os.environ.get("BLACKBOARD_HOME") or os.path.join(os.path.expanduser("~"), ".cache", "blackboard")
 sys.path.insert(0, os.path.join(ROOT, "bin"))
 import video_status  # noqa: E402  (bin/video_status.py: progress computed from the video project's files)
+import lesson_chapters  # noqa: E402  (bin/lesson_chapters.py: chapter spans and hashes for chapter videos)
 os.makedirs(HOME_DIR, exist_ok=True)
 STATE = os.path.join(HOME_DIR, "state.json")
 QUEUE = os.path.join(HOME_DIR, "queue.jsonl")
@@ -209,81 +211,177 @@ def lesson_path(lid, wsp=None):
     return None
 
 
+def verify_video(wsp, slug, key, source, extra=None):
+    """Verified, workspace-local media metadata for the map reference/video-<key>.json, checked against `source`
+    (the bytes its lines and SHA refer to: the lesson, or one chapter's text). None when there is no map;
+    raises ValueError when it is invalid. `extra` names the map's one additional key and its required value."""
+    workspace = os.path.realpath(wsp)
+    reference = os.path.realpath(os.path.join(wsp, "reference"))
+    manifest_path = os.path.realpath(os.path.join(reference, f"video-{key}.json"))
+    if not reference.startswith(workspace + os.sep) or not manifest_path.startswith(reference + os.sep) or not os.path.isfile(manifest_path):
+        return None
+    with open(manifest_path, encoding="utf-8") as f:
+        manifest = json.load(f)
+    if not isinstance(manifest, dict) or manifest.get("version") != 1 or isinstance(manifest.get("version"), bool):
+        raise ValueError
+    keys = {"version", "lessonId", "lessonSha256", "video", "duration", "captionsBurnedIn", "segments"}
+    if set(manifest) != keys | (set(extra) if extra else set()):
+        raise ValueError
+    for k, v in (extra or {}).items():
+        if manifest.get(k) != v or isinstance(manifest.get(k), bool):
+            raise ValueError
+    source_hash = manifest["lessonSha256"]
+    if manifest.get("lessonId") != key[:4] or not isinstance(source_hash, str) or not re.fullmatch(r"[0-9a-fA-F]{64}", source_hash):
+        raise ValueError
+    video = manifest.get("video")
+    if not isinstance(video, str) or video != f"{key}-lecture.mp4":
+        raise ValueError
+    assets = os.path.realpath(os.path.join(wsp, "lessons", "assets"))
+    media = os.path.realpath(os.path.join(assets, video))
+    if not assets.startswith(workspace + os.sep) or not media.startswith(assets + os.sep) or not os.path.isfile(media):
+        raise ValueError
+    duration = manifest.get("duration")
+    if isinstance(duration, bool) or not isinstance(duration, (int, float)) or not math.isfinite(duration) or duration <= 0:
+        raise ValueError
+    if not isinstance(manifest.get("captionsBurnedIn"), bool):
+        raise ValueError
+    segments = manifest.get("segments")
+    if not isinstance(segments, list) or not segments:
+        raise ValueError
+    mapping_valid = hashlib.sha256(source).hexdigest().lower() == source_hash.lower()
+    line_count = len(source.decode("utf-8").splitlines())
+    seen, previous_end = set(), 0
+    for segment in segments:
+        if not isinstance(segment, dict):
+            raise ValueError
+        if not {"id", "label", "start", "end", "line"} <= set(segment) or set(segment) - {"id", "label", "start", "end", "line", "step", "practice"}:
+            raise ValueError
+        sid, label = segment.get("id"), segment.get("label")
+        if not isinstance(sid, str) or not sid.strip() or sid in seen or not isinstance(label, str) or not label.strip():
+            raise ValueError
+        seen.add(sid)
+        start, end = segment.get("start"), segment.get("end")
+        if any(isinstance(x, bool) or not isinstance(x, (int, float)) or not math.isfinite(x) for x in (start, end)):
+            raise ValueError
+        if start < previous_end or end <= start or end > duration + 0.01:
+            raise ValueError
+        previous_end = end
+        line, step = segment.get("line"), segment.get("step")
+        if isinstance(line, bool) or not isinstance(line, int) or line < 1 or (mapping_valid and line > line_count):
+            raise ValueError
+        if step is not None and (isinstance(step, bool) or not isinstance(step, int) or step < 1):
+            raise ValueError
+        practice = segment.get("practice")
+        if practice is not None:
+            if not isinstance(practice, dict) or set(practice) != {"pauseAt", "revealAt"}:
+                raise ValueError
+            pause, reveal = practice["pauseAt"], practice["revealAt"]
+            if any(isinstance(x, bool) or not isinstance(x, (int, float)) or not math.isfinite(x) for x in (pause, reveal)):
+                raise ValueError
+            if not start <= pause < reveal <= end:
+                raise ValueError
+    url = f"/w/{urllib.parse.quote(slug, safe='')}/assets/{video}" if slug else f"/assets/{video}"
+    return dict(manifest, available=True, mappingValid=mapping_valid, videoUrl=url)
+
+
+def lesson_source(lid, wsp):
+    """The lesson's bytes, or None when the lesson is missing or outside the workspace."""
+    if not re.fullmatch(r"\d{4}", str(lid)):
+        return None
+    lesson = lesson_path(lid, wsp)
+    if not lesson or not os.path.realpath(lesson).startswith(os.path.realpath(wsp) + os.sep):
+        return None
+    with open(lesson, "rb") as f:
+        return f.read()
+
+
+def chapter_video(lid, n, wsp, slug=""):
+    """One chapter's installed video (video-NNNN-chNN.json): its lines count from the chapter's first line and its
+    SHA is the chapter text's, so edits elsewhere in the lesson leave it valid."""
+    try:
+        source = lesson_source(lid, wsp)
+        if source is None:
+            return {"available": False, "error": "Lesson not found."}
+        text = source.decode("utf-8")
+        if not 1 <= n <= len(lesson_chapters.spans(text)):
+            return {"available": False, "error": "No such chapter."}
+        found = verify_video(wsp, slug, lesson_chapters.key(lid, n), lesson_chapters.chapter_text(text, n).encode("utf-8"), {"chapter": n})
+        return found or {"available": False}
+    except (OSError, UnicodeError, ValueError, TypeError, KeyError, json.JSONDecodeError):
+        return {"available": False, "error": "Chapter video manifest is invalid."}
+
+
+def chapter_videos(lid, wsp, slug=""):
+    """The lesson's chapter videos joined into one playlist manifest: `parts` (one file per ready chapter, with its
+    offset), segments on the playlist's clock with absolute lesson lines, and `chapters` (ready, stale, making or
+    missing per ## chapter). None when the lesson has no chapter map or chapter project at all."""
+    source = lesson_source(lid, wsp)
+    if source is None:
+        return None
+    text = source.decode("utf-8", "replace")
+    spans, titles = lesson_chapters.spans(text), lesson_chapters.titles(text)
+    ref = os.path.join(wsp, "reference")
+    keys = [lesson_chapters.key(lid, n) for n in range(1, len(spans) + 1)]
+    if not any(os.path.isfile(os.path.join(ref, f"video-{k}.json")) or os.path.isfile(os.path.join(ref, video_status.POINTER.format(k))) for k in keys):
+        return None
+    parts, segments, chapters, t = [], [], [], 0.0
+    for n, (key, (first, _), title) in enumerate(zip(keys, spans, titles), 1):
+        cv = chapter_video(lid, n, wsp, slug)
+        state = "ready" if cv.get("available") and cv.get("mappingValid") else "stale" if cv.get("available") else "missing"
+        chapters.append({"chapter": n, "title": title, "key": key, "state": state})
+        if state != "ready":
+            continue
+        parts.append({"chapter": n, "url": cv["videoUrl"], "offset": round(t, 3), "duration": cv["duration"],
+                      "captionsUrl": cv["videoUrl"][:-len(".mp4")] + ".captions.json"})
+        for seg in cv["segments"]:
+            p = seg.get("practice")
+            segments.append(dict(seg, id=f"ch{n:02d}-{seg['id']}", start=round(seg["start"] + t, 3), end=round(seg["end"] + t, 3),
+                                 line=seg["line"] + first - 1,
+                                 practice={"pauseAt": round(p["pauseAt"] + t, 3), "revealAt": round(p["revealAt"] + t, 3)} if p else None))
+        chapters[-1]["offset"] = round(t, 3)
+        t += cv["duration"]
+    out = {"available": False, "chapters": chapters}
+    if parts:
+        q = f"?id={lid}" + (f"&ws={urllib.parse.quote(slug, safe='')}" if slug else "")
+        out.update(available=True, mappingValid=True, version=1, lessonId=lid, video=parts[0]["url"].rsplit("/", 1)[-1],
+                   lessonSha256=hashlib.sha256("".join(lesson_chapters.chapter_sha(text, c["chapter"]) for c in chapters if c["state"] == "ready").encode()).hexdigest(),
+                   duration=round(t, 3), captionsBurnedIn=False, segments=segments, parts=parts, videoUrl=parts[0]["url"],
+                   captionsUrl="/api/lesson-video-captions" + q)
+    return out
+
+
+def chapter_captions(lid, wsp, slug=""):
+    """The playlist's caption track: each ready chapter's track shifted by its offset."""
+    joined = chapter_videos(lid, wsp, slug)
+    if not joined or not joined.get("available"):
+        return {"available": False}
+    cues = []
+    for part in joined["parts"]:
+        path = os.path.join(wsp, "lessons", "assets", part["captionsUrl"].rsplit("/", 1)[-1])
+        try:
+            with open(path, encoding="utf-8") as f:
+                track = json.load(f)
+        except (OSError, ValueError):
+            continue
+        for c in track.get("cues") or []:
+            if isinstance(c, dict) and all(isinstance(c.get(k), (int, float)) for k in ("s", "e")):
+                cues.append(dict(c, s=round(c["s"] + part["offset"], 3), e=round(c["e"] + part["offset"], 3)))
+    return {"version": 1, "lessonId": lid, "video": joined["video"], "duration": joined["duration"], "cues": cues}
+
+
 def lesson_video(lid, wsp, slug=""):
-    """Return only verified, workspace-local media metadata to the lesson page."""
+    """Return only verified, workspace-local media metadata to the lesson page: the whole-lesson video when one is
+    installed (video-NNNN.json), else the ready chapter videos as one playlist."""
     if not re.fullmatch(r"\d{4}", lid):
         return {"available": False, "error": "Invalid lesson id."}
-    lesson = lesson_path(lid, wsp)
-    if not lesson:
-        return {"available": False, "error": "Lesson not found."}
-    workspace = os.path.realpath(wsp)
-    if not os.path.realpath(lesson).startswith(workspace + os.sep):
-        return {"available": False, "error": "Lesson video manifest is invalid."}
-    reference = os.path.realpath(os.path.join(wsp, "reference"))
-    manifest_path = os.path.realpath(os.path.join(reference, f"video-{lid}.json"))
-    if not reference.startswith(workspace + os.sep) or not manifest_path.startswith(reference + os.sep) or not os.path.isfile(manifest_path):
-        return {"available": False}
     try:
-        with open(manifest_path, encoding="utf-8") as f:
-            manifest = json.load(f)
-        if not isinstance(manifest, dict) or manifest.get("version") != 1 or isinstance(manifest.get("version"), bool):
-            raise ValueError
-        if set(manifest) != {"version", "lessonId", "lessonSha256", "video", "duration", "captionsBurnedIn", "segments"}:
-            raise ValueError
-        source_hash = manifest["lessonSha256"]
-        if manifest.get("lessonId") != lid or not isinstance(source_hash, str) or not re.fullmatch(r"[0-9a-fA-F]{64}", source_hash):
-            raise ValueError
-        video = manifest.get("video")
-        if not isinstance(video, str) or video != f"{lid}-lecture.mp4":
-            raise ValueError
-        assets = os.path.realpath(os.path.join(wsp, "lessons", "assets"))
-        media = os.path.realpath(os.path.join(assets, video))
-        if not assets.startswith(workspace + os.sep) or not media.startswith(assets + os.sep) or not os.path.isfile(media):
-            raise ValueError
-        duration = manifest.get("duration")
-        if isinstance(duration, bool) or not isinstance(duration, (int, float)) or not math.isfinite(duration) or duration <= 0:
-            raise ValueError
-        if not isinstance(manifest.get("captionsBurnedIn"), bool):
-            raise ValueError
-        segments = manifest.get("segments")
-        if not isinstance(segments, list) or not segments:
-            raise ValueError
-        with open(lesson, "rb") as f:
-            source = f.read()
-        mapping_valid = hashlib.sha256(source).hexdigest().lower() == source_hash.lower()
-        line_count = len(source.decode("utf-8").splitlines())
-        seen, previous_end = set(), 0
-        for segment in segments:
-            if not isinstance(segment, dict):
-                raise ValueError
-            if not {"id", "label", "start", "end", "line"} <= set(segment) or set(segment) - {"id", "label", "start", "end", "line", "step", "practice"}:
-                raise ValueError
-            sid, label = segment.get("id"), segment.get("label")
-            if not isinstance(sid, str) or not sid.strip() or sid in seen or not isinstance(label, str) or not label.strip():
-                raise ValueError
-            seen.add(sid)
-            start, end = segment.get("start"), segment.get("end")
-            if any(isinstance(x, bool) or not isinstance(x, (int, float)) or not math.isfinite(x) for x in (start, end)):
-                raise ValueError
-            if start < previous_end or end <= start or end > duration + 0.01:
-                raise ValueError
-            previous_end = end
-            line, step = segment.get("line"), segment.get("step")
-            if isinstance(line, bool) or not isinstance(line, int) or line < 1 or (mapping_valid and line > line_count):
-                raise ValueError
-            if step is not None and (isinstance(step, bool) or not isinstance(step, int) or step < 1):
-                raise ValueError
-            practice = segment.get("practice")
-            if practice is not None:
-                if not isinstance(practice, dict) or set(practice) != {"pauseAt", "revealAt"}:
-                    raise ValueError
-                pause, reveal = practice["pauseAt"], practice["revealAt"]
-                if any(isinstance(x, bool) or not isinstance(x, (int, float)) or not math.isfinite(x) for x in (pause, reveal)):
-                    raise ValueError
-                if not start <= pause < reveal <= end:
-                    raise ValueError
-        url = f"/w/{urllib.parse.quote(slug, safe='')}/assets/{video}" if slug else f"/assets/{video}"
-        return dict(manifest, available=True, mappingValid=mapping_valid, videoUrl=url)
+        source = lesson_source(lid, wsp)
+        if source is None:
+            return {"available": False, "error": "Lesson not found."}
+        whole = verify_video(wsp, slug, lid, source)
+        if whole:
+            return whole
+        return chapter_videos(lid, wsp, slug) or {"available": False}
     except (OSError, UnicodeError, ValueError, TypeError, KeyError, json.JSONDecodeError):
         return {"available": False, "error": "Lesson video manifest is invalid."}
 
@@ -1575,14 +1673,23 @@ class H(BaseHTTPRequestHandler):
             return self.send(200, read_lesson(lid, frm, h, wsp))
         if path == "/api/lesson-video":
             return self.send(200, lesson_video(qs.get("id", [current(slug)])[0], wsp, slug))
+        if path == "/api/lesson-video-captions":
+            lid = qs.get("id", [current(slug)])[0]
+            if not re.fullmatch(r"\d{4}", lid) or not wsp:
+                return self.send(400, {"error": "id must be NNNN"})
+            return self.send(200, chapter_captions(lid, wsp, slug))
         if path == "/api/video-status":
             if self.foreign():
                 return self.send(403, {"error": "only the board may read video progress"})
             lid = qs.get("id", [current(slug)])[0]
-            if not re.fullmatch(r"\d{4}", lid):
-                return self.send(400, {"error": "id must be NNNN"})
+            ch = qs.get("chapter", [""])[0]
+            if not re.fullmatch(r"\d{4}", lid) or (ch and not re.fullmatch(r"\d{1,2}", ch)):
+                return self.send(400, {"error": "id must be NNNN, chapter a number"})
             if not wsp:
                 return self.send(200, {"active": False})
+            if ch:
+                ready = chapter_video(lid, int(ch), wsp, slug)
+                return self.send(200, video_status.status(wsp, lesson_chapters.key(lid, int(ch)), installed=bool(ready.get("available") and ready.get("mappingValid"))))
             return self.send(200, video_status.status(wsp, lid, installed=bool(lesson_video(lid, wsp, slug).get("available"))))
         if path == "/events":
             return self.events(qs.get("id", [current(slug)])[0], slug)
