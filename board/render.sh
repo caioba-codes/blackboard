@@ -1,7 +1,7 @@
 #!/bin/zsh
 # render.sh <lesson.md> [--live|--stream]   Render a lesson on the Blackboard. --live: mark it as being written (board appends blocks as they land).
 # render.sh --ws <dir>                 Point the board at a workspace without a lesson (grid).
-# Writes board/state.json, starts bridge.py if needed, opens the board once per host, pokes the bridge.
+# Writes ~/.cache/blackboard/state.json, starts bridge.py if needed, opens the board once per host, pokes the bridge.
 set -e
 DIR=${0:A:h}; "$DIR/../bin/update.sh" 2>/dev/null || true  # git clones only, once a day; prints one line if it updated
 HOME_DIR=${BLACKBOARD_HOME:-$HOME/.cache/blackboard}; mkdir -p "$HOME_DIR"; STATE=$HOME_DIR/state.json; PORT=${BLACKBOARD_PORT:-7331}; URL="http://127.0.0.1:$PORT"
