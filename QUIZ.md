@@ -16,13 +16,12 @@ The interactive agent runs a quiz by hand only when the user asks for one in cha
 
 Before writing any lesson quiz, More practice set or flashcard, inspect the user's relevant sources: practice exams, past exams, quizzes, problem sets, homework, and their answer keys. Match what the lesson actually teaches.
 
-- **Official first (hard rule, Caio 2026-11-02).** Worked examples, Your turns, checkpoints, drills, practice exams and quizzes use official problems from the course's official sources (past exams, practice sets, homework, the official review, lecture slides), quoted verbatim with their original numbers and figures (TEMPLATES.md **Official problems**). Write our own only when no official problem trains that skill, or the official one skips the fundamentals the lesson needs; label it `*Written by Claude*`. Never change an official problem's numbers.
+- **Official first.** Worked examples, Your turns, checkpoints, drills, practice exams and quizzes use official problems from the course's official sources (past exams, practice sets, homework, the official review, lecture slides), quoted as TEMPLATES.md **Official problems** says. Write our own only when no official problem trains that skill, or the official one skips the fundamentals the lesson needs; label it `*Written by Claude*`. Never change an official problem's numbers.
 - A free-response official problem stays free response (a Your turn or check-in), or becomes multiple choice only by adding options around its exact text.
-- **Option count.** An official multiple-choice question keeps its original options, however many there are. Our own multiple choice has exactly four (true/false keeps two), each distractor a real mistake on that problem.
 - **Answer keys are checked.** Recompute every answer and every option independently of the official key; when the key is wrong, the lesson gives the right answer with a one-line note on the key's mistake.
 - Record the actual source filename and question/page plus what changed in a Markdown comment immediately before each authored item. For generated items, include that reference in the answer explanation. Never invent a source citation or claim to have read an unavailable question.
 - Independently invent questions only when there are no relevant supplied question sources, such as a non-school lesson without user-provided material. First inspect the available sources; missing extraction/access is not evidence that no relevant source exists. If expected sources cannot be read, report that gap rather than silently inventing exam-style questions.
-- Assigned work uses changed-parameter practice analogs. Test only taught material, but retain the source difficulty. This rule also applies to flashcards when requested: retain the source problem and assess its reasoning without alternatives.
+- Test only taught material, but retain the source difficulty.
 
 ## Writing flashcard prompts
 
@@ -62,19 +61,7 @@ What the board shows after an answer: `Score N / 5`, one line of rationale, the 
 
 - Stem is a complete question answerable before reading the options (cover-the-options test).
 - Self-contained: every stem restates the facts it needs (the expression, the inputs, the table row, the circuit) so the student answers without scrolling back. Never "in problem 1", "from the example above" or a bare wire name like n2; write "For $W=\overline{R}S+T$ with $RST=111$…" instead.
-- Code in a question: a stem, check-in question or answer that shows more than one statement of code puts that code in a fenced ```java block, formatted as real code with line breaks and indentation, then the question sentence on its own line after it. Never inline a class or several statements into a sentence. A single short expression stays inline in backticks.
-
-  ````
-  ::: mcq c2a a
-  ```java
-  public class Pet {
-      private int age = 5;
-  }
-  ```
-  What does `new Pet().getAge()` return?
-  - `5`
-  ...
-  ````
+- Code in a stem: TEMPLATES.md **Board rules** 7.
 - Four options for our own items, exactly one correct (true/false keeps two; a verbatim official item keeps its own count). Each added distractor is a real, plausible mistake on that problem: a dropped sign, a wrong constant ($\tfrac{1}{a}$ for $a$), the wrong substitution or form, a forgotten chain-rule factor, a wrong bound. No joke options. Differentiate or simplify every distractor to make sure none is also correct. Spread the key over all four written positions across a lesson's items (the key letter is the key in written order; the board shuffles on render). Evaluate or derive every option before shipping. An equivalent expression is correct even when obtained in fewer or more steps; do not mark it wrong for skipping the preferred teaching sequence. If the stem asks for a specific intermediate step, state that constraint explicitly and ensure only one option meets it.
 - Every distractor is a real misconception or a common procedural error, taken from the student's own quiz log when available.
 - Options equal in length, grammar, specificity, and structure. No "all/none of the above", no negatives ("except"), no absolutes ("always/never").

@@ -5,14 +5,24 @@ Every lesson is one markdown file, `lessons/NNNN-slug.md`, rendered on the board
 ## Board rules
 
 1. One idea per block. A block is a paragraph, a display equation, a figure, or a toggle. Never two mechanisms in one block.
-2. Question before answer. The reader sees the question, then predicts, then the answer appears.
-3. Picture beside the step it explains. Labels on the picture, not in prose.
-4. Fixed slots. Same geometry every lesson: front matter → `# title` → Prerequisites dropdown → short Contents → Sources dropdown → one-line question (not in STEM lessons) → conditional check-in → numbered chapters with checkpoints → `## Quiz` → `## Extra` (self-study, only if a video was used).
-5. Erase, don't add. Word caps below are real. Anything off-path is cut.
-6. Every lesson ships with its quiz: 1–2 checkpoint `::: mcq` items after each chapter and 2–3 mixed ones in `## Quiz` (QUIZ.md), written before calling the lesson done. The student never has to generate anything to start revising. Each item restates the expression, inputs or figure facts it depends on, so it is answerable without scrolling back into the lesson. The "More practice" panel below them generates flashcards or more multiple choice, on one sub-topic or on all of them.
-7. Name the actual writer fully. Follow SKILL.md’s **Author byline** contract: `model:` includes family/version, variant, and reasoning effort when available, e.g. `GPT-6 Astra Medium`. The title byline must preserve the full value.
-8. Code lines stay at or under 60 characters, so a block fits the column at any zoom. An explanatory comment goes on its own line above the statement it explains, at the same indentation, never trailing a long line. Wrap anything longer. In an `::: interactive` trace, shorten comments rather than add lines, so the step line numbers stay right.
-9. Code in a question: a stem, check-in question or answer that shows more than one statement of code puts that code in a fenced ```java block, formatted as real code with line breaks and indentation, then the question sentence on its own line after it. Never inline a class or several statements into a sentence. A single short expression stays inline in backticks.
+2. Picture beside the step it explains. Labels on the picture, not in prose.
+3. Fixed slots. Same geometry every lesson: front matter → `# title` → Prerequisites dropdown → short Contents → Sources dropdown → conditional check-in → numbered chapters with checkpoints → `## Quiz` → `## Extra` (self-study, only if a video was used).
+4. Erase, don't add. Word caps below are real. Anything off-path is cut.
+5. Every lesson ships with its quiz, written before the lesson is done (counts and item rules: QUIZ.md). The student never has to generate anything to start revising.
+6. Code lines stay at or under 60 characters, so a block fits the column at any zoom. An explanatory comment goes on its own line above the statement it explains, at the same indentation, never trailing a long line. Wrap anything longer. In an `::: interactive` trace, shorten comments rather than add lines, so the step line numbers stay right.
+7. Code in a question: a stem, check-in question or answer that shows more than one statement of code puts that code in a fenced ```java block, formatted as real code with line breaks and indentation, then the question sentence on its own line after it. Never inline a class or several statements into a sentence. A single short expression stays inline in backticks.
+
+   ````
+   ::: mcq c2a a
+   ```java
+   public class Pet {
+       private int age = 5;
+   }
+   ```
+   What does `new Pet().getAge()` return?
+   - `5`
+   ...
+   ````
 
 ## Didactic writing contract
 
@@ -81,49 +91,15 @@ This applies to every question, in every subject. Of all the ways to explain a s
 - Use the abstract form only when the question asks for it (for example "give the simplified expression"), and then build it from the concrete version already shown.
 - Example: on a state diagram with inputs Left and Up, writing the bit patterns on the arcs (`10`; `00, 01, 11`) is easier to follow than `Left·Up'` and its De Morgan complement, because the student would otherwise have to decode each expression back into those values. The same reasoning applies to any kind of question, not only state diagrams.
 
-### Sequence meaning before use
+### Top to bottom
 
-- **Top to bottom, hard rule.** The student reads once, from the top. Never use a term, symbol or abbreviation before the paragraph that explains it. When one shows up early, move its explanation up to before that first use. Never leave a forward pointer ("see below", "more on this later"). Write each term in **bold** at the place that explains it, so `bin/prose_lint.py` can see where it is explained and flag any earlier use.
-- Start with the task the learner will be able to perform. Name the actual homework or exam skill; keep enrichment off the main path.
-- Establish only the prerequisites that task needs. Define a new concept in familiar words, introduce its notation, explain what that notation means, then use it. Do not define one unknown term through another unknown term.
-- Introduce symbols beside their first use, including overloaded operators, bars, parentheses, subscripts, abbreviations, and implicit multiplication when relevant. Say in prose what an unfamiliar expression means before manipulating it. Say its meaning, never its pronunciation.
-- Explain an operation before using it inside a larger operation. Make grouping and order explicit. For nested expressions, name the pieces and treat each group as one piece until it is that group's turn.
-- Keep names stable throughout an example. Distinguish input values, intermediate results, outputs, and placeholders in a general rule. When matching a rule, point out exactly which piece of the example fills each placeholder.
-- Use a meaning-level concrete case to make an abstract rule understandable. Do not begin with a wall of named theorems.
+The student reads once, from the top. Never use a term, symbol or abbreviation before the paragraph that explains it. When one shows up early, move its explanation up to before that first use. Never leave a forward pointer ("see below", "more on this later"). Write each term in **bold** at the place that explains it, so `bin/prose_lint.py` can see where it is explained and flag any earlier use.
 
-### Build a small example into a method
+### Before the final render
 
-- Give the setup: what is given, what is wanted, and the rule needed for the next step. Introduce later rules just before they are needed, rather than front-loading a catalogue.
-- Begin with the smallest example that exposes the mechanism. Work one truth-table row before showing all rows; trace one intermediate wire before a complete circuit; evaluate one case before generalizing.
-- Explain why a rule works with a short causal argument or a complete small case split. “Absorption” or “identity” can label a reason after its meaning is established; neither word substitutes for an explanation.
-- Name the action, show the change, and give the reason. Use one operation per equation line. Separate factoring, complement replacement, and identity cleanup instead of collapsing all three into a single equality chain.
-- For a difficult step, put a short paragraph immediately before its equation: identify the piece being changed and what stays in place. Keep the equation's right-margin reason short.
-- Show intermediate results explicitly. Use helper columns, named wires, or short stage headings so the learner does not have to carry several unfinished operations in memory.
-- Finish one simple worked example before adding a complication. Change one feature in the next example, explain the new decision it requires, and reuse the established method.
-- Use modified practice analogs for assigned work, preserving the tested skill without revealing or setting up the assigned answer. Do not promise what the homework's final answer will look like.
-- When several task types coexist, provide a compact task → first move → check table. Keep it actionable; omit a recap paragraph that only repeats the lesson.
-
-### Language and visual conventions
-
-- Follow **Tone: easy to read top to bottom** above, including the **Hard-to-read patterns** table.
-- Explain the meaning in plain words before giving its technical name when that helps. Keep the course's technical vocabulary available so the student can recognize it on the assignment.
-- One idea per paragraph. Use headings that name the action or decision. Do not compress several new concepts into a dense paragraph merely to meet a word cap.
-- Keep the reasoning needed for the task visible. The Prerequisites toggle lists expected prior knowledge only. Toggles may hide predictions, retrieval answers, and optional detail; explanations needed to follow the next line stay visible.
-- Use tables for repeated comparisons after explaining one representative case. Give columns operational labels such as “NOT Q” or “previous column OR R”; avoid unexplained shorthand.
-- Use a small diagram when it clarifies actual connections or dependencies. Label intermediate results at the point they are produced. Read the diagram in prose once so the learner knows how to trace it.
-- A block flow is a wiring plan; identify it as such if the assignment requires standard circuit symbols. Distinguish the representation being taught from the required submission format.
-- Respect the user's language preference; do not infer a language switch from a technical term. Preserve the course workspace's language convention unless asked to change it.
-- Fit the session's time budget by cutting tangents and duplicate examples. Preserve the prerequisite explanations and intermediate steps that make the remaining examples understandable.
-
-Diagrams: when one helps and how to draw it are in FIGURES.md (**When to illustrate**).
-
-### Practice and completion check
-
-- Ask a small prediction after teaching the prerequisite and before revealing the outcome. The reveal explains the causal step.
-- Cover the taught skills with 1–2 checkpoint MCQs after each chapter and 2–3 fresh mixed MCQs at the end, grounded in relevant supplied questions, following QUIZ.md Source fidelity. Match source difficulty, reasoning and alternatives; change parameters or adapt free-response questions to MCQ. Do not replace exam-level questions with easy recall or quiz an untaught prerequisite.
-- Write explanations that connect the answer to the rule and identify the actual mistaken operation. Verify every option; mathematically equivalent alternatives cannot be marked wrong merely because one uses more steps.
-- Before the final render, read top to bottom as a learner. Does every term and symbol appear after its plain explanation? Is every rule explained before it is applied? Is every transition supported by a visible intermediate step? Is every check correct? Does every sentence follow the Tone rules? Is `bin/prose_lint.py` clean?
-- Verify section order, the full author byline, rendered math, figure labels, and quiz keys. Fix rendering or ambiguous questions before declaring the lesson ready. Do not infer mastery or completion from having rewritten or displayed material.
+- Read the lesson once from the top as a learner.
+- Check section order, chapter links, rendered math, figure labels and every quiz key.
+- `bin/lint.py` and `bin/prose_lint.py` are clean (`render.sh` runs both).
 
 ## STEM lessons (math, physics, engineering, CS)
 
@@ -136,13 +112,11 @@ Diagrams: when one helps and how to draw it are in FIGURES.md (**When to illustr
   $$\underset{x \,=\, a\sin\theta}{a^{2}-x^{2}}\qquad\underset{x \,=\, a\tan\theta}{a^{2}+x^{2}}$$
   :::
   ```
-- **Every solution uses the worked-example format**: Your turn, checkpoint and check-in answers, drills, practice-exam solutions and `why:` lines that show work. At most one short sentence, the labeled setup (for parts the boxed $u$/$du$/$dv$/$v$ grid), an aligned derivation with one step per line and the reason after `&&`, and the boxed answer. Never chain equations through a prose sentence ("$u = x$, $v = …$. Then … = … = …"); a one-line answer is fine only for a single result with no steps. `bin/lint.py` flags any line with two or more `=` in inline math.
-  At most two short sentences of prose around all of it.
+- **Every solution is a derivation** (see **Derivations**): Your turn, checkpoint and check-in answers, drills, practice-exam solutions and `why:` lines that show work. At most two short sentences of prose around it, the labeled setup (for parts the boxed $u$/$du$/$dv$/$v$ grid), and the boxed answer. A one-line answer is fine only for a single result with no steps.
 - **Solutions open one step at a time.** The board steps every worked solution the student solves themselves (a `::: checkin` answer, an `::: mcq` `why:` with display math): the lead sentence and the first piece (the boxed setup, else row 1 with its reason), then **Next step** adds one aligned row with its reason and the last press shows the boxed answer; **Show all** opens everything. A wrong pick shows the verdict and the lead sentence as its hint first. Taught worked examples are never stepped. No markup is needed: write the solution in the format above and the steps come from its rows, so keep one operation per row and the boxed answer on the last row.
-- **No opening hook.** No "Question first" line under the Contents.
 - **No exam logistics.** No date, time, room, closed-book or grading-policy paragraph. The topic scope is the breakdown table. A rule the grader takes points off for becomes one `::: callout` instead (see **What a lesson leaves out**).
-- **No inline provenance.** No `→ Exam:`, `→ background` or "officially stated" tags in the body. Where things came from goes in the `::: sources` drop-down under Contents. The one exception is the problem label below (Caio, 2026-11-02).
-- **Official problems are quoted in full (hard rule, Caio 2026-11-02).** Every problem (worked example, Your turn, check-in, checkpoint, drill, practice-exam part, quiz item) that comes from an official source is quoted verbatim: its text word for word, with its original numbers, pin names and wording, plus every figure, diagram, table or given circuit it shows, cropped from the source PDF page as the real image (`bin/crop_figure.py --pdf … --page N --preview` to pick the box, then `--box l,t,r,b --out $WS/lessons/assets/NNNN-<src>-<q>.png`, look at the PNG, then `::: figure assets/… wide` with a one-line caption naming the source). Never redraw an official figure or retell it in prose. A table on the page may become a markdown table only when it is pure data with every cell copied.
+- **No inline provenance.** No "officially stated" tags in the body. Where things came from goes in the `::: sources` drop-down under Contents. The one exception is the problem label below.
+- **Official problems are quoted in full.** Problems come from official sources first (QUIZ.md **Source fidelity**). Every problem (worked example, Your turn, check-in, checkpoint, drill, practice-exam part, quiz item) that comes from an official source is quoted verbatim: its text word for word, with its original numbers, pin names and wording, plus every figure, diagram, table or given circuit it shows, cropped from the source PDF page as the real image (`bin/crop_figure.py --pdf … --page N --preview` to pick the box, then `--box l,t,r,b --out $WS/lessons/assets/NNNN-<src>-<q>.png`, look at the PNG, then `::: figure assets/… wide` with a one-line caption naming the source). Never redraw an official figure or retell it in prose. A table on the page may become a markdown table only when it is pure data with every cell copied.
 - **A Your turn is the exam question, nothing more (hard rule, Caio 2026-11-02).** Show the problem exactly as the source has it: the official text verbatim and only its own figure (the cropped image when it has one, nothing when it is text only). No sentence before it explaining or restating the question, no redrawn diagram, no added helper table or hint, no highlight; the reader faces it as on the exam, with no help. The solution, behind the reveal, may start by saying what the question asks, then draws and solves it step by step. The same holds for checkpoints, drills, practice-exam parts and quiz items.
 - **Every problem has a label (hard rule).** A small line of its own directly above the problem: `[Official · Fall 2018 Exam 2, Q3b](src:exams2/fa18-kj-e2.pdf#page=6)` for an official problem (term, exam or set, question number; no points, no logistics; the link opens the source in the board's viewer at that page, so the path is the file under `sources/` and the page is the PDF page) or `*Written by Claude*` for one we wrote. In a `::: checkin`, put the label, the quoted problem and its figure as blocks before the check-in and keep the item's question short ("Fill in the grey boxes."). `bin/lint.py` warns about a problem block without a label and a `src:` file that does not exist.
 - **Given vs calculated (hard rule, Caio 2026-11-16).** The student must always see what the problem gave and what we worked out. Put everything quoted from a problem (its text, data tables, given values and figures) inside a `::: given` block, right under the label. The board shows it as a quiet quote card headed **From the problem**, apart from the teaching and the work. Inside a solution, anything copied back from the problem goes in its own `::: given` block too, never mixed into the calculation. When one table holds both, write `>` before each copied column's header (`| >S1 | >S0 | >C1 | >C0 | NS1 | NS0 | P |`); the board mutes those columns, labels them *given*, and leaves the calculated columns bright. The question line of a `::: checkin` item stays outside the block. `bin/lint.py` warns about official problem text that is not in a `::: given` block. For a lesson written before this rule, `python3 bin/given.py <lesson> --write` adds the blocks and the `>` marks, and keeps an installed video's text sync.
@@ -158,7 +132,6 @@ Diagrams: when one helps and how to draw it are in FIGURES.md (**When to illustr
   :::
   :::
   ```
-- **Answers are verified, not copied.** Read the official key first, then work the answer independently. When the key is wrong, give the right answer and one line saying what the key has and why it is wrong.
 - **Draw what the key draws (hard rule, Caio 2026-11-02).** When the problem has a diagram and its human solution is a drawing (mux or decoder wiring, a circuit, a K-map, a timing diagram, a truth table filled in visually), the solution draws too, step by step: step 1 draws the part with `::: fig` (`raw` SVG, or `kmap`/`wave`), each later step's figure builds on the last one's drawing and marks what it added in the accent, then the calculation, then a step that points at the drawing ("$I_0$ passes to $Y$ because $S_1S_0=00$"). Show each drawing in the solution where its step is, so the board's **Next step** reveal shows it in order. Problems whose solution is only algebra or arithmetic keep the plain format. Videos follow the same order: draw it on screen, then calculate.
 - **Cheat sheet chapters are formulas to memorize, never prose.** Wrap the chapter in `::: sheet`, one `::: group <Method>` card per method in chapter order (the board lays the cards out as a two-column sheet when there is room). Inside a card: its formulas as display math, one per line, aligned on `=` where useful, each with a muted 1–4 word tag after `&&` ("Pythagorean", "p-rule"); level 2 (`::: key`) for the key formulas; a small board table where the content is tabular (the trig-power cases); at most one small `::: callout` per card and two or three in the whole sheet, only for a real grading trap. No sentences, no bold-label paragraphs.
 
@@ -221,8 +194,6 @@ prev: 0003                 # previous lesson number, omit on the first
 - Practice Test 1 · the quiz items
 :::
 
-*Question first: a table of 1s and 0s is in front of you. How do you turn it into a circuit?*
-
 ### Before we start  ·  from lesson 0003: Boolean Algebra and the Basic Gates
 ::: checkin
 - What does a bar over a variable mean?  ||  NOT. $\overline{A}$ is 1 exactly when $A$ is 0.
@@ -231,7 +202,7 @@ prev: 0003                 # previous lesson number, omit on the first
 
 ## Chapter 1 · Build an SOP
 
-…body: method sections in the STEM order (see the model lesson)…
+…body…
 
 ## Chapter 2 · Simplify it
 
@@ -277,8 +248,6 @@ Ben Eater, "Making logic gates from transistors"
 
 The “Before we start” block above is conditional: include it only for a genuine continuation of lesson 0003; otherwise omit both the heading and check-in, and omit `prev:`. Chapter links must match the rendered heading anchors.
 
-Before finishing a new lesson, apply the visual/interactive contract in SKILL.md. Math needs an interaction or meaningful animation; a banner photo does not count. See [INTERACTIVES.md](./INTERACTIVES.md) for working schemas.
-
 Block syntax the renderer understands:
 
 - `::: interactive trace` or `::: interactive function` / JSON spec / `:::` → manipulable lesson example; see INTERACTIVES.md.
@@ -298,13 +267,12 @@ Block syntax the renderer understands:
 - `::: photo [side|wide]` / `query: <what to fetch>` / `caption: <short description>` / `:::` → a real photograph of the thing being discussed, fetched by `bin/photos.py` from licensed sources and saved under `assets/`; `src: https://…` skips the fetch when a specific image (a maker's press photo) is the only good one. `side` floats it right at 44% width with the text flowing on the left; `wide` spans the column. Rules in **Photos** below.
 - `::: figure assets/x.svg|png` / caption / `:::` → an existing image; `.svg` is inlined so the page fonts apply; add `wide` for a full-width `.png`.
 - `::: video assets/x.mp4` / caption / `:::` → a Manim animation rendered with `bin/anim.sh`; a YouTube embed URL gives an iframe.
-- `$100` in prose is money and stays as typed. Inline math never starts with a digit or a space: `$F = 1$`, `${}0.5$`. `\$` is a literal dollar sign.
+- `$100` in prose is money and stays as typed. Inline math is `$…$` on one line with no space just inside either `$`. It may start with a digit (`$4$`, `$0.5 \cdot 2$`, `$2^{9/2}$`), because money never has a closing `$` on the same line. Two amounts on one line (`$5 and $10`) stay money. `\$` is a literal dollar sign.
 - `::: video URL` / caption / `:::` → embedded video.
 - `::: quiz` / `topics: a, b, c` / items / `:::` → the quiz. Items render first, the "More practice" panel under them.
-- `::: mcq q1 b` / stem / four `- option || the mistake that gives it` lines (the key has no `||` part) / `why: …` / `:::` → one multiple-choice item in a numbered list; the letter is the key in the order written, options shuffle on render, a wrong pick shows that option's mistake line. The stem may hold a fenced code block (rendered as a code box, question sentence after it); an option that is a whole statement of code in backticks shows as a small preformatted box.
+- `::: mcq q1 b` / stem / option lines `- option || the mistake that gives it` (the key has no `||` part; how many: QUIZ.md **Multiple choice**) / `why: …` / `:::` → one multiple-choice item in a numbered list; the letter is the key in the order written, options shuffle on render, a wrong pick shows that option's mistake line. The stem may hold a fenced code block (rendered as a code box, question sentence after it); an option that is a whole statement of code in backticks shows as a small preformatted box.
 - `::: card c1` / question / `answer: …` / `must: …` lines / `:::` → one flashcard. Every card in a quiz joins one deck, shown one card at a time where the first card sat: the front holds the question and an answer box (typed, or filled by Speak); Validate grades it and the card turns to show `answer:` and the verdict. `must:` lines are the grader's rubric and stay off the front. Cards are generated by `bin/quiz.py`; a lesson does not ship with them.
 - `::: score c1 4` / the answer, the rationale, `Missing: …` / `:::` → the verdict on the back of that card. Written by `bin/quiz.py`, never by hand.
-- `→ Exam: …` or `→ background` at the end of a block → course tag (course mode only, never in STEM lessons).
 - A markdown table → a booktabs table (rules at the top, under the header, and at the bottom; no vertical rules, no fills). Math works in any cell. See **Tables** below.
 
 ## Tables
@@ -336,7 +304,7 @@ A markdown table is the default. `::: fig table` (see [FIGURES.md](./FIGURES.md)
 
 ## Derivations
 
-The steps inside every worked example and solution:
+The steps inside every worked example and solution. A derivation is a column: never `a = b = c = d` on one line, never `A \Rightarrow B \Rightarrow C` inside a sentence, and never equations chained through prose ("$u = x$, $v = …$. Then … = …"), for a worked example or a "small" step alike. Solving for the crossings of two curves is a derivation; so is evaluating a bracket at its limits. `bin/lint.py` (run by `render.sh`) warns about every sideways chain.
 
 1. **Setup block first.** State what is given and wanted. Explain the next rule before applying it; introduce additional rules at the stage that needs them.
 2. **One operation per line.** One substitution, one expansion, one cancellation, one limit. Never two.
@@ -349,10 +317,6 @@ The steps inside every worked example and solution:
 9. **Layout.** Display math left-aligned, one `aligned` block per stage, a `###` heading per stage ("Setup", "Step 1 — width", …). Derivation steps never side by side; a figure may sit beside its caption.
 
 Add a `::: predict` before the result when the outcome is guessable ("what happens to F when A = 1?").
-
-## Steps go down, never sideways (hard)
-
-A derivation is a column, one operation per line, the reason in the right margin, the result boxed. Never `a = b = c = d` on one line and never `A \Rightarrow B \Rightarrow C` inside a sentence, for a worked example or a "small" step alike. Solving for the crossings of two curves is a derivation. Evaluating a bracket at its limits is a derivation. `render.sh` runs `bin/lint.py` and prints a warning for every sideways chain; fix them before the render counts as done.
 
 ```
 $$\begin{aligned}
@@ -368,7 +332,7 @@ x &= -1,\; 3 &&\text{the limits}
 A title is a YouTube title, not a file name. Short, concrete, says what you will be able to do or understand after reading: "How to Solve All 5.5 Problems", "Test 1 Formula Sheet", "How Absorption Works", "How the NVIDIA DGX Spark Actually Works", "Split the Fraction First". Rules:
 
 - No em dashes, no colons, no "Problem 1 — every step" suffixes, no "Step by Step" padding.
-- Aim for two to seven words; a longer title is fine when it names the subject clearly, as in the calculus model lesson. Lead with "How to", "How X Works", "Why X", or the thing itself.
+- Aim for two to seven words; a longer title is fine when it names the subject clearly. Lead with "How to", "How X Works", "Why X", or the thing itself.
 - Name the subject in plain words, never the course code: "How to Ace Your Second Integral Calculus Test", not "How to Ace MATH 1552 Test 2". The course stays in `course:`, which the board shows above the title.
 - The `title:` in front matter and the `# ` line are the same string. The hub and the tab show it, so it must read well at a glance next to other courses' lessons.
 
@@ -378,7 +342,9 @@ Captions are a short description of the image only (no longer than "Cornell Univ
 
 **The banner is the subject.** When the lesson is about a specific object (a machine, a chip, a building, an animal), the banner photo is that object, not a generic image of its category: a DGX Spark lesson opens with the DGX Spark, never with "a computer chip". If the free sources cannot produce the object itself, use the maker's press photo as the banner (`photo: assets/NNNN.jpg` copied from a press image, `credit: <maker> press image`) and leave `image:` for abstract lessons only. Check the banner after the first render; a wrong banner is worse than none.
 
-**`image:` is the literal subject, never a metaphor.** Name what a photo of the lesson's topic would actually show, with concrete nouns: "Java source code on a computer screen", "calculus integrals handwritten in a notebook", "graph of a function". Never a picture of a word in the lesson: contract → law books, interface → people meeting, sorting → library shelves, array → lockers, absolute value → folded paper are all wrong. `bin/image.sh` accepts only candidates whose title, description or tags contain the query's subject words as whole words (page, sheet, formula, paper, macro, notebook and similar generic words do not count), and names its pick on stderr (`image.sh: chose "<title>"`). The match is on metadata, not pixels: after picking, open the downloaded file and confirm it shows the subject; if not, change `image:` and re-roll.
+**Every lesson has a banner**, and it is unique across every workspace. `render.sh` fetches it when `photo:` is missing (`bin/image.sh`, in the background) and writes `photo:` and `credit:` into the front matter; never copy another lesson's `photo:` or use a shared default. `image.sh` rejects already-used bytes, source URLs and credits; `render.sh` rejects copied duplicates. Run `python3 bin/banner_guard.py` before delivery and resolve what it reports. Run `bin/image.sh` by hand only to re-roll.
+
+**`image:` is the literal subject, never a metaphor.** Name what a photo of the lesson's topic would actually show, with concrete nouns: "Java source code on a computer screen", "calculus integrals handwritten in a notebook", "graph of a function". Never a picture of a word in the lesson: contract → law books, interface → people meeting, sorting → library shelves, array → lockers, absolute value → folded paper are all wrong. Never the lesson title, and never a chalkboard, blackboard, slate, chalk, classroom or whiteboard unless the lesson is about that object: the page is already a blackboard. `render.sh` refuses a board-photo subject and falls back to the title's topic. `bin/image.sh` accepts only candidates whose title, description or tags contain the query's subject words as whole words (page, sheet, formula, paper, macro, notebook and similar generic words do not count), and names its pick on stderr (`image.sh: chose "<title>"`). The match is on metadata, not pixels: after picking, open the downloaded file and confirm it shows the subject; if not, change `image:` and re-roll.
 
 Real photographs go between topics **only when the lesson is talking about a physical thing** and a photo of that thing exists: a machine, a chip, a board, an organ, a building, an instrument. Then:
 

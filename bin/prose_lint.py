@@ -186,7 +186,7 @@ def main(path):
         print(f"  prose: line {ln}: {msg}", file=sys.stderr)
     if warn:
         extra = "" if nlp else " (noun-stack check off: pip install spacy && python3 -m spacy download en_core_web_sm)"
-        print(f"  prose: {len(warn)} warning(s). TEMPLATES.md, Tone and Sequence meaning before use.{extra}", file=sys.stderr)
+        print(f"  prose: {len(warn)} warning(s). TEMPLATES.md, Tone and Top to bottom.{extra}", file=sys.stderr)
     return len(warn)
 
 

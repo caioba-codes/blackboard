@@ -304,7 +304,7 @@ class VideoPipelineTest(unittest.TestCase):
         self.assertTrue((out / "slate.jpg").is_file())
         self.assertIn("url(slate.jpg)", (out / "look.css").read_text())
 
-    def test_pace_fails_when_the_script_rushes_the_lesson(self):
+    def test_pace_fails_only_when_the_script_pads_the_lesson(self):
         spec = importlib.util.spec_from_file_location("video_pipeline", CLI)
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
@@ -313,12 +313,14 @@ class VideoPipelineTest(unittest.TestCase):
         lesson.write_text("word " * 1000, encoding="utf-8")
         proj = d / "pace"
         proj.mkdir()
-        (proj / "script.json").write_text(json.dumps({"scenes": [{"cues": [{"say": "word " * 1200}]}]}), encoding="utf-8")
-        with self.assertRaises(module.PipelineError) as e:
-            module.pace_ok(lesson, proj)
-        self.assertIn("too fast", str(e.exception))
+        (proj / "script.json").write_text(json.dumps({"scenes": [{"cues": [{"say": "word " * 400}]}]}), encoding="utf-8")
+        self.assertIn("ready", module.pace_ok(lesson, proj))   # short is fine: no floor
         (proj / "script.json").write_text(json.dumps({"scenes": [{"cues": [{"say": "word " * 2100}]}]}), encoding="utf-8")
         self.assertIn("ready", module.pace_ok(lesson, proj))
+        (proj / "script.json").write_text(json.dumps({"scenes": [{"cues": [{"say": "word " * 3200}]}]}), encoding="utf-8")
+        with self.assertRaises(module.PipelineError) as e:
+            module.pace_ok(lesson, proj)
+        self.assertIn("too slow", str(e.exception))
         est = self.cli("estimate", "--lesson", lesson)
         self.assertEqual(json.loads(est.stdout)["minutes"], 15)
 

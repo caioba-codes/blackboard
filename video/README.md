@@ -32,7 +32,7 @@ Copy the runtime files into a new project directory. A project is self-contained
 {
   "title": "Lesson title",
   "subtitle": "Course line · Lesson 0001",
-  "chapters": ["Introduction", "Chapter 1 · …", "Quiz & recap"],
+  "chapters": ["Introduction", "Chapter 1 · …", "Quiz"],
   "scenes": [
     {"id": "s00", "chapter": 0, "visual": "storyboard for the scene builder",
      "cues": [{"id": "a", "say": "Row five: I five is zero.", "show": "Row 5: $I_5 = 0$."}, {"id": "think", "pause": 5}]}

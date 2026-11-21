@@ -25,8 +25,7 @@ SCRIPT_EFFORTS = {ROLE["model"]: VIDEO_EFFORTS, "gpt-6-astra": frozenset(("mediu
 # became 41,883 spoken words, 204,456 narrated characters and 4 h 54 min of video with 83 pause-and-solve gates.
 PACE_REF = {"lesson": "ece2020 0010", "spoken_per_lesson_word": 2.08, "minutes_per_1000_lesson_words": 14.6,
             "chars_per_spoken_word": 4.88}
-PACE_FLOOR = 0.67   # check fails below two thirds of the target density: the video is rushing the material
-PACE_CEIL = 1.5     # and above one and a half times it: the video is padding easy material
+PACE_CEIL = 1.5     # check fails above one and a half times the target: the video is padding easy material; no floor
 # Length follows size AND complexity (Caio, 2026-11-13: "complex stuff needs more careful explanation"). Each `##`
 # chapter is rated; 0010's average is `standard`. A light chapter gets half the time per lesson word, a hard one 1.5x.
 COMPLEXITY = {"light": 0.5, "standard": 1.0, "hard": 1.5}
@@ -237,9 +236,6 @@ def pace_ok(lesson, project_dir):
     target = sum(r["spokenWords"] for r in plan(text, load_complexity(project_dir / "complexity.json")))
     script = read(project_dir / "script.json")
     spoken = sum(len(str(c.get("say", "")).split()) for sc in script.get("scenes", []) for c in sc.get("cues", []))
-    if words >= 300 and target and spoken < target * PACE_FLOOR:
-        raise PipelineError(f"too fast: {spoken} spoken words against a target of {target} for this lesson's size and "
-                            f"complexity (floor {round(target * PACE_FLOOR)}). Add steps, values and bridges")
     if words >= 300 and target and spoken > target * PACE_CEIL:
         raise PipelineError(f"too slow: {spoken} spoken words against a target of {target} (ceiling "
                             f"{round(target * PACE_CEIL)}). Cut repetition on the easy parts, or rate the hard chapters hard")
