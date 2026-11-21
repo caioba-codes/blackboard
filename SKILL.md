@@ -35,7 +35,7 @@ Before a new lesson or substantial rewrite, read [LESSON-WRITER.md](./LESSON-WRI
 
 # Full lesson video (default)
 
-Every new full lesson includes both the written lesson and its video unless the user explicitly asks for text only. This does not apply to view/open, Explain, side questions, chat answers, or temporary boards. Read [VIDEO.md](./VIDEO.md) for the exact project commands, Opus 5.5 video role (high effort recommended), source-anchor schema, measured timing map, QA, and import gates. The video role is separate from the designated written lesson author: preserve the current `lesson_routing.py` selection, author byline, reviewer and support roles. If source math differs from independent video math, the designated lesson author corrects and rechecks the written lesson first; then rebuild the video against its new SHA. A missing video credential, model, or runtime blocks the video stage with an explicit report, while the written lesson remains available. The CLI checks supplied receipts; the orchestrator verifies actual runtime identities from host evidence.
+Every new full lesson includes both the written lesson and its video unless the user explicitly asks for text only. This does not apply to view/open, Explain, side questions, chat answers, or temporary boards. Read [VIDEO.md](./VIDEO.md) for the exact project commands, Opus 5.5 visual builder role (high effort recommended), optional user-authorized script author role, source-anchor schema, measured timing map, QA, and import gates. The video roles are separate from the designated written lesson author: preserve the current `lesson_routing.py` selection, author byline, reviewer and support roles. If source math differs from independent video math, the designated lesson author corrects and rechecks the written lesson first; then rebuild the video against its new SHA. A missing video credential, model, or runtime blocks the video stage with an explicit report, while the written lesson remains available. The CLI checks supplied receipts; the orchestrator verifies actual runtime identities from host evidence.
 
 # Modes
 
@@ -47,7 +47,7 @@ Every new full lesson includes both the written lesson and its video unless the 
 - `quiz <topic> <cards|mcq>` — run a quiz by hand in chat (see [QUIZ.md](./QUIZ.md)). The board's own Quiz panel does not use this: it generates and grades headless through `bin/quiz.py`.
 - `predict <block> <choice>` / `mcq <item> <choice>` — record a click from the board.
 - `add <path|url>` — add material to the workspace and re-tier.
-- `sync` — re-pull the LMS course and rebuild the topic map.
+- `sync` — re-pull the LMS course.
 - `image NNNN` — re-roll the lesson photo.
 - `grid` — open the lessons hub (`/lessons`): every lesson in every folder the board knows about, with search and folder chips.
 
@@ -66,7 +66,7 @@ Files under `$WS` (formats linked):
 - `RESOURCES.md` — trusted sources with `kind` and `tier`. [RESOURCES-FORMAT.md](./RESOURCES-FORMAT.md)
 - `sources/` — course files and extracted text. [LMS.md](./LMS.md)
 - `lessons/NNNN-slug.md` — lessons, markdown + LaTeX. `lessons/assets/` holds photos and Manim stills.
-- `reference/*.md` — cheat sheets, glossaries ([GLOSSARY-FORMAT.md](./GLOSSARY-FORMAT.md)), `topic-map.md` in exam mode.
+- `reference/*.md` — cheat sheets, glossaries ([GLOSSARY-FORMAT.md](./GLOSSARY-FORMAT.md)).
 - `reference/chat/NNNN.json` — the board chat's history for lesson NNNN (see Chat). New chat renames it to `NNNN-<time>.json`.
 - `learning-records/NNNN-slug.md` and `quiz-log.jsonl`. [LEARNING-RECORD-FORMAT.md](./LEARNING-RECORD-FORMAT.md)
 - `NOTES.md` — the user's preferences about how they want to be taught.
@@ -140,7 +140,7 @@ When course mode is detected and `$WS/sources/` and RESOURCES.md are empty, rend
 >
 > Syllabus and textbook are optional. Is the course on Canvas, Moodle, Blackboard, or Brightspace? Paste the course link and I'll pull everything.
 
-Then: paths → copy into `$WS/sources/<kind>/`, extract text, tier per RESOURCES-FORMAT.md, show the tiering once. Link → [LMS.md](./LMS.md). If any tier ≤ 4 item exists → [EXAM-MODE.md](./EXAM-MODE.md) builds the topic map. Never show this ask again for that workspace; `add` and `sync` extend it later.
+Then: paths → copy into `$WS/sources/<kind>/`, extract text, tier per RESOURCES-FORMAT.md, show the tiering once. Link → [LMS.md](./LMS.md). Never show this ask again for that workspace; `add` and `sync` extend it later.
 
 If `MISSION.md` is missing, write it from the course or topic and one question at most ("what is this for: a test, a project, curiosity?").
 
@@ -148,7 +148,7 @@ If `MISSION.md` is missing, write it from the course or topic and one question a
 
 **Source check (hard rule, course mode).** Before writing any lesson, before model selection or a single body block, check that every source the lesson depends on exists in `$WS/sources/` (or the course's LMS mirror): (1) the official review sheet(s) for the exam or topic, (2) past exams **with their answer keys**, (3) lecture notes or slides for every topic covered, (4) the homework or WebWork sets for those topics, (5) the syllabus or official topic list that says what the exam covers. For each one that is missing, try to fetch it from the LMS ([LMS.md](./LMS.md)). If any is still missing, **stop**: do not write, outline or stream the lesson, and tell the user in one short message exactly which sources are missing and what they can drop in. A source that does not exist for the course (the professor never published one) counts as present only when the user says so. Self-study lessons and temporary boards are exempt.
 
-Read [TEMPLATES.md](./TEMPLATES.md), including its **Didactic writing contract**, **Titles** and **Photos**, before writing or rewriting a lesson. Apply that contract to explanations as well, scaled to the requested depth. STEM lessons follow the one template: TEMPLATES.md **STEM lessons** and the model lesson [examples/stem/learn/lessons/0001-how-to-ace-your-second-integral-calculus-test.md](./examples/stem/learn/lessons/0001-how-to-ace-your-second-integral-calculus-test.md); a non-STEM template comes later. The lesson frame and its slot order are in TEMPLATES.md (**Board rules** and **Lesson frame**).
+Read [TEMPLATES.md](./TEMPLATES.md), including its **Didactic writing contract**, **Titles** and **Photos**, before writing or rewriting a lesson. Apply that contract to explanations as well, scaled to the requested depth. STEM lessons follow the one template, TEMPLATES.md **STEM lessons**; a non-STEM template comes later. The lesson frame and its slot order are in TEMPLATES.md (**Board rules** and **Lesson frame**).
 
 Before writing: read `learning-records/` (latest first) and `NOTES.md`. Include “Before we start” ONLY when the lesson actually builds on an earlier lesson (for example HW2 after HW1), not merely because its number is higher. Set `prev:` to that prerequisite lesson and take 1–2 relevant retrieval questions from its record, tagged `from lesson NNNN: <title>`. Omit the entire section for standalone lessons. Pick the zone of proximal development from the records and the mission; the user may also name the exact thing.
 
@@ -168,7 +168,7 @@ Before finishing a lesson, verify the instructional visual renders; exercise int
 
 Money and math: `$100` in prose is money and renders as typed. Inline math is `$…$` on one line with no space just inside either `$`; it may start with a digit (`$4$`, `$0.5 \cdot 2$`, `$2^{9/2}$`). Two money amounts on one line (`$5 and $10`) are fine because the would-be body ends in a space. `\$` forces a literal dollar sign.
 
-Prose and tone: TEMPLATES.md (**Tone**, **Shape of each explanation**). Course mode only (front matter has `course:`), outside STEM lessons: a block that serves a specific exam problem ends with `→ Exam: <problem>`, context ends with `→ background`. STEM lessons and self-study lessons carry neither tag (TEMPLATES.md **STEM lessons**).
+Prose and tone: TEMPLATES.md (**Tone**). Course mode only (front matter has `course:`), outside STEM lessons: a block that serves a specific exam problem ends with `→ Exam: <problem>`, context ends with `→ background`. STEM lessons and self-study lessons carry neither tag (TEMPLATES.md **STEM lessons**).
 
 Homework rule (hard): an assigned problem is never solved, partially solved, or set up, not even "just the first step". Teach with modified-number analogs and end with a nudge naming the problem ("you now have what Problem 2 needs; think about which rows are 1").
 Exception: when the user explicitly asks for the steps of their own problem ("fill the board with all steps for problem 1"), do exactly that. The rule sets the default, not a refusal.

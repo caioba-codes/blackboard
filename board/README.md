@@ -14,7 +14,7 @@ Reference for changing `board.html.tmpl` and `bridge.py`. The agent writing less
 
 ## Flags
 
-Like flagging a question on an exam. Every chapter and section heading, every worked example (`**Worked example · …**`) and every question (check-in rows: Your turn, drills, practice-exam parts; multiple choice in checkpoints and the Quiz) gets a small flag in the left margin: shown on hover or keyboard focus, always shown and filled in the accent once flagged. It is a button (`aria-pressed`, "Flag <label>"/"Unflag <label>"); clicking it never opens the answer. Key `f` flags the item with keyboard focus, else the first one on screen; it does nothing while typing, in Watch or full-screen video, in Both once the video has been played (where `f` is the player's), in the chat or the source viewer.
+Like flagging a question on an exam. Every chapter and section heading, every worked example (`**Worked example · …**`) and every question (check-in rows: Your turn, drills, practice-exam parts; multiple choice in checkpoints and the Quiz) gets a small flag in the left margin: shown on hover or keyboard focus, always shown and filled in the accent once flagged. It is a button (`aria-pressed`, "Flag <label>"/"Unflag <label>"); clicking it never opens the answer. Key `f` flags the item with keyboard focus, else the first one on screen; it does nothing while typing, in Watch or full-screen video (where `f` is the player's), in the chat or the source viewer.
 
 The Flagged list shows in three places: a fourth drop-down after Prerequisites/Contents/Sources at the top of the lesson, a section at the bottom of the level map (`t`), and **All flagged** on the hub across every lesson and folder (filtered by the hub's search box and folder chips). Each entry has the label (the problem's `Official · …` label, else the heading, the worked example's title or the question's first words), its lesson and chapter, when it was flagged, an optional one-line note (**Note** / **Edit note**, Enter saves, Esc cancels) and ✕ to unflag. Clicking an entry scrolls there and flashes it; hub links are `/w/<slug>/lessons/NNNN#flag=<anchor>`.
 
@@ -74,7 +74,7 @@ The photo is local and never part of the skill: `bridge.py` serves `/end-card.jp
 
 ## Video keys
 
-The lesson video takes YouTube's keys: Space or `k` play and pause, `j`/`l` jump 10 s, ←/→ 5 s, ↑/↓ volume, `m` mute, `f` full screen, `0`–`9` jump to that tenth of the video, Home/End, `c` captions, `i` picture in picture, `<`/`>` speed, Shift+←/→ and `[`/`]` the previous and next scene, `r` replay the scene. They work when the player has focus, in Watch, in full screen, and in Both once the video has been played or sought on the page. They never fire while typing, in the chat, on the contents map or search, or on a button, link or quiz control.
+The lesson video takes YouTube's keys: Space or `k` play and pause, `j`/`l` jump 10 s, ←/→ 5 s, ↑/↓ volume, `m` mute, `f` full screen, `0`–`9` jump to that tenth of the video, Home/End, `c` captions, `i` picture in picture, `<`/`>` speed, Shift+←/→ and `[`/`]` the previous and next scene, `r` replay the scene. They work when the player has focus, in Watch and in full screen. The view switch has two views, Read and Watch; the written lesson carries no per-section play buttons. They never fire while typing, in the chat, on the contents map or search, or on a button, link or quiz control.
 
 ## Video progress card
 

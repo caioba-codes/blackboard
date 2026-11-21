@@ -1,6 +1,6 @@
 # Lesson template
 
-Every lesson is one markdown file, `lessons/NNNN-slug.md`, rendered on the board. There is one template, for STEM lessons (math, physics, engineering, CS): the rules below, **STEM lessons**, and the full model lesson [examples/stem/learn/lessons/0001-how-to-ace-your-second-integral-calculus-test.md](./examples/stem/learn/lessons/0001-how-to-ace-your-second-integral-calculus-test.md). Copy its structure, block types and format for any STEM lesson. A template for conceptual or memorization courses comes later; until then, use the same frame and rules and skip the STEM-only parts.
+Every lesson is one markdown file, `lessons/NNNN-slug.md`, rendered on the board. There is one template, for STEM lessons (math, physics, engineering, CS): the rules below and **STEM lessons**. A template for conceptual or memorization courses comes later; until then, use the same frame and rules and skip the STEM-only parts.
 
 ## Board rules
 
@@ -17,17 +17,6 @@ Every lesson is one markdown file, `lessons/NNNN-slug.md`, rendered on the board
 ## Didactic writing contract
 
 Use these conventions for lessons and rewrites. They capture what worked in practice: small understandable steps, with the reason visible. Scale the depth to demonstrated knowledge and the task; coverage alone is not evidence that a prerequisite is understood. For questions asked in chat, follow SKILL.md's **Chat answers**.
-
-### Shape of each explanation
-
-Every explanation follows the same order, from a whole chapter down to a single step:
-
-1. **What you need first.** The prerequisites, each explained in plain words before it is used.
-2. **The tool.** Any formula or rule the example will apply, stated briefly (e.g. $\int u\,dv = uv - \int v\,du$).
-3. **How to choose or set it up.** The decision the student makes before using the tool (e.g. LIATE for $u$). For a rule with cases, go case by case.
-4. **ONE labeled worked example**, steps as labels on the math, final answer boxed.
-5. **Your turn.** A near-copy with the answer hidden: this is the quick check, a question for the student, never a verification paragraph.
-6. **Summary or generalization**, only if it adds something the example did not show.
 
 An example never uses a formula, notation or step that has not been shown above it. "Example before the rule" applies only to a pattern the student is meant to notice (a family of answers, a sign rule): then the examples come first and the pattern is named after them.
 
@@ -133,19 +122,12 @@ Diagrams: when one helps and how to draw it are in FIGURES.md (**When to illustr
 - Ask a small prediction after teaching the prerequisite and before revealing the outcome. The reveal explains the causal step.
 - Cover the taught skills with 1–2 checkpoint MCQs after each chapter and 2–3 fresh mixed MCQs at the end, grounded in relevant supplied questions, following QUIZ.md Source fidelity. Match source difficulty, reasoning and alternatives; change parameters or adapt free-response questions to MCQ. Do not replace exam-level questions with easy recall or quiz an untaught prerequisite.
 - Write explanations that connect the answer to the rule and identify the actual mistaken operation. Verify every option; mathematically equivalent alternatives cannot be marked wrong merely because one uses more steps.
-- Before the final render, read top to bottom as a learner. Does every term and symbol appear after its plain explanation? Is every rule explained before it is applied? Is every transition supported by a visible intermediate step? Is every check correct? Does each explanation follow the Shape order? Does every sentence follow the Tone rules? Is `bin/prose_lint.py` clean?
+- Before the final render, read top to bottom as a learner. Does every term and symbol appear after its plain explanation? Is every rule explained before it is applied? Is every transition supported by a visible intermediate step? Is every check correct? Does every sentence follow the Tone rules? Is `bin/prose_lint.py` clean?
 - Verify section order, the full author byline, rendered math, figure labels, and quiz keys. Fix rendering or ambiguous questions before declaring the lesson ready. Do not infer mastery or completion from having rewritten or displayed material.
 
 ## STEM lessons (math, physics, engineering, CS)
 
-The model is an exam-prep lesson for a calculus test: Prerequisites, Contents, an **Exam Topics Breakdown**, then one chapter per technique, each in the **Shape** order, a checkpoint per chapter, a practice exam, a cheat sheet, the quiz.
-
-- **Show, don't list.** Every method section opens with one or two plain sentences saying what you are doing and when (minimal, never zero), then is built the same way, because the student learns most by following one worked example:
-  1. the tool, at level 2 (`::: key`, e.g. $\int u\,dv = uv - \int v\,du$), with one line saying what its parts are;
-  2. how to choose or set it up, as a big visual where one exists (e.g. LIATE as five letters with the words underneath, at level 1);
-  3. ONE annotated worked example, with the steps written as labels on the math (`\underbrace`, `\overset`, a boxed $u$/$du$/$dv$/$v$ grid), never as a prose list of steps, and the final answer boxed;
-  4. one near-copy "Your turn" in a `::: checkin` with the answer behind the toggle.
-  This is the **Shape of each explanation** order.
+- **Worked examples are annotated.** The steps are labels on the math (`\underbrace`, `\overset`, a boxed $u$/$du$/$dv$/$v$ grid), never a prose list of steps, and the final answer is boxed. A "Your turn" goes in a `::: checkin` with the answer behind the toggle.
 - **Every result produced by a rule carries its rule.** Wrap the result in `\why{<math>}{<rule>}` (optionally `\why[short name]{<math>}{<rule>}`): the board shows the math with a faint dotted underline, and a tap opens the rule in a small popup. Use it in setup boxes, derivation steps, worked examples and your-turn answers. The hint is the GENERAL rule, never the specific computation: `du = \why{5\,dx}{\tfrac{d}{dx}(kx) = k}`, `v = \why{\tfrac13\tan(3x)}{\int\sec^{2}(ax)\,dx = \tfrac{1}{a}\tan(ax) + C}`. Check every rule is right. Copy, Explain, search and the Kindle book see only the plain math.
 - **Size encodes importance: three levels, never hand-sized.** Level 1 (`::: big` around a display or a table) is the one or two fundamental rules or mnemonics a chapter rests on, as a big visual (LIATE, the trig-sub forms, the decomposition shapes, the p-rule); at most two per chapter. Level 2 (`::: key`) is a tool or key formula, about 1.4× ($\int u\,dv = uv - \int v\,du$, L'Hôpital's rule). Everything else is level 3, the normal size. Never write `\Large`, `\Huge` or `\small` to size math (`bin/lint.py` flags them); put labels under a formula with `\underset{label}{…}`, which sets them in the smaller script size on its own.
 
@@ -360,7 +342,7 @@ The steps inside every worked example and solution:
 2. **One operation per line.** One substitution, one expansion, one cancellation, one limit. Never two.
 3. **One `=` per line, in a column.** `\begin{aligned} LHS &= … \\ &= … \end{aligned}`. LHS written once.
 4. **Reason in the right margin.** `&& \text{(reason)}` on every line. No unexplained jumps. The board renders everything after `&&` as a chalk margin note (dashed rule, accent colour, smaller, a "why" label on the first), so it reads as an aside, never as a step: put only the reason or the formula being used there, never part of the derivation.
-5. **Tool before use.** Every formula a line uses was shown above it (see **Shape of each explanation**). Keep required reasoning visible.
+5. **Tool before use.** Every formula a line uses was shown above it. Keep required reasoning visible.
 6. **Expand explicitly.** $(a+b)^2 \to a^2+2ab+b^2$ written out.
 7. **Separate cleanup steps.** Simplify when the method needs it, one operation per line; box the final result. A simplification lesson should expose each simplification as its own justified step.
 8. **Box the final answer** of every worked derivation (`\boxed{…}` on the last line). No verification paragraph after it.

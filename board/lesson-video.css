@@ -43,21 +43,12 @@ html{--lv-acc:color-mix(in srgb,var(--acc) 72%,var(--chalk));--lv-acc-line:color
 .lv-psteps li.cur{color:var(--chalk)}
 @media (prefers-reduced-motion:reduce){.lv-pbar i{transition:none}}
 
-/* ---------- Watch from here: a quiet mark in the left margin of each block the video explains ---------- */
-.lv-wfh{position:absolute;left:-40px;top:4px;width:28px;height:28px;padding:0;display:grid;place-items:center;border:0;border-radius:50%;background:none;color:var(--dim);opacity:.32;cursor:pointer;transition:opacity .15s,color .15s,background .15s;z-index:1}
-.lv-wfh svg{width:20px;height:20px}
-.blk:hover>.lv-wfh,.blk:focus-within>.lv-wfh,.mcqi:hover>.lv-wfh,.mcqi:focus-within>.lv-wfh,.lv-wfh:focus-visible,.lv-cur>.lv-wfh{opacity:1}
-/* quiz questions carry their own mark; the question box is its anchor */
 html.lv-on .mcqi{position:relative}
-.mcqi>.lv-wfh{left:-54px}
-.lv-wfh:hover,.lv-wfh:focus-visible{color:var(--lv-acc);background:#171715;outline:none;box-shadow:0 0 0 1px color-mix(in srgb,var(--lv-acc) 55%,transparent)}
-@media (hover:none){.lv-wfh{opacity:.6}}
-@media (max-width:760px){.lv-wfh{left:-31px;width:22px;height:22px}.lv-wfh svg{width:17px;height:17px}}
 
 /* ---------- what the video is saying now: an accent rule and a faint wash, never over the math ---------- */
 .blk.lv-cur,.mcqi.lv-cur{background:color-mix(in srgb,var(--acc) 9%,transparent);box-shadow:-14px 0 0 color-mix(in srgb,var(--acc) 9%,transparent),14px 0 0 color-mix(in srgb,var(--acc) 9%,transparent);border-radius:3px}
 .blk.lv-cur::before,.mcqi.lv-cur::before{content:'';position:absolute;left:-9px;top:4px;bottom:4px;width:3px;border-radius:2px;background:var(--lv-acc);box-shadow:0 0 8px color-mix(in srgb,var(--acc) 55%,transparent)}
-@media (max-width:760px){.blk.lv-cur::before,.mcqi.lv-cur::before{left:-6px;width:2px}.mcqi>.lv-wfh{left:-45px}}
+@media (max-width:760px){.blk.lv-cur::before,.mcqi.lv-cur::before{left:-6px;width:2px}}
 .lv-band{position:absolute;pointer-events:none;border-radius:4px;background:color-mix(in srgb,var(--acc) 16%,transparent);box-shadow:inset 3px 0 0 var(--lv-acc)}
 .blk.lv-flash,.mcqi.lv-flash{animation:lvflash 1.6s ease-out}
 @keyframes lvflash{0%,35%{background:color-mix(in srgb,var(--acc) 22%,transparent);box-shadow:-14px 0 0 color-mix(in srgb,var(--acc) 22%,transparent),14px 0 0 color-mix(in srgb,var(--acc) 22%,transparent)}100%{background:transparent;box-shadow:none}}
@@ -208,6 +199,6 @@ html.lv-fsmode:has(.lv-panel.lv-idle):not(.chatopen) #chatbtn:focus-visible{opac
 @media (prefers-reduced-motion:reduce){
   .lv-spin{animation:none;border-top-color:rgba(233,230,223,.18);border-color:var(--lv-acc) rgba(233,230,223,.18)}
   .blk.lv-flash,.mcqi.lv-flash{animation:none;outline:1px solid color-mix(in srgb,var(--acc) 50%,transparent)}
-  .lv-big,.lv-range::-webkit-slider-thumb,.lv-modes button,.lv-wfh,.lv-z,.lv-bar{transition:none}
+  .lv-big,.lv-range::-webkit-slider-thumb,.lv-modes button,.lv-z,.lv-bar{transition:none}
 }
-@media print{#lvpanel,.lv-wfh,.lv-intro,.lv-topmodes,.lv-band{display:none!important}html.lv-watch main#main{display:block!important}html.lv-side main#main{margin:0 auto!important;max-width:860px!important}.lv-cur{background:none!important;box-shadow:none!important}.lv-cur::before{content:none!important}}
+@media print{#lvpanel,.lv-intro,.lv-topmodes,.lv-band{display:none!important}html.lv-watch main#main{display:block!important}html.lv-side main#main{margin:0 auto!important;max-width:860px!important}.lv-cur{background:none!important;box-shadow:none!important}.lv-cur::before{content:none!important}}

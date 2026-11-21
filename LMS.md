@@ -71,4 +71,4 @@ $WS/sources/
   manifest.json      # {id, kind, tier, title, path, source_url, pulled_at}
 ```
 
-`manifest.json` lets `sync` pull only new items. After a pull, write the RESOURCES entries, show the tiering once on the board, and rebuild the topic map if any tier ≤ 4 item arrived.
+`manifest.json` lets `sync` pull only new items. After a pull, write the RESOURCES entries and show the tiering once on the board.

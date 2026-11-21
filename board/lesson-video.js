@@ -3,8 +3,8 @@
    nothing from this file, except a progress card while its video is being made (/api/video-status). The board calls LessonVideo.refresh(ctx) after every render (first load, append, rebuild).
    Playback position, speed and view live in this browser only: never learning records, answers or XP.
 
-   Views: Read (the board as always), Watch (the video alone, with its list of explanations), Both (video fixed on the
-   left and the text on the right on wide screens; video stuck above the text on narrow ones).
+   Views: Read (the board as always) and Watch (the video alone, with its list of explanations). A saved "both" view
+   from older versions opens as Read. The code that kept the text in step beside the video stays for now, unreachable.
 
    Segment `step` (1-based) never reveals anything by itself: in a check-in answer opened after the practice gate it
    advances the step-by-step reveal to that step (never backwards); otherwise it marks that row of the block's single
@@ -41,9 +41,7 @@ const I={
   more:svg('<circle cx="3.5" cy="8" r="1.3" fill="currentColor"/><circle cx="8" cy="8" r="1.3" fill="currentColor"/><circle cx="12.5" cy="8" r="1.3" fill="currentColor"/>'),
   read:svg('<path d="M2.5 3.5c2-.6 3.9-.4 5.5.8 1.6-1.2 3.5-1.4 5.5-.8v9c-2-.6-3.9-.4-5.5.8-1.6-1.2-3.5-1.4-5.5-.8z"/><path d="M8 4.3v9"/>',STROKE),
   watch:svg('<rect x="1.8" y="3.2" width="12.4" height="9.6" rx="1.6"/><path d="M6.6 6v4l3.4-2z" fill="currentColor" stroke="none"/>',STROKE),
-  both:svg('<rect x="1.8" y="3.2" width="12.4" height="9.6" rx="1.6"/><path d="M8.2 3.2v9.6"/><path d="M3.8 6.4v3.2l2.5-1.6z" fill="currentColor" stroke="none"/><path d="M10 6.2h2.4M10 8h2.4M10 9.8h1.6"/>',STROKE),
   cc:svg('<rect x="1.6" y="3.4" width="12.8" height="9.2" rx="1.8" fill="none" stroke="currentColor" stroke-width="1.4"/><text x="8" y="10.4" font-size="5.4" font-weight="700" text-anchor="middle" fill="currentColor" font-family="inherit">CC</text>'),
-  wfh:svg('<circle cx="8" cy="8" r="6.4" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M6.5 5.3v5.4L10.9 8z" fill="currentColor"/>')
 };
 let ctx=null, S=null, probe=null;
 
@@ -157,7 +155,7 @@ function mount(m){
   build(); S.video.muted=false;
   root.classList.add('lv-on');
   wire();
-  setMode(['read','watch','both'].includes(saved.mode)?saved.mode:'read',{init:true});
+  setMode(['read','watch'].includes(saved.mode)?saved.mode:'read',{init:true});
   paintTime(S.pendingT,true); setSeg(segAt(S.pendingT),'init'); paintPlay(); paintMenu(); paintCards(); paintFoot();
   loadCaptions();
 }
@@ -230,7 +228,7 @@ function sectionAt(line){
     if(+b.dataset.line<=line&&(!best||+b.dataset.line>=best.l))best={l:+b.dataset.line,h};
   });
   if(!best)return null;
-  const c=best.h.cloneNode(true); c.querySelectorAll('.tag,.katex-mathml,.chalkdeco,.flagbtn,.lv-wfh').forEach(x=>x.remove());
+  const c=best.h.cloneNode(true); c.querySelectorAll('.tag,.katex-mathml,.chalkdeco,.flagbtn').forEach(x=>x.remove());
   return {id:best.h.id||null,heading:c.textContent.replace(/\s+/g,' ').trim()};
 }
 function context(){
@@ -249,7 +247,7 @@ function emit(){
 
 // ---------- DOM ----------
 function modesHtml(cls,labels){
-  return `<div class="lv-modes ${cls}" role="radiogroup" aria-label="Lesson view">${[['read','Read',I.read,'Read the lesson'],['watch','Watch',I.watch,'Watch the video'],['both','Both',I.both,'Video beside the text']]
+  return `<div class="lv-modes ${cls}" role="radiogroup" aria-label="Lesson view">${[['read','Read',I.read,'Read the lesson'],['watch','Watch',I.watch,'Watch the video']]
     .map(([k,l,ic,t])=>`<button type="button" role="radio" data-mode="${k}" aria-checked="false" tabindex="-1" title="${t}"${labels?'':` aria-label="${l}"`}>${ic}${labels?`<span>${l}</span>`:''}</button>`).join('')}</div>`;
 }
 function build(){
@@ -361,14 +359,6 @@ function decorate(){
   });
   S.first=new Map();
   if(S.sync)S.targets.forEach((b,i)=>{ if(isAnchor(b)&&!S.first.has(b))S.first.set(b,i); });
-  main.querySelectorAll('.lv-wfh').forEach(btn=>{ if(S.first.get(btn.parentElement)!==+btn.dataset.seg)btn.remove(); });
-  S.first.forEach((i,b)=>{
-    if(b.querySelector(':scope>.lv-wfh'))return;
-    const s=S.segs[i], btn=document.createElement('button');
-    btn.type='button'; btn.className='lv-wfh'; btn.dataset.seg=String(i); btn.innerHTML=I.wfh;
-    btn.setAttribute('aria-label',`Watch from here: ${s.label}, at ${fmt(s.start)}`); btn.title=`Watch from here · ${fmt(s.start)}`;
-    b.appendChild(btn);
-  });
   paintHighlight(); applyStep(S.i);
   // the board may have just restored the reader's place: that scroll is not the reader leaving the video
   S.ignoreUntil=performance.now()+400; S.autoY=window.scrollY;
@@ -603,7 +593,6 @@ function replaySeg(){ const s=S.segs[S.i]; if(!s)return; attach(); seek(s.start,
 function stepRate(d){ const i=clamp(SPEEDS.indexOf(S.rate)+d,0,SPEEDS.length-1); setRate(SPEEDS[i]); say(`Speed ${SPEEDS[i]}×`); }
 function setRate(r){ S.rate=r; S.video.defaultPlaybackRate=S.video.playbackRate=r; S.speed.value=String(r); save(); }
 function retry(){ S.err=false; S.pendingT=S.prevT; S.meta=false; paintCards(); paintIntro(); S.video.load(); }
-function watchFrom(i){ const s=S.segs[i]; if(!s)return; if(S.mode==='read')setMode('both'); attach(); seek(s.start,'nav'); play(); }
 function readFrom(){
   const b=S.sync?S.targets[S.i]:null;
   if(!S.video.paused)S.video.pause();
@@ -836,7 +825,6 @@ function wire(){
   document.addEventListener('fullscreenchange',fsChange); document.addEventListener('webkitfullscreenchange',fsChange);
   document.addEventListener('pointerdown',e=>{ if(S.menuOpen&&!e.target.closest('.lv-more'))closeMenu(); });
   // Watch from here (beside lesson blocks)
-  ctx.main.addEventListener('click',e=>{ const b=e.target.closest('.lv-wfh'); if(!b)return; e.preventDefault(); e.stopPropagation(); watchFrom(+b.dataset.seg); });
   // the view switch: header card and top bar
   document.addEventListener('click',e=>{
     const b=e.target.closest&&e.target.closest('.lv-modes [data-mode]'); if(!b)return;
