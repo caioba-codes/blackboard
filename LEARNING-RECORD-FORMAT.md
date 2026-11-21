@@ -52,9 +52,9 @@ A learning record written after a lesson gains one optional section:
 
 ```md
 ## Misconceptions
-- Believes two diagonal K-map cells can merge. Seen in 0004 quiz (score 2) and 0005 checkpoint.
+- Believes two diagonal K-map cells can merge. Seen in 0004 quiz (score 2) and a 0005 Your turn.
 ```
 
 Write a line the second time the same wrong belief shows up. Later quizzes re-probe it in a new context; when it passes twice, mark the line `resolved (0007)`.
 
-The next lesson's check-in takes its 1–2 questions from the most recent record: first any unresolved misconception, then the record's main claim.
+Redo rounds (the blueprints' **Redo rounds**, not built yet) start a study session with the problems missed earlier; an unresolved misconception here is re-probed in a new context there.

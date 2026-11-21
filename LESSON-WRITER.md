@@ -28,7 +28,7 @@ Prefer the host's native agent tool when it can set the selected model and effor
 
 If the writer fails, pick the next best model, say so in one line, and launch another writer. Never let the parent quietly write the lesson.
 
-**Briefing.** Give the writer: the role line `Role: Blackboard lesson writer. Writer already selected; do not run model selection or spawn another writer.`; absolute lesson and workspace paths and a bounded write scope; the topic, language, target exam, prior knowledge and teaching preferences; absolute paths to SKILL.md, TEMPLATES.md, QUIZ.md, the mission, learning records and every source file. TEMPLATES.md and QUIZ.md hold every lesson and quiz rule; the briefing points to them and does not restate them. The writer streams body blocks; the parent owns the browser and the final render. Never let two agents write the file at once.
+**Briefing.** Give the writer: the role line `Role: Blackboard lesson writer. Writer already selected; do not run model selection or spawn another writer.`; absolute lesson and workspace paths and a bounded write scope; the topic, language, target exam, prior knowledge and teaching preferences; absolute paths to SKILL.md, TEMPLATES.md, QUIZ.md, **the blueprint file the writer must follow** (`BLUEPRINT-STEM.md`, `BLUEPRINT-HUMANITIES.md` or `BLUEPRINT-FUN.md`, as SKILL.md **Lesson blueprints** picks), the mission, learning records and every source file. The blueprint, TEMPLATES.md and QUIZ.md hold every lesson and practice rule; the briefing points to them and does not restate them. The writer streams body blocks; the parent owns the browser and the final render. Never let two agents write the file at once.
 
 ## 3. Tone pass
 

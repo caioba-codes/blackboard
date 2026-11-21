@@ -1,14 +1,16 @@
 # Lesson template
 
-Every lesson is one markdown file, `lessons/NNNN-slug.md`, rendered on the board. There is one template, for STEM lessons (math, physics, engineering, CS): the rules below and **STEM lessons**. A template for conceptual or memorization courses comes later; until then, use the same frame and rules and skip the STEM-only parts.
+Every lesson is one markdown file, `lessons/NNNN-slug.md`, rendered on the board. This file holds the rules that every lesson shares. The shape of the lesson comes from one of three blueprints, which SKILL.md **Lessons** picks: [BLUEPRINT-STEM.md](./BLUEPRINT-STEM.md), [BLUEPRINT-HUMANITIES.md](./BLUEPRINT-HUMANITIES.md) or [BLUEPRINT-FUN.md](./BLUEPRINT-FUN.md).
+
+**Minimize the energy it takes to read and practice. Every sentence either helps solve the problem or is cut. No intros, previews, recaps, answer checks or filler.**
 
 ## Board rules
 
 1. One idea per block. A block is a paragraph, a display equation, a figure, or a toggle. Never two mechanisms in one block.
 2. Picture beside the step it explains. Labels on the picture, not in prose.
-3. Fixed slots. Same geometry every lesson: front matter → `# title` → Prerequisites dropdown → short Contents → Sources dropdown → conditional check-in → numbered chapters with checkpoints → `## Quiz` → `## Extra` (self-study, only if a video was used).
+3. Fixed top. Every lesson starts the same way: front matter → `# title` → Contents dropdown → Sources dropdown. Everything after that comes from the blueprint (**Lesson frame**).
 4. Erase, don't add. Word caps below are real. Anything off-path is cut.
-5. Every lesson ships with its quiz, written before the lesson is done (counts and item rules: QUIZ.md). The student never has to generate anything to start revising.
+5. The practice is written as part of the lesson, as its blueprint says. The student never has to generate anything to start practicing.
 6. Code lines stay at or under 60 characters, so a block fits the column at any zoom. An explanatory comment goes on its own line above the statement it explains, at the same indentation, never trailing a long line. Wrap anything longer. In an `::: interactive` trace, shorten comments rather than add lines, so the step line numbers stay right.
 7. Code in a question: a stem, check-in question or answer that shows more than one statement of code puts that code in a fenced ```java block, formatted as real code with line breaks and indentation, then the question sentence on its own line after it. Never inline a class or several statements into a sentence. A single short expression stays inline in backticks.
 
@@ -70,7 +72,7 @@ These rules come from research on why AI text is hard for people to read (Clark,
 
 ### What a lesson leaves out
 
-- No chapter-opening preview or summary paragraph ("this chapter covers…", "you know this from…", "the X is for…, the Y is for…"). A chapter opens directly with its prerequisites, if any, or its first step. A decision rule the student needs ("use parts when no $u$-substitution works") goes where the choice is made, usually the Which Technique table.
+- No chapter-opening preview or summary paragraph ("this chapter covers…", "you know this from…", "the X is for…, the Y is for…"). A chapter opens directly with its first block, in the order its blueprint gives. A decision rule the student needs ("use parts when no $u$-substitution works") goes where the choice is made, usually the Which Technique table.
 - No obvious explanations. Never say how a symbol is pronounced ("$\overline{Q}$, read "Q bar""), list other spellings of the same thing ("also written QN or Q'"), or restate what the student can already see. Use the one notation the course's sources use, and use only that one. Explain what a symbol means, never how to say it.
 - No trap or "common mistake" lines. The one exception: something the grader actually takes points off for, as stated by the instructor or the rubric, gets one **On the test** callout: a `::: callout` block with a `wrong:` line (the form that loses points), a `right:` line (the form the grader wants) and at most one short text line. The board renders it as an amber card with the wrong form struck through next to the right one; a plain `⚠️` line still renders as the same card with only its text.
 
@@ -98,26 +100,20 @@ The student reads once, from the top. Never use a term, symbol or abbreviation b
 ### Before the final render
 
 - Read the lesson once from the top as a learner.
-- Check section order, chapter links, rendered math, figure labels and every quiz key.
+- Check section order, chapter links, rendered math, figure labels and every answer key.
 - `bin/lint.py` and `bin/prose_lint.py` are clean (`render.sh` runs both).
 
-## STEM lessons (math, physics, engineering, CS)
+## Problems and solutions
 
-- **Worked examples are annotated.** The steps are labels on the math (`\underbrace`, `\overset`, a boxed $u$/$du$/$dv$/$v$ grid), never a prose list of steps, and the final answer is boxed. A "Your turn" goes in a `::: checkin` with the answer behind the toggle.
-- **Every result produced by a rule carries its rule.** Wrap the result in `\why{<math>}{<rule>}` (optionally `\why[short name]{<math>}{<rule>}`): the board shows the math with a faint dotted underline, and a tap opens the rule in a small popup. Use it in setup boxes, derivation steps, worked examples and your-turn answers. The hint is the GENERAL rule, never the specific computation: `du = \why{5\,dx}{\tfrac{d}{dx}(kx) = k}`, `v = \why{\tfrac13\tan(3x)}{\int\sec^{2}(ax)\,dx = \tfrac{1}{a}\tan(ax) + C}`. Check every rule is right. Copy, Explain, search and the Kindle book see only the plain math.
-- **Size encodes importance: three levels, never hand-sized.** Level 1 (`::: big` around a display or a table) is the one or two fundamental rules or mnemonics a chapter rests on, as a big visual (LIATE, the trig-sub forms, the decomposition shapes, the p-rule); at most two per chapter. Level 2 (`::: key`) is a tool or key formula, about 1.4× ($\int u\,dv = uv - \int v\,du$, L'Hôpital's rule). Everything else is level 3, the normal size. Never write `\Large`, `\Huge` or `\small` to size math (`bin/lint.py` flags them); put labels under a formula with `\underset{label}{…}`, which sets them in the smaller script size on its own.
+These rules apply to every blueprint that uses official problems (STEM and humanities).
 
-  ```md
-  ::: big
-  $$\underset{x \,=\, a\sin\theta}{a^{2}-x^{2}}\qquad\underset{x \,=\, a\tan\theta}{a^{2}+x^{2}}$$
-  :::
-  ```
-- **Every solution is a derivation** (see **Derivations**): Your turn, checkpoint and check-in answers, drills, practice-exam solutions and `why:` lines that show work. At most two short sentences of prose around it, the labeled setup (for parts the boxed $u$/$du$/$dv$/$v$ grid), and the boxed answer. A one-line answer is fine only for a single result with no steps.
-- **Solutions open one step at a time.** The board steps every worked solution the student solves themselves (a `::: checkin` answer, an `::: mcq` `why:` with display math): the lead sentence and the first piece (the boxed setup, else row 1 with its reason), then **Next step** adds one aligned row with its reason and the last press shows the boxed answer; **Show all** opens everything. A wrong pick shows the verdict and the lead sentence as its hint first. Taught worked examples are never stepped. No markup is needed: write the solution in the format above and the steps come from its rows, so keep one operation per row and the boxed answer on the last row.
+- **A Your turn goes in a `::: checkin`** with the solution or model answer behind the toggle.
+- **Every solution is a derivation** (see **Derivations**) when it has steps: worked examples, Your turn solutions, drills, practice-exam solutions and `why:` lines that show work. At most two short sentences of prose around it, the labeled setup, and the boxed answer. A one-line answer is fine only for a single result with no steps.
+- **Solutions open one step at a time.** The board steps every solution that the student works out alone (a `::: checkin` answer, an `::: mcq` `why:` with display math): the lead sentence and the first piece (the boxed setup, else row 1 with its reason), then **Next step** adds one aligned row with its reason and the last press shows the boxed answer; **Show all** opens everything. A wrong pick shows the verdict and the lead sentence as its hint first. Taught worked examples are never stepped. No markup is needed: write the solution in the format above and the steps come from its rows, so keep one operation per row and the boxed answer on the last row.
 - **No exam logistics.** No date, time, room, closed-book or grading-policy paragraph. The topic scope is the breakdown table. A rule the grader takes points off for becomes one `::: callout` instead (see **What a lesson leaves out**).
 - **No inline provenance.** No "officially stated" tags in the body. Where things came from goes in the `::: sources` drop-down under Contents. The one exception is the problem label below.
-- **Official problems are quoted in full.** Problems come from official sources first (QUIZ.md **Source fidelity**). Every problem (worked example, Your turn, check-in, checkpoint, drill, practice-exam part, quiz item) that comes from an official source is quoted verbatim: its text word for word, with its original numbers, pin names and wording, plus every figure, diagram, table or given circuit it shows, cropped from the source PDF page as the real image (`bin/crop_figure.py --pdf … --page N --preview` to pick the box, then `--box l,t,r,b --out $WS/lessons/assets/NNNN-<src>-<q>.png`, look at the PNG, then `::: figure assets/… wide` with a one-line caption naming the source). Never redraw an official figure or retell it in prose. A table on the page may become a markdown table only when it is pure data with every cell copied.
-- **A Your turn is the exam question, nothing more.** Show the problem exactly as the source has it: the official text verbatim and only its own figure (the cropped image when it has one, nothing when it is text only). No sentence before it explaining or restating the question, no redrawn diagram, no added helper table or hint, no highlight; the reader faces it as on the exam, with no help. The solution, behind the reveal, may start by saying what the question asks, then draws and solves it step by step. The same holds for checkpoints, drills, practice-exam parts and quiz items.
+- **Official problems are quoted in full.** Problems come from official sources first (QUIZ.md **Source fidelity**). Every problem (worked example, Your turn, drill, practice-exam part, quiz item) that comes from an official source is quoted verbatim: its text word for word, with its original numbers, pin names and wording, plus every figure, diagram, table or given circuit it shows, cropped from the source PDF page as the real image (`bin/crop_figure.py --pdf … --page N --preview` to pick the box, then `--box l,t,r,b --out $WS/lessons/assets/NNNN-<src>-<q>.png`, look at the PNG, then `::: figure assets/… wide` with a one-line caption naming the source). Never redraw an official figure or retell it in prose. A table on the page may become a markdown table only when it is pure data with every cell copied.
+- **A Your turn is the exam question, nothing more.** Show the problem exactly as the source has it: the official text verbatim and only its own figure (the cropped image when it has one, nothing when it is text only). No sentence before it explaining or restating the question, no redrawn diagram, no added helper table or hint, no highlight; the reader faces it as on the exam, with no help. The solution, behind the reveal, may start by saying what the question asks, then solves it step by step. The same holds for drills, practice-exam parts and quiz items.
 - **Every problem has a label (hard rule).** A small line of its own directly above the problem: `[Official · Fall 2018 Exam 2, Q3b](src:exams2/fa18-kj-e2.pdf#page=6)` for an official problem (term, exam or set, question number; no points, no logistics; the link opens the source in the board's viewer at that page, so the path is the file under `sources/` and the page is the PDF page) or `*Written by Claude*` for one we wrote. In a `::: checkin`, put the label, the quoted problem and its figure as blocks before the check-in and keep the item's question short ("Fill in the grey boxes."). `bin/lint.py` warns about a problem block without a label and a `src:` file that does not exist.
 - **Given vs calculated.** The student must always see what the problem gave and what we worked out. Put everything quoted from a problem (its text, data tables, given values and figures) inside a `::: given` block, right under the label. The board shows it as a quiet quote card headed **From the problem**, apart from the teaching and the work. Inside a solution, anything copied back from the problem goes in its own `::: given` block too, never mixed into the calculation. When one table holds both, write `>` before each copied column's header (`| >S1 | >S0 | >C1 | >C0 | NS1 | NS0 | P |`); the board mutes those columns, labels them *given*, and leaves the calculated columns bright. The question line of a `::: checkin` item stays outside the block. `bin/lint.py` warns about official problem text that is not in a `::: given` block. For a lesson written before this rule, `python3 bin/given.py <lesson> --write` adds the blocks and the `>` marks, and keeps an installed video's text sync.
 
@@ -132,135 +128,60 @@ The student reads once, from the top. Never use a term, symbol or abbreviation b
   :::
   :::
   ```
-- **Draw what the key draws.** When the problem has a diagram and its human solution is a drawing (mux or decoder wiring, a circuit, a K-map, a timing diagram, a truth table filled in visually), the solution draws too, step by step: step 1 draws the part with `::: fig` (`raw` SVG, or `kmap`/`wave`), each later step's figure builds on the last one's drawing and marks what it added in the accent, then the calculation, then a step that points at the drawing ("$I_0$ passes to $Y$ because $S_1S_0=00$"). Show each drawing in the solution where its step is, so the board's **Next step** reveal shows it in order. Problems whose solution is only algebra or arithmetic keep the plain format. Videos follow the same order: draw it on screen, then calculate.
-- **Cheat sheet chapters are formulas to memorize, never prose.** Wrap the chapter in `::: sheet`, one `::: group <Method>` card per method in chapter order (the board lays the cards out as a two-column sheet when there is room). Inside a card: its formulas as display math, one per line, aligned on `=` where useful, each with a muted 1–4 word tag after `&&` ("Pythagorean", "p-rule"); level 2 (`::: key`) for the key formulas; a small board table where the content is tabular (the trig-power cases); at most one small `::: callout` per card and two or three in the whole sheet, only for a real grading trap. No sentences, no bold-label paragraphs.
-
-  ```md
-  ::: sheet
-  ::: group Trig integrals
-  $$\begin{aligned}
-  \sin^{2}x + \cos^{2}x &= 1 &&\text{Pythagorean} \\
-  \sin^{2}x &= \tfrac{1}{2}(1 - \cos 2x) &&\text{power reducing}
-  \end{aligned}$$
-  :::
-  :::
-  ```
-- **Exam Topics Breakdown**, right after Contents in every exam-prep STEM lesson: a bold `**Exam Topics Breakdown**` line, then a three-column table, then one short line naming the past exams it averages.
-
-```md
-**Exam Topics Breakdown**
-
-| Section | % of exam | Shape it takes |
-|---|---:|---|
-| 8.8 improper integrals | 28% | evaluate $\int_a^{\infty}$ with parts or a $u$ inside |
-| 4.5 L'Hôpital | 2% | one limit; check the form first |
-
-Average over past second exams: Summer 2023, Fall 2017, Fall 2018, Spring 2019.
-```
-
-  Percentages, never points. For each past exam, divide each in-scope topic's points by that exam's in-scope total (bonus left out), then average across the exams and round so the column adds up to 100. If only one exam has a point split, use it alone and say so. Rows go from most to least common. The shape column names the problem types in a few words, with neutral wording.
 
 ## Lesson frame
 
+Every lesson has the same top: front matter, the `# title`, a collapsed **Contents**, a collapsed **Sources**. The rest comes from the blueprint (SKILL.md **Lessons** picks it). This example is the top of a STEM lesson.
+
 ```md
 ---
-title: Sum of Products from a Truth Table
-course: ECE 2020          # omit in self-study
-exam: Test 1, Q3–Q5       # omit if unknown / self-study
-model: GPT-6 Astra Medium # example only; use the actual session's full writer identity
-image: Java source code on a computer screen   # the lesson's literal subject, never a metaphor or a chalkboard
+title: How to Ace Your Second Integral Calculus Test
+course: MATH 1552          # omit in self-study
+exam: Test 2               # omit if unknown / self-study
+model: GPT-6 Astra Medium  # example only; use the actual session's full writer identity
+image: calculus integrals handwritten in a notebook   # the lesson's literal subject, never a metaphor or a chalkboard
 photo: assets/0004.jpg     # filled by bin/image.sh
 credit: Photo by … (Openverse, CC0)   # shown only in the Image credits line
 caption: a short description of the banner   # optional; otherwise the title part of credit:
-prev: 0003                 # previous lesson number, omit on the first
 ---
 
-# Sum of Products from a Truth Table
-
-::: prerequisites
-- AND, OR, NOT
-- Truth-table rows
-- Basic Boolean algebra
-:::
+# How to Ace Your Second Integral Calculus Test
 
 ::: contents
-1. [Chapter 1 · Build an SOP](#s-chapter-1-build-an-sop) — turn rows into terms.
-2. [Chapter 2 · Simplify it](#s-chapter-2-simplify-it) — combine terms.
+1. [Chapter 1 · Improper integrals](#s-chapter-1-improper-integrals) — 28% of the exam.
+2. [Chapter 2 · Integration by parts](#s-chapter-2-integration-by-parts) — 22% of the exam.
 :::
 
 ::: sources
-<!-- files: `sources/slides/week2.pdf` `sources/exams/practice-test-1.txt` -->
-- Week 2 slides · the SOP method
-- Practice Test 1 · the quiz items
+<!-- files: `sources/exams2/fa18-kj-e2.pdf` `sources/review/test2-review.pdf` -->
+- Fall 2018 Exam 2 · problems and weights
+- Test 2 review sheet · the topic list
 :::
 
-### Before we start  ·  from lesson 0003: Boolean Algebra and the Basic Gates
-::: checkin
-- What does a bar over a variable mean?  ||  NOT. $\overline{A}$ is 1 exactly when $A$ is 0.
-- Why is $A+\overline{A}=1$?  ||  One of the two is always 1.
-:::
+**Exam Topics Breakdown**
 
-## Chapter 1 · Build an SOP
+…the table from BLUEPRINT-STEM.md…
 
-…body…
+## Chapter 1 · Improper integrals
 
-## Chapter 2 · Simplify it
-
-…next topic…
-
-### Checkpoint
-
-…1–2 standalone source-matched `::: mcq` blocks; also add a checkpoint after Chapter 1…
-
-## Quiz
-
-…2–3 fresh questions mixing the chapters; one final quiz container only…
-
-::: quiz
-topics: minterms, simplifying SOP, K-map merging
-
-::: mcq q1 b
-Two product terms differ in exactly one variable. What happens to that variable when you merge them?
-- It becomes its complement || Merging removes the variable; complementing it changes the function.
-- It is dropped, because $X\overline{Y} + XY = X$
-- It moves to the other term || Both terms become one term; there is no other term left.
-- It is kept in both terms || Then nothing was merged: the two terms are still separate.
-why: The variable appears once true and once complemented, and $\overline{Y}+Y = 1$.
-:::
-
-::: mcq q2 a
-A truth table has a 1 in row 0110. Which minterm is that?
-- $\overline{A}BC\overline{D}$
-- $A\overline{B}\,\overline{C}D$ || Every bar is flipped: a 0 is the complemented variable.
-- $\overline{A}\,\overline{B}CD$ || The row was read as 0011, shifted one place.
-- $\overline{A}BCD$ || The last 0 was read as a 1.
-why: A 0 is the complemented variable, a 1 the plain one, read left to right.
-:::
-:::
-
-
-## Extra          # self-study only, only when the video was a source
-::: video https://www.youtube.com/embed/ID?start=95
-Ben Eater, "Making logic gates from transistors"
-:::
-
+…the chapter, in the blueprint's order…
 ```
 
-The “Before we start” block above is conditional: include it only for a genuine continuation of lesson 0003; otherwise omit both the heading and check-in, and omit `prev:`. Chapter links must match the rendered heading anchors.
+Chapter links must match the rendered heading anchors. `prev:` in front matter names an earlier lesson only when this one continues it.
 
 Block syntax the renderer understands:
 
 - `::: interactive trace` or `::: interactive function` / JSON spec / `:::` → manipulable lesson example; see INTERACTIVES.md.
-- `::: prerequisites` / short `- concept` lines / `:::` → collapsed **Prerequisites** list at the top of every non-plain lesson.
-- `::: sources` / one line per source (its name, then a 3–6 word note on what it was used for) / `:::` → the collapsed **Sources** drop-down, the third row after Prerequisites and Contents. No file paths, problem lists or tier tags in the rendered lines: put the paths the chat panel reads in an HTML comment inside the block. The board adds the Image credits line as its last item, so all attribution sits in one place (a lesson without it keeps Image credits at the end). An older lesson's trailing `## Sources` still renders as a normal section.
-- `::: contents` / numbered chapter links with a one-line description each / `:::` → collapsed **Contents** drop-down right after Prerequisites, styled the same. A plain `**Contents**` line over a list (older lessons) renders the same way.
+- `::: prerequisites` / short `- concept` lines / `:::` → a collapsed **Prerequisites** list. Older lessons only: the renderer still shows it, but new lessons do not write one.
+- `::: sources` / one line per source (its name, then a 3–6 word note on what it was used for) / `:::` → the collapsed **Sources** drop-down, the row after Contents. No file paths, problem lists or tier tags in the rendered lines: put the paths the chat panel reads in an HTML comment inside the block. The board adds the Image credits line as its last item, so all attribution sits in one place (a lesson without it keeps Image credits at the end). An older lesson's trailing `## Sources` still renders as a normal section.
+- `::: contents` / numbered chapter links with a one-line description each / `:::` → the collapsed **Contents** drop-down right under the title. A plain `**Contents**` line over a list (older lessons) renders the same way.
 - `::: checkin … :::` with `- question || answer` items → Notion-style toggles. An item may continue on lines indented two spaces and hold a fenced code block; the first `||` outside code splits question from answer.
 - `units: …` on the line after a display equation → "symbols & units" toggle.
 - `::: numeric … :::` → collapsed numeric detail under an abstract step.
-- `::: predict` / option lines / `reveal: …` / `:::` → prediction buttons; the reveal opens after a click.
-- `\why{math}{rule}` inside any `$…$` → the math with a dotted underline; a tap shows the rule (STEM lessons, see above).
-- `::: sheet` / `::: group <label>` cards / `:::` → a cheat-sheet chapter: cards of formulas with small-caps labels, two columns when there is room (see **STEM lessons**).
-- `::: big` / a display or table / `:::` → size level 1 (the chapter's fundamental rule); `::: key` → level 2 (a tool formula). See **STEM lessons**.
+- `::: predict` / option lines / `reveal: …` / `:::` → prediction buttons; the reveal opens after a click. Older lessons only: new lessons do not write one.
+- `\why{math}{rule}` inside any `$…$` → the math with a dotted underline; a tap shows the rule (BLUEPRINT-STEM.md **STEM writing rules**).
+- `::: sheet` / `::: group <label>` cards / `:::` → a cheat-sheet chapter: cards of formulas with small-caps labels, two columns when there is room (BLUEPRINT-STEM.md **STEM writing rules**).
+- `::: big` / a display or table / `:::` → size level 1 (the chapter's fundamental rule); `::: key` → level 2 (a tool formula). See BLUEPRINT-STEM.md **STEM writing rules**.
 - `::: callout` / `wrong: …` / `right: …` / optional short text / `:::` → the amber **On the test** card for a grader deduction (see **What a lesson leaves out**). A line starting `⚠️` renders as the same card with just its text.
 - `::: exp e12 [folded] … :::` → an expandable callout. Written only after an Explain request, not prefilled in a fresh lesson.
 - `::: fig <template>` / JSON spec / `:::` → inline chalk SVG (taccounts, bars, flow, timeline, table, kmap, vectors, wave, raw). Specs in [FIGURES.md](./FIGURES.md). `caption` in the spec becomes the figcaption.
@@ -269,9 +190,9 @@ Block syntax the renderer understands:
 - `::: video assets/x.mp4` / caption / `:::` → a Manim animation rendered with `bin/anim.sh`; a YouTube embed URL gives an iframe.
 - `$100` in prose is money and stays as typed. Inline math is `$…$` on one line with no space just inside either `$`. It may start with a digit (`$4$`, `$0.5 \cdot 2$`, `$2^{9/2}$`), because money never has a closing `$` on the same line. Two amounts on one line (`$5 and $10`) stay money. `\$` is a literal dollar sign.
 - `::: video URL` / caption / `:::` → embedded video.
-- `::: quiz` / `topics: a, b, c` / items / `:::` → the quiz. Items render first, the "More practice" panel under them.
+- `::: quiz` / `topics: a, b, c` / items / `:::` → the quiz. Items render first, the "More practice" panel under them. Only the self-study blueprint ends with one.
 - `::: mcq q1 b` / stem / option lines `- option || the mistake that gives it` (the key has no `||` part; how many: QUIZ.md **Multiple choice**) / `why: …` / `:::` → one multiple-choice item in a numbered list; the letter is the key in the order written, options shuffle on render, a wrong pick shows that option's mistake line. The stem may hold a fenced code block (rendered as a code box, question sentence after it); an option that is a whole statement of code in backticks shows as a small preformatted box.
-- `::: card c1` / question / `answer: …` / `must: …` lines / `:::` → one flashcard. Every card in a quiz joins one deck, shown one card at a time where the first card sat: the front holds the question and an answer box (typed, or filled by Speak); Validate grades it and the card turns to show `answer:` and the verdict. `must:` lines are the grader's rubric and stay off the front. Cards are generated by `bin/quiz.py`; a lesson does not ship with them.
+- `::: card c1` / question / `answer: …` / `must: …` lines / `:::` → one flashcard. Every card in a quiz joins one deck, shown one card at a time where the first card sat: the front holds the question and an answer box (typed, or filled by Speak); Validate grades it and the card turns to show `answer:` and the verdict. `must:` lines are the grader's rubric and stay off the front. A humanities lesson ships with its flashcards (BLUEPRINT-HUMANITIES.md **Recall**); in other lessons, cards come from the More practice panel (`bin/quiz.py`).
 - `::: score c1 4` / the answer, the rationale, `Missing: …` / `:::` → the verdict on the back of that card. Written by `bin/quiz.py`, never by hand.
 - A markdown table → a booktabs table (rules at the top, under the header, and at the bottom; no vertical rules, no fills). Math works in any cell. See **Tables** below.
 
@@ -296,7 +217,6 @@ Rules:
 4. **Sorted so the pattern is visible.** Put the rows that share a sign or a co-function next to each other. The order is the teaching.
 5. **One line per cell.** If a cell needs a sentence, the table is the wrong block.
 6. **Numbers right-aligned** with `|---:|`; text and math left. Digits are already tabular.
-7. **One line under the table** naming the pattern the rows just made ("three are co-functions and all three are negative"). The table shows, that line tells.
 
 The board scrolls a wide table horizontally rather than squeezing it, so a long third column is fine.
 
@@ -315,8 +235,6 @@ The steps inside every worked example and solution. A derivation is a column: ne
 7. **Separate cleanup steps.** Simplify when the method needs it, one operation per line; box the final result. A simplification lesson should expose each simplification as its own justified step.
 8. **Box the final answer** of every worked derivation (`\boxed{…}` on the last line). No verification paragraph after it.
 9. **Layout.** Display math left-aligned, one `aligned` block per stage, a `###` heading per stage ("Setup", "Step 1 — width", …). Derivation steps never side by side; a figure may sit beside its caption.
-
-Add a `::: predict` before the result when the outcome is guessable ("what happens to F when A = 1?").
 
 ```
 $$\begin{aligned}
@@ -338,7 +256,7 @@ A title is a YouTube title, not a file name. Short, concrete, says what you will
 
 ## Photos
 
-Captions are a short description of the image only (no longer than "Cornell University notebook and exam pages for Math 221, Spring 1973"): what to notice goes in the prose beside it, and author, license and source go in the lesson's **Image credits** line, which the board builds at the end of the lesson from every `credit:` (the banner's front matter and each `::: photo`).
+Captions are a short description of the image only (no longer than "Cornell University notebook and exam pages for Math 221, Spring 1973"). Author, license and source go in the lesson's **Image credits** line, which the board builds at the end of the lesson from every `credit:` (the banner's front matter and each `::: photo`).
 
 **The banner is the subject.** When the lesson is about a specific object (a machine, a chip, a building, an animal), the banner photo is that object, not a generic image of its category: a DGX Spark lesson opens with the DGX Spark, never with "a computer chip". If the free sources cannot produce the object itself, use the maker's press photo as the banner (`photo: assets/NNNN.jpg` copied from a press image, `credit: <maker> press image`) and leave `image:` for abstract lessons only. Check the banner after the first render; a wrong banner is worse than none.
 
@@ -346,10 +264,4 @@ Captions are a short description of the image only (no longer than "Cornell Univ
 
 **`image:` is the literal subject, never a metaphor.** Name what a photo of the lesson's topic would actually show, with concrete nouns: "Java source code on a computer screen", "calculus integrals handwritten in a notebook", "graph of a function". Never a picture of a word in the lesson: contract → law books, interface → people meeting, sorting → library shelves, array → lockers, absolute value → folded paper are all wrong. Never the lesson title, and never a chalkboard, blackboard, slate, chalk, classroom or whiteboard unless the lesson is about that object: the page is already a blackboard. `render.sh` refuses a board-photo subject and falls back to the title's topic. `bin/image.sh` accepts only candidates whose title, description or tags contain the query's subject words as whole words (page, sheet, formula, paper, macro, notebook and similar generic words do not count), and names its pick on stderr (`image.sh: chose "<title>"`). The match is on metadata, not pixels: after picking, open the downloaded file and confirm it shows the subject; if not, change `image:` and re-roll.
 
-Real photographs go between topics **only when the lesson is talking about a physical thing** and a photo of that thing exists: a machine, a chip, a board, an organ, a building, an instrument. Then:
-
-- At least one photo of the thing itself, `wide`, near the top.
-- A photo of a part **at the section that discusses that part** (the die, the connector, the cooling), `side` so the text keeps flowing, and only if a good photo of that exact part exists. A photo of something adjacent is worse than no photo.
-- `query:` names the object precisely as a photographer would caption it ("NVIDIA DGX Spark desktop computer front", "GB10 Grace Blackwell chip package"); the caption names what it shows in a few words, and the sentence before or after the photo says what to notice.
-- Never for abstract topics (a limit, an integral, a proof, a tax rule): those get `::: fig` drawings, not stock photos.
-- Two or three photos per lesson is normal; more than five means the lesson is a gallery.
+Photos inside the body (`::: photo`) belong to self-study lessons about a physical thing: BLUEPRINT-FUN.md **Photos**.

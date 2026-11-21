@@ -1,17 +1,17 @@
 # Quiz
 
-Every non-plain lesson uses **chapter checkpoints plus a short mixed final quiz**. After each chapter, place 1–2 source-matched MCQs under `### Checkpoint`, directly in the lesson (standalone `::: mcq` blocks). At the end, keep ONE `## Quiz` / `::: quiz` container with 2–3 fresh questions mixing different chapters and the More practice panel. Counts are design defaults, not a scientifically established optimum; keep short lessons proportional. All items count toward the same lesson XP and preserve normal answer logging.
+The practice in a lesson is what its blueprint says. STEM ([BLUEPRINT-STEM.md](./BLUEPRINT-STEM.md)): Your turns in every chapter, a mixed drill and a practice exam. Humanities ([BLUEPRINT-HUMANITIES.md](./BLUEPRINT-HUMANITIES.md)): Your turns, flashcards, a mixed set and a practice exam. Self-study ([BLUEPRINT-FUN.md](./BLUEPRINT-FUN.md)): an optional `::: quiz` of 2 to 3 questions at the end. There are no chapter checkpoints, and only the self-study blueprint has an end quiz. All items count toward the same lesson XP and are logged as usual.
 
-Ask the learner to attempt checkpoint questions without looking back, then read corrective feedback. Final questions use changed inputs and do not name the method/chapter to use. Do not simply duplicate checkpoint questions. At the next study session, briefly retrieve earlier material, prioritizing recorded mistakes; this is an in-session teaching step, not an automatic reminder. Retain actual source difficulty at both placements.
+Mixed drills and mixed sets do not name the type or the chapter to use. Keep the real source difficulty everywhere.
 
 Generation and grading both run headless in `bin/quiz.py` (its prompts hold the flashcard writing and 1–5 grading rules), called by `bridge.py` in a background thread the same way `bin/explain.py` is. Neither wakes the interactive agent, so a quiz works identically in cmux, the Claude app and the Codex app, and nothing lands in the chat.
 
 ## Source fidelity (required; overrides generic item-writing preferences)
 
-Before writing any lesson quiz, More practice set or flashcard, inspect the user's relevant sources: practice exams, past exams, quizzes, problem sets, homework, and their answer keys. Match what the lesson actually teaches.
+Before writing any lesson practice, More practice set or flashcard, inspect the user's relevant sources: practice exams, past exams, quizzes, problem sets, homework, and their answer keys. Match what the lesson actually teaches.
 
-- **Official first.** Worked examples, Your turns, checkpoints, drills, practice exams and quizzes use official problems from the course's official sources (past exams, practice sets, homework, the official review, lecture slides), quoted as TEMPLATES.md **Official problems** says. Write our own only when no official problem trains that skill, or the official one skips the fundamentals the lesson needs; label it `*Written by Claude*`. Never change an official problem's numbers.
-- A free-response official problem stays free response (a Your turn or check-in), or becomes multiple choice only by adding options around its exact text.
+- **Official first.** Worked examples, Your turns, drills, practice exams and quizzes use official problems from the course's official sources (past exams, practice sets, homework, the official review, lecture slides), quoted as TEMPLATES.md **Official problems** says. Write our own only when no official problem trains that skill, or the official one skips the fundamentals the lesson needs; label it `*Written by Claude*`. Never change an official problem's numbers.
+- A free-response official problem stays free response (a Your turn), or becomes multiple choice only by adding options around its exact text.
 - **Answer keys are checked.** Recompute every answer and every option independently of the official key; when the key is wrong, the lesson gives the right answer with a one-line note on the key's mistake.
 - Record the actual source filename and question/page plus what changed in a Markdown comment immediately before each authored item. For generated items, include that reference in the answer explanation. Never invent a source citation or claim to have read an unavailable question.
 - Independently invent questions only when there are no relevant supplied question sources, such as a non-school lesson without user-provided material. First inspect the available sources; missing extraction/access is not evidence that no relevant source exists. If expected sources cannot be read, report that gap rather than silently inventing exam-style questions.
@@ -40,7 +40,7 @@ Every graded item appends one line to `learning-records/quiz-log.jsonl`:
 {"ts":"2026-09-02T19:40:11Z","lesson":"0004","topic":"simplifying SOP","mode":"cards","score":4,"misconception":null}
 ```
 
-`misconception` is a short sentence describing the wrong belief when the score is ≤ 2, otherwise `null`. The grid's quiz dots and the next lesson's check-in read this file. When a misconception appears twice, add a line to the current learning record under **Misconceptions** so later quizzes re-probe it in a new context.
+`misconception` is a short sentence describing the wrong belief when the score is ≤ 2, otherwise `null`. The grid's quiz dots read this file, and so will the redo rounds (ROADMAP.md). When a misconception appears twice, add a line to the current learning record under **Misconceptions** so later quizzes re-probe it in a new context.
 
 ## Board syntax for quiz items
 

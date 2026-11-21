@@ -21,14 +21,10 @@ RUNTIME = ("engine.js", "style.css", "capture.mjs", "finish.sh", "tts.py", "inde
 OPTIONAL_RUNTIME = ("README.md", "package-lock.json", ".gitignore")
 VIDEO_EFFORTS = frozenset(("low", "medium", "high"))
 SCRIPT_EFFORTS = {ROLE["model"]: VIDEO_EFFORTS, "gpt-6-astra": frozenset(("medium",))}
-# The pace reference is ECE 2020 lesson 0010 (the user: "this is the right length / pace"): 20,100 lesson words
-# became 41,883 spoken words, 204,456 narrated characters and 4 h 54 min of video with 83 pause-and-solve gates.
-PACE_REF = {"lesson": "ece2020 0010", "spoken_per_lesson_word": 2.08, "minutes_per_1000_lesson_words": 14.6,
-            "chars_per_spoken_word": 4.88}
-PACE_CEIL = 1.5     # check fails above one and a half times the target: the video is padding easy material; no floor
-# Length follows size AND complexity (Caio, 2026-11-13: "complex stuff needs more careful explanation"). Each `##`
-# chapter is rated; 0010's average is `standard`. A light chapter gets half the time per lesson word, a hard one 1.5x.
-COMPLEXITY = {"light": 0.5, "standard": 1.0, "hard": 1.5}
+# Video length is not standardized (Caio, 2026-11-21): it follows the lesson's steps. `check` verifies that every
+# step row of every written solution is narrated (coverage) and that nothing is spoken that no lesson line backs
+# (padding), apart from an opening of at most three sentences.
+OPENING_SENTENCES = 3
 ACCENTS = {"red": "#9b3a4a", "blue": "#3f6f9b", "green": "#4a8b5f", "amber": "#a8762f", "violet": "#7a5a9b", "teal": "#3d8080"}
 ACCENT_ORDER = ("red", "blue", "green", "amber", "violet", "teal")   # the board's cycle (board.html.tmpl applyAccent)
 EPS = 0.02
@@ -147,12 +143,6 @@ def front_matter(text):
     return dict(re.findall(r"^([A-Za-z_]+):[ \t]*(.*?)[ \t]*$", m.group(1), re.M)) if m else {}
 
 
-def lesson_words(text):
-    """Words a reader sees: no front matter, no HTML comments."""
-    body = re.sub(r"<!--.*?-->", "", re.sub(r"\A---\n.*?\n---\n", "", text, flags=re.S), flags=re.S)
-    return len(re.findall(r"[A-Za-z0-9]+", body))
-
-
 def lesson_look(lesson):
     """The board's look for this lesson: accent (front matter, else the board's cycle by lesson number) and surface."""
     fm = front_matter(lesson.read_text(encoding="utf-8"))
@@ -178,68 +168,134 @@ def write_look(lesson, dest):
     return look
 
 
-def chapters(text):
-    """[(heading, words)] for each `##` chapter, in order; words before the first `##` go to an "Opening" part."""
-    body = re.sub(r"<!--.*?-->", "", re.sub(r"\A---\n.*?\n---\n", "", text, flags=re.S), flags=re.S)
-    parts = re.split(r"(?m)^## +(.+)$", body)
-    out = [("Opening", lesson_words(parts[0]))] if lesson_words(parts[0]) else []
-    out += [(parts[i].strip(), lesson_words(parts[i + 1])) for i in range(1, len(parts), 2)]
-    return out
+ALIGNED = re.compile(r"\\begin\{aligned\}(.*?)\\end\{aligned\}", re.S)
 
 
-def load_complexity(path):
-    """complexity.json: {"default": rating, "chapters": {"<n>": rating}, "why": {"<n>": "..."}}; n counts `##` chapters
-    from 1. A missing file rates every chapter `standard`."""
-    if not path or not Path(path).is_file():
-        return {"default": "standard", "chapters": {}, "rated": False}
-    data = read(Path(path))
-    ratings = [data.get("default", "standard")] + list((data.get("chapters") or {}).values())
-    bad = [r for r in ratings if r not in COMPLEXITY]
-    if bad:
-        raise PipelineError(f"complexity must be one of {', '.join(COMPLEXITY)} (got {bad[0]!r})")
-    return {"default": data.get("default", "standard"), "chapters": {str(k): v for k, v in (data.get("chapters") or {}).items()}, "rated": True}
-
-
-def plan(text, cx):
-    """Per chapter: words, rating, target minutes and spoken words at the 0010 pace times the rating's factor."""
-    rows, n = [], 0
-    for heading, words in chapters(text):
-        if heading != "Opening":
-            n += 1
-        rating = cx["chapters"].get(str(n), cx["default"]) if heading != "Opening" else cx["default"]
-        f = COMPLEXITY[rating]
-        rows.append({"chapter": n, "heading": heading, "words": words, "complexity": rating,
-                     "minutes": round(words * PACE_REF["minutes_per_1000_lesson_words"] * f / 1000, 1),
-                     "spokenWords": round(words * PACE_REF["spoken_per_lesson_word"] * f)})
+def aligned_rows(text):
+    """Visible rows of every aligned derivation in `text`. A row with nothing before its `&&` note joins the row
+    above it, as the board shows it."""
+    rows = 0
+    for body in ALIGNED.findall(text):
+        for row in re.split(r"\\\\", body):
+            if re.sub(r"[&\s]", "", row.split("&&")[0]):
+                rows += 1
     return rows
 
 
-def estimate(args):
-    lesson = args.lesson.expanduser().resolve(strict=True)
-    text = lesson.read_text(encoding="utf-8")
-    cx = load_complexity(args.complexity)
-    rows = plan(text, cx)
-    spoken = sum(r["spokenWords"] for r in rows)
-    out = {"lessonWords": lesson_words(text), "minutes": round(sum(r["minutes"] for r in rows)), "spokenWords": spoken,
-           "elevenLabsCharacters": round(spoken * PACE_REF["chars_per_spoken_word"]), "chapters": rows,
-           "reference": PACE_REF["lesson"]}
-    if not cx["rated"]:
-        out["note"] = "every chapter counted as standard; rate each one in complexity.json (VIDEO.md, Pacing)"
-    print(json.dumps(out, indent=2))
+def solution_items(lines):
+    """The written solutions the video must narrate step by step, as dicts with 1-based `first`/`last` lines and
+    `rows`: each aligned derivation outside every `:::` block (worked examples), and each practice item (a check-in
+    bullet or an mcq, see practice_items) with the rows of the derivations inside it (at least 1). Fenced code and
+    derivations inside other blocks (cheat sheet, given, big/key, explanations) are skipped."""
+    items, depth, fence, start = [], 0, False, None
+    for n, raw in enumerate(lines, 1):
+        line = raw.strip()
+        if line.startswith("```"):
+            fence = not fence
+            continue
+        if fence:
+            continue
+        if line == ":::" and start is None:
+            depth = max(0, depth - 1)
+        elif line.startswith("::: ") and start is None:
+            depth += 1
+        if depth == 0 and start is None and r"\begin{aligned}" in line:
+            start = n
+        if start is not None and r"\end{aligned}" in line:
+            text = "\n".join(lines[start - 1:n])
+            items.append({"kind": "worked", "first": start, "last": n, "rows": max(1, aligned_rows(text))})
+            start = None
+    for a, b in practice_items(lines):
+        items.append({"kind": "practice", "first": a, "last": b,
+                      "rows": max(1, aligned_rows("\n".join(lines[a - 1:b])))})
+    return sorted(items, key=lambda i: i["first"])
 
 
-def pace_ok(lesson, project_dir):
-    """Spoken words against the target from size and complexity (project's complexity.json, else all standard);
-    a short lesson (< 300 words) is not judged."""
-    text = lesson.read_text(encoding="utf-8")
-    words = lesson_words(text)
-    target = sum(r["spokenWords"] for r in plan(text, load_complexity(project_dir / "complexity.json")))
-    script = read(project_dir / "script.json")
-    spoken = sum(len(str(c.get("say", "")).split()) for sc in script.get("scenes", []) for c in sc.get("cues", []))
-    if words >= 300 and target and spoken > target * PACE_CEIL:
-        raise PipelineError(f"too slow: {spoken} spoken words against a target of {target} (ceiling "
-                            f"{round(target * PACE_CEIL)}). Cut repetition on the easy parts, or rate the hard chapters hard")
-    return f"ready ({spoken} spoken words; target {target} from size and complexity)"
+def spoken_cues(script, timeline):
+    """[(absolute start, say)] for every spoken cue, in video order."""
+    says = {(s["id"], c["id"]): c.get("say") for s in script["scenes"] for c in s["cues"]}
+    out = []
+    for sc in timeline["scenes"]:
+        for cid, c in sc["cues"].items():
+            text = says.get((sc["id"], cid))
+            if c.get("pause") is not True and isinstance(text, str) and text.strip():
+                out.append((sc["start"] + c["s"], text))
+    return out
+
+
+def segment_cues(segment, cues):
+    """Spoken cues inside a map segment; for a practice segment, only the solution (from its reveal on)."""
+    start = segment["practice"]["revealAt"] if segment.get("practice") else segment["start"]
+    return [text for t, text in cues if start - EPS <= t < segment["end"] - EPS]
+
+
+def coverage_ok(lesson, segments, script, timeline):
+    """Every worked derivation and every practice item has anchored segments (line inside the item) whose spoken
+    cues are at least as many as its solution rows, so no step is skipped. One cue per row is the floor; the check
+    cannot tell which cue narrates which row."""
+    lines = lesson.read_text(encoding="utf-8").splitlines()
+    cues = spoken_cues(script, timeline)
+    short = []
+    items = solution_items(lines)
+    for item in items:
+        said = sum(len(segment_cues(s, cues)) for s in segments if item["first"] <= s["line"] <= item["last"])
+        if said < item["rows"]:
+            short.append(f"line {item['first']} ({item['kind']}, {item['rows']} rows): {said} spoken cue(s)")
+    if short:
+        more = f" (+{len(short) - 8} more)" if len(short) > 8 else ""
+        raise PipelineError(f"{len(short)} of {len(items)} written solutions are not narrated step by step "
+                            f"(need one anchored spoken cue per solution row): {'; '.join(short[:8])}{more}")
+    rows = sum(i["rows"] for i in items)
+    return f"ready ({len(items)} written solutions, {rows} solution rows, each row has an anchored spoken cue)"
+
+
+def teaching_lines(lines):
+    """1-based lines that teach: not front matter, the `#`/`##` headings, or the Contents/Sources drop-downs."""
+    skip, n = set(), 0
+    if lines and lines[0].strip() == "---":
+        for n in range(1, len(lines)):
+            if lines[n].strip() == "---":
+                break
+        skip.update(range(1, n + 2))
+    block = None
+    for i, raw in enumerate(lines, 1):
+        line = raw.strip()
+        if block:
+            skip.add(i)
+            if line == ":::":
+                block = None
+        elif re.match(r"::: (contents|sources|prerequisites)\b", line):
+            block = line
+            skip.add(i)
+        elif re.match(r"#{1,2} ", line):
+            skip.add(i)
+    return {i for i, l in enumerate(lines, 1) if l.strip() and i not in skip}
+
+
+def sentences(text):
+    return [s for s in re.split(r"(?<=[.!?])\s+", text.strip()) if s]
+
+
+def padding_ok(lesson, segments, script, timeline):
+    """Speech must be backed by a lesson line. The opening (the segments before the first one anchored to a
+    teaching line) may say at most three sentences; any later segment anchored to no teaching line (a heading,
+    the title, Contents, Sources, front matter) must be silent."""
+    teach = teaching_lines(lesson.read_text(encoding="utf-8").splitlines())
+    cues = spoken_cues(script, timeline)
+    opening, found, pad = 0, False, []
+    for seg in segments:
+        said = segment_cues(dict(seg, practice=None), cues)
+        if seg["line"] in teach:
+            found = True
+        elif not found:
+            opening += sum(len(sentences(t)) for t in said)
+        elif said:
+            pad.append(f"{seg['id']} (line {seg['line']}): {len(said)} spoken cue(s)")
+    if opening > OPENING_SENTENCES:
+        pad.insert(0, f"opening: {opening} sentences (at most {OPENING_SENTENCES})")
+    if pad:
+        raise PipelineError("speech that no lesson line backs: " + "; ".join(pad[:8]))
+    return f"ready (opening {opening} sentence(s); every later spoken cue is anchored to a lesson line)"
 
 
 def look(args):
@@ -577,7 +633,7 @@ def media_ok(project_dir, duration):
 
 def check(args):
     stages = {name: "blocked by an earlier stage" for name in
-              ("source", "timing", "split", "anchors", "practice", "pace", "map", "captions", "scenes", "receipts", "media")}
+              ("source", "timing", "split", "anchors", "practice", "coverage", "padding", "map", "captions", "scenes", "receipts", "media")}
     warnings = []
     cfg = lesson = timeline = split = data = None
     try:
@@ -609,10 +665,12 @@ def check(args):
             stages["practice"] = f"ready ({count} lesson practice items each have a pause-and-solve segment)"
         except PipelineError as exc:
             stages["practice"] = str(exc)
-        try:
-            stages["pace"] = pace_ok(lesson, args.project)
-        except (PipelineError, OSError, AttributeError) as exc:
-            stages["pace"] = str(exc)
+        for name, fn in (("coverage", coverage_ok), ("padding", padding_ok)):
+            try:
+                script, _ = timing(args.project)
+                stages[name] = fn(lesson, data["segments"], script, timeline)
+            except (PipelineError, OSError, KeyError, TypeError) as exc:
+                stages[name] = str(exc)
     if data:
         target = args.project / f"video-{lid}.json"
         try:
@@ -671,9 +729,6 @@ def main(argv=None):
     p.add_argument("--captions-burned-in", action="store_true", help="set only after visually confirming rendered captions")
     p = sub.add_parser("check", help="report each stage of project readiness")
     p.add_argument("--project", type=Path, required=True)
-    p = sub.add_parser("estimate", help="expected video length from the lesson's size and each chapter's complexity")
-    p.add_argument("--lesson", type=Path, required=True)
-    p.add_argument("--complexity", type=Path, help="complexity.json rating each ## chapter light, standard or hard")
     p = sub.add_parser("look", help="rewrite look.css from the lesson's board accent and surface")
     p.add_argument("--project", type=Path, required=True)
     args = parser.parse_args(argv)
@@ -682,8 +737,6 @@ def main(argv=None):
             init(args)
         elif args.command == "build-map":
             build_map(args)
-        elif args.command == "estimate":
-            estimate(args)
         elif args.command == "look":
             look(args)
         else:

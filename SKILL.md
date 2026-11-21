@@ -91,7 +91,7 @@ The tools may be deferred, so find them by exact name before concluding they are
 
 1. Write the front matter (`title`, `course`, `exam`, `model`, `image`) and run `board/render.sh <lesson.md> --live` (opens the board, marks the lesson as being written). **The parent does this first, before course research**, while picking the writer model; leave the byline pending until then, and let the writer author the body.
 2. `image:` names the lesson's literal subject; the banner rules are in TEMPLATES.md **Photos**. Before finishing, check that the front matter has `photo:`.
-3. Append each block (title, question, check-in, each section) with its own write, separated by blank lines, and never rewrite earlier blocks while writing (a rewrite rebuilds the page).
+3. Append each block (title, Contents, Sources, each section) with its own write, separated by blank lines, and never rewrite earlier blocks while writing (a rewrite rebuilds the page).
 4. When the lesson is complete, run `board/render.sh <lesson.md>` (clears the live flag).
 
 **One-line delivery messages.** After rendering: `On the board: 0004 Sum of Products from a Truth Table`. After a board explanation: `explained on board`. After a board quiz item: the score, one line.
@@ -100,13 +100,15 @@ The tools may be deferred, so find them by exact name before concluding they are
 
 Chat gets one line. Math, steps and explanations go on the board: with a lesson open, as a side-question section in that lesson (**Board answers to side questions** below); with none open, on a temporary board. The one line says what landed and links to it. In terminal chat that line is plain text with readable Unicode math (NOT A, A · B), never raw LaTeX. Reply in the user's language.
 
-# Lesson opening and chapters (required)
+# Lesson blueprints (required)
 
-Every non-plain lesson starts below its title with a collapsed `::: prerequisites` block labeled **Prerequisites**. Inside: a simple list of the concepts the reader must already know, one short phrase per bullet. No introductory paragraph, time-budget prose, or repeated description of the lesson. If none, one bullet: “None.” This is an inventory, not hidden instruction: explain any prerequisite the learner has not demonstrated in the chapter where it is needed.
+A lesson has exactly one of three shapes. Pick it before writing:
 
-Next comes **Contents**: a collapsed `::: contents` block, styled like Prerequisites, holding a short linked list of chapters, each with a brief phrase saying what it covers. Organize the body like a book: `## Chapter 1 · <topic>`, `## Chapter 2 · <topic>`, with `###` subsections. Even a short lesson can have one chapter. Sources go right under Contents as a collapsed `::: sources` drop-down; keep the Quiz as end matter; do not turn every small step into a chapter. Replace long opening roadmaps and pass tables with this compact index. See TEMPLATES.md for the exact frame.
+- Course mode, STEM subject (math, physics, engineering, CS) → [BLUEPRINT-STEM.md](./BLUEPRINT-STEM.md): exam-first, one chapter per problem type.
+- Course mode, any other subject → [BLUEPRINT-HUMANITIES.md](./BLUEPRINT-HUMANITIES.md): exam-first, one chapter per question type, flashcards for recall.
+- Self-study, no course → [BLUEPRINT-FUN.md](./BLUEPRINT-FUN.md): chapters are the questions a curious person asks.
 
-Quizzes: [QUIZ.md](./QUIZ.md) sets the counts (1–2 checkpoints per chapter, 2–3 mixed at the end) and **Source fidelity**, which applies to authored quizzes and generated More practice.
+Every lesson starts with its title, a collapsed **Contents** (`::: contents`, chapter links with a brief phrase each) and a collapsed **Sources** (`::: sources`). The rest follows the blueprint. TEMPLATES.md holds the rules all three share, including the **Lesson frame**.
 
 # Author byline
 
@@ -142,9 +144,9 @@ If `MISSION.md` is missing, write it from the course or topic and one question a
 
 **Source check (hard rule, course mode).** Before writing any lesson, before model selection or a single body block, check that every source the lesson depends on exists in `$WS/sources/` (or the course's LMS mirror): (1) the official review sheet(s) for the exam or topic, (2) past exams **with their answer keys**, (3) lecture notes or slides for every topic covered, (4) the homework or WebWork sets for those topics, (5) the syllabus or official topic list that says what the exam covers. For each one that is missing, try to fetch it from the LMS ([LMS.md](./LMS.md)). If any is still missing, **stop**: do not write, outline or stream the lesson, and tell the user in one short message exactly which sources are missing and what they can drop in. A source that does not exist for the course (the professor never published one) counts as present only when the user says so. Self-study lessons and temporary boards are exempt.
 
-Read [TEMPLATES.md](./TEMPLATES.md), including its **Didactic writing contract**, **Titles** and **Photos**, before writing or rewriting a lesson. Apply that contract to explanations as well, scaled to the requested depth. STEM lessons follow the one template, TEMPLATES.md **STEM lessons**; a non-STEM template comes later. The lesson frame and its slot order are in TEMPLATES.md (**Board rules** and **Lesson frame**).
+Read [TEMPLATES.md](./TEMPLATES.md), including its **Didactic writing contract**, **Titles** and **Photos**, before writing or rewriting a lesson. Apply that contract to explanations as well, scaled to the requested depth. Then read the blueprint the lesson uses (**Lesson blueprints** above).
 
-Before writing: read `learning-records/` (latest first) and `NOTES.md`. Include “Before we start” ONLY when the lesson actually builds on an earlier lesson (for example HW2 after HW1), not merely because its number is higher. Set `prev:` to that prerequisite lesson and take 1–2 relevant retrieval questions from its record, tagged `from lesson NNNN: <title>`. Omit the entire section for standalone lessons. Pick the zone of proximal development from the records and the mission; the user may also name the exact thing.
+Before writing: read `learning-records/` (latest first) and `NOTES.md`. Pick the zone of proximal development from the records and the mission; the user may also name the exact thing.
 
 Before the final render, run TEMPLATES.md **Before the final render**.
 
@@ -192,7 +194,7 @@ Explanations follow TEMPLATES.md's tone rules and, for a step, the derivation ru
 
 # Quiz
 
-Read [QUIZ.md](./QUIZ.md). **Every lesson ships with its quiz** (checkpoints plus the final `::: quiz`, counts in QUIZ.md), written as part of the lesson, never left as an empty panel. Flashcards are generated from the More practice panel.
+Read [QUIZ.md](./QUIZ.md). The practice is part of the lesson and its blueprint says what it is: Your turns, a mixed drill and a practice exam (STEM); Your turns, flashcards, a mixed set and a practice exam (humanities); an optional 2 to 3 question quiz (self-study). It is written with the lesson, never left as an empty panel.
 
 The board runs the loop on its own. Speak fills the answer box from `bin/listen.sh` through the bridge, Validate grades headless in `bin/quiz.py` with a fast model, and the verdict is written back as a `::: score` block. Nothing reaches the chat. Every item is logged; a misconception seen twice goes into the learning record.
 
