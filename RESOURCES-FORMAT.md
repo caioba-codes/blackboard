@@ -20,11 +20,6 @@
 - youtube: [3Blue1Brown — But what is a neural network?](https://www.youtube.com/watch?v=aircAruvnKk)
   transcript: sources/youtube/aircAruvnKk.txt · used-in: 0007 · Use for: intuition for layers and weights.
 
-## Wisdom (Communities)
-
-- [r/ECE](https://reddit.com/r/ECE)
-  Use for: sanity-checking a design choice.
-
 ## Channels            # self-study only; edit freely
 
 - 3Blue1Brown · math, ML intuition
@@ -62,4 +57,3 @@ Claim labels for RESOURCES.md and a lesson's `::: sources` drop-down when a fact
 - **Self-study**: primary sources first; one video from the channel list may be used as a source, its transcript saved under `sources/youtube/` and its entry marked `used-in: NNNN`. Only a used video is embedded in a lesson.
 - **Surface gaps.** `## Gaps` lists what is missing; the onboarding ask and `sync` try to fill it.
 - **Prune.** Wrong, shallow, or off-mission sources are removed.
-- **Record community preferences.** If the user opted out of communities, note it here.

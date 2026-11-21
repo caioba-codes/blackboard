@@ -1,6 +1,6 @@
 # Blackboard roadmap
 
-Open items only. Shipped: the XP health bar that fills only with verified answers, 8-bit sparks and sounds on right answers (Caio asked for them, so the original "no confetti, minimal sound" principle no longer holds), the chat panel.
+Open items only. Shipped: the XP health bar that fills only with verified answers, 8-bit sparks and sounds on right answers (the user asked for them), the chat panel.
 
 - **Gold rule in the hub** for a lesson whose XP bar is full.
 - **Boss quiz:** the final quiz stays dim ("reach the end") until the body has been scrolled through. Misses become the next lesson's check-in.

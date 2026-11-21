@@ -182,7 +182,7 @@ def do_generate():
     fmt = MCQ_FORMAT if mode == "mcq" else CARD_FORMAT
     ws = Path(path).resolve().parent.parent
     source_files = sorted(str(p) for p in (ws / "sources").rglob("*") if p.is_file())
-    source_policy = (Path(SKILL) / "QUIZ.md").read_text().split("## Source fidelity", 1)[1].split("## Writing flashcard prompts", 1)[0]
+    source_policy = (Path(SKILL) / "QUIZ.md").read_text().split("## Source fidelity", 1)[1].split("\n## ", 1)[0]
     evidence = f"Workspace: {ws}\nResource index: {ws / 'RESOURCES.md'}\nSupplied files:\n" + "\n".join(source_files)
     prompt = f"""{GEN_RULES}
 SOURCE FIDELITY (takes precedence over generic question preferences):

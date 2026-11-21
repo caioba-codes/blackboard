@@ -44,7 +44,6 @@ Every new full lesson includes both the written lesson and its video unless the 
 - `learn <topic> [for <course>]` — write and render a lesson (default when the first word is not a mode).
 - `explain <id> <line> "<text>"` — answer an Explain request from the board (see Explain).
 - `remove <id>` — delete an explanation block.
-- `quiz <topic> <cards|mcq>` — run a quiz by hand in chat (see [QUIZ.md](./QUIZ.md)). The board's own Quiz panel does not use this: it generates and grades headless through `bin/quiz.py`.
 - `predict <block> <choice>` / `mcq <item> <choice>` — record a click from the board.
 - `add <path|url>` — add material to the workspace and re-tier.
 - `sync` — re-pull the LMS course.
@@ -66,7 +65,7 @@ Files under `$WS` (formats linked):
 - `RESOURCES.md` — trusted sources with `kind` and `tier`. [RESOURCES-FORMAT.md](./RESOURCES-FORMAT.md)
 - `sources/` — course files and extracted text. [LMS.md](./LMS.md)
 - `lessons/NNNN-slug.md` — lessons, markdown + LaTeX. `lessons/assets/` holds photos and Manim stills.
-- `reference/*.md` — cheat sheets, glossaries ([GLOSSARY-FORMAT.md](./GLOSSARY-FORMAT.md)).
+- `reference/*.md` — cheat sheets and glossaries.
 - `reference/chat/NNNN.json` — the board chat's history for lesson NNNN (see Chat). New chat renames it to `NNNN-<time>.json`.
 - `learning-records/NNNN-slug.md` and `quiz-log.jsonl`. [LEARNING-RECORD-FORMAT.md](./LEARNING-RECORD-FORMAT.md)
 - `NOTES.md` — the user's preferences about how they want to be taught.
@@ -204,7 +203,3 @@ Write one when the user demonstrated understanding, disclosed prior knowledge, c
 # Reference documents
 
 Lessons are rarely reread; `reference/` is. Keep a glossary once terms accumulate, and cheat sheets for syntax, formulas, and procedures. Lessons link to them.
-
-# Wisdom
-
-When a question needs experience rather than knowledge, answer, then point to a community from RESOURCES.md. Respect a recorded opt-out.

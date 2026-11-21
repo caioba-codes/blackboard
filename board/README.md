@@ -23,7 +23,7 @@ Storage: `$WS/learning-records/flags.json` (`{flags: [{id, lesson, anchor, kind,
 ## Writing animation and sounds
 
 - **Chalk writing.** New blocks arriving through SSE are written with one pen, top to bottom: words letter by letter with a chalk edge, display math swept left to right without splitting KaTeX glyphs, `###` underlines, `**Step N**` boxes and diagram strokes drawn in turn. Opening a lesson shows what is already there at once; only content that lands afterwards is written. Interactive blocks reveal their title, and their controls stay immediately usable. No flashing frames, cursors or forced scroll. There is no loading bar: before the body the brainstorm notes, between blocks a resting chalk stick.
-- **Reduce Motion.** The chalk writing and the quiz celebration play even with Reduce Motion on, because Caio asked for them: both are short and never loop. Other transitions (drawer, chat, focus rings) honor Reduce Motion.
+- **Reduce Motion.** The chalk writing and the quiz celebration play even with Reduce Motion on, because the user asked for them: both are short and never loop. Other transitions (drawer, chat, focus rings) honor Reduce Motion.
 - **Quiz celebration.** A right pick plays gold 8-bit pixel sparks, a floating `+1 XP`, a combo counter for consecutive right picks and a square-wave chime; every item right plays a `QUIZ CLEARED` fanfare.
 - **Cues** in the same 8-bit voice: a power-on arpeggio when a lesson starts streaming, a blip per new `##` while it streams, a stage-clear jingle when it finishes, an item-get chime when an Explain note arrives, a soft low thud on a wrong pick, a chime or thud when a flashcard is graded. Key `m` mutes all of it, remembered per browser.
 
@@ -32,7 +32,28 @@ Storage: `$WS/learning-records/flags.json` (`{flags: [{id, lesson, anchor, kind,
 - Multiple-choice answers stay changeable: another pick replaces the verdict, and the key is revealed only once picked. A wrong pick shows "Not quite"; the `why:` line appears once the right option is picked.
 - Once answered, a quiet **↺ Reset** under the item (keyboard-accessible) clears the pick, verdict and revealed key and takes back that item's XP segment and the combo.
 - Every click logs to `learning-records/quiz-log.jsonl` (`mode: mcq`, score 5 or 0); a Reset appends `{mode: "mcq", item, event: "reset"}`. The latest event per item is restored on reload, and a restored pick counts for XP.
-- Flashcard deck, Speak and grading: QUIZ.md.
+- Answer cards: large clickable cards with chalk borders and muted red triangle, blue diamond, gold circle and green square icons by displayed position; a 2×2 grid (one column for long expressions and on narrow screens). Native keyboard-accessible radios, visible focus and non-color correctness indicators.
+- After a graded flashcard: `Score N / 5`, one line of rationale, the missing points in dim text. No "great job", no "almost there".
+
+### Voice
+
+The Speak button on a flashcard posts to the bridge's `/api/listen`, which runs `bin/listen.sh`: one utterance, Apple Speech, on-device, en-US. The transcript lands in the card's answer box, where it can be edited before Validate. Two presses at once are refused by a lock rather than starting a second recorder. If `listen.sh` exits non-zero the card shows the reason next to the box and typing still works; voice is never the only way to answer.
+
+### The flashcard deck
+
+Modelled on Quizlet's Flashcards mode and Anki's review screen: one card on the stage, a counter, arrows. Never a column of cards.
+
+1. The stage shows one card. Front: the question, and one answer box at the bottom. The student types, or presses **Speak**; Speak posts to `/api/listen`, which runs `bin/listen.sh` on the bridge (on-device Apple Speech) and drops the transcript into the same box, still editable. Enter validates; Shift+Enter is a newline.
+2. **Validate** posts `{kind:"grade", item, answer}`. The card breathes while `bin/quiz.py` grades against the `must:` lines with a fast model.
+3. The card **turns**. The back shows the `answer:` line (the model answer), then the verdict: the student's words, the score as five pips, one line of rationale, and what was missing. The verdict is painted from the grader's reply at once and also written into the lesson as a `::: score` block, so it survives a reload and feeds the grid's dots.
+4. **→** slides the card out to the left and the next one in. **←** goes back; a graded card arrives showing its back, and a click turns it over. **Show answer** turns a card without grading and marks it not graded.
+5. After the last card, a summary card: cards, graded, average, how many scored 2 or under. **Start over** returns to the first card; **Generate more** scrolls to the panel.
+
+The deck's position, typed answers and which cards are turned live in page memory keyed by lesson, because every write to the lesson file triggers a full re-render.
+
+Grading is on meaning, not transcription. Speech-to-text noise, missing punctuation and informal phrasing are never errors.
+
+The mic lives on the bridge rather than in the page on purpose: the browser's Web Speech API is Chrome-only and would fail in the cmux WKWebView, while the bridge always runs on the student's own machine.
 
 ## Selecting text
 

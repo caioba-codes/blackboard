@@ -21,7 +21,7 @@ RUNTIME = ("engine.js", "style.css", "capture.mjs", "finish.sh", "tts.py", "inde
 OPTIONAL_RUNTIME = ("README.md", "package-lock.json", ".gitignore")
 VIDEO_EFFORTS = frozenset(("low", "medium", "high"))
 SCRIPT_EFFORTS = {ROLE["model"]: VIDEO_EFFORTS, "gpt-6-astra": frozenset(("medium",))}
-# The pace reference is ECE 2020 lesson 0010 (2026-11-02, Caio: "this is the right length / pace"): 20,100 lesson words
+# The pace reference is ECE 2020 lesson 0010 (the user: "this is the right length / pace"): 20,100 lesson words
 # became 41,883 spoken words, 204,456 narrated characters and 4 h 54 min of video with 83 pause-and-solve gates.
 PACE_REF = {"lesson": "ece2020 0010", "spoken_per_lesson_word": 2.08, "minutes_per_1000_lesson_words": 14.6,
             "chars_per_spoken_word": 4.88}
