@@ -44,14 +44,25 @@
     if (parent) parent.appendChild(e);
     return e;
   }
+  // Step sources (TEMPLATES.md): a phrase tagged [words]{#id} in quoted problem text shows as its words in a .gtag span,
+  // and a step's {@id} ref is never shown. S.src lights the tagged words while the step that uses them is narrated.
+  const srcMarkup = s => String(s).replace(/\{@[^}]*\}/g, '').replace(/\[([^\[\]\n]+?)\]\{#([A-Za-z][\w-]*)\}/g, '<span class="gtag" data-g="$2">$1</span>');
+  // light every .gtag of ids in root while t is inside one of spans ([[t0, t1], …]; t1 null = to the scene's end).
+  // One call per tag set per frame; a Your turn scene passes spans that start after its think pause, never before.
+  function src(root, ids, t, spans) {
+    const on = (spans || []).some(([a, b]) => t >= a && (b == null || t < b));
+    (Array.isArray(ids) ? ids : String(ids).split(/\s+/)).filter(Boolean).forEach(id =>
+      root.querySelectorAll('.gtag[data-g="' + id + '"]').forEach(e => e.classList.toggle('gon', on)));
+    return on;
+  }
   // Render a string mixing text and $inline$ / $$display$$ math.
   function rich(s) {
-    return s.replace(/\$\$([\s\S]+?)\$\$|\$([^$]+?)\$/g, (_, d, i) =>
+    return srcMarkup(s).replace(/\$\$([\s\S]+?)\$\$|\$([^$]+?)\$/g, (_, d, i) =>
       katex.renderToString(d || i, { displayMode: !!d, throwOnError: false, trust: true, strict: false }));
   }
   function tex(latex, cls, parent, style) {
     const e = el('div', 'tex ' + (cls || ''), null, parent, style);
-    e.innerHTML = katex.renderToString(latex, { displayMode: false, throwOnError: false, trust: true, strict: false });
+    e.innerHTML = katex.renderToString(String(latex).replace(/\{@[^}]*\}/g, ''), { displayMode: false, throwOnError: false, trust: true, strict: false });
     return e;
   }
   function txt(s, cls, parent, style) { return el('div', cls || '', rich(s), parent, style); }
@@ -314,6 +325,7 @@
       at: id => { if (!sc.cues[id]) throw new Error(`${sc.id}: no cue ${id}`); return sc.cues[id].s; },
       end: id => sc.cues[id].e,
       el, tex, txt, rich, p, show, wipe, pulse, ease, clamp, lerp, hash, fmt,
+      src: (ids, t, spans) => src(root, ids, t, spans),
       fig: o => fig(root, o), header: (k, c) => header(root, k, c),
       deriv: (lines, st) => deriv(root, lines, st), mcq: (o, st) => mcq(root, o, st),
       countdown: (cueId, label) => countdown(root, sc.cues[cueId], label),

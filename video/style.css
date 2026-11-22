@@ -63,5 +63,8 @@ canvas.fig{position:absolute}
    the problem is muted and tagged "given", so the calculated columns stand out in the normal ink */
 .given{border-left:5px solid var(--dim);border-radius:4px 14px 14px 4px;background:rgba(233,230,223,.05);padding:22px 36px 18px 30px;color:#d6d3cb}
 .given::before{content:"\201C  From the problem";display:block;margin-bottom:10px;font-size:22px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
+/* step sources: the tagged words of the problem light while the step that uses them is narrated (S.src) */
+.given .gtag{border-radius:6px}
+.given .gtag.gon{color:var(--chalk);background:color-mix(in srgb,var(--acc) 48%,transparent);box-shadow:0 0 0 5px color-mix(in srgb,var(--acc) 48%,transparent);text-decoration:underline 4px color-mix(in srgb,var(--acc) 85%,var(--chalk));text-underline-offset:8px}
 .gv{color:var(--dim);background:rgba(233,230,223,.05)}
 th.gv::after{content:"given";display:block;font-size:16px;letter-spacing:.1em;text-transform:uppercase;opacity:.8}

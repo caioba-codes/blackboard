@@ -6,7 +6,7 @@ Checks the patterns a script can catch:
   - an object doing a human action ("the sign bites", "the method swallows")
   - "the root you found": a thing described by what someone does to it, with no "that"
   - an obvious explanation: how a symbol is pronounced ("read 'Q bar'") or its other spellings ("also written QN")
-  - three or more nouns in a row (only when spaCy and en_core_web_sm are installed)
+  - three or more nouns in a row (only when spaCy and en_core_web_sm are installed; otherwise it says it skipped)
   - order: a term or abbreviation used before the lesson explains it
 
 Also imported by explain.py and quiz.py: check_text(text) returns warnings for a short generated text.
@@ -55,6 +55,8 @@ def prose_lines(s):
             continue
         if skip_block or not st or st.startswith(("#", "|", "<!--", "{", "credit:", "query:", "caption:", "wrong:", "right:", "topics:")):
             continue
+        st = re.sub(r"\{@[^}]*\}", "", st)                                   # step-source refs are markup, not words
+        st = re.sub(r"\[([^\[\]\n]+?)\]\{#[A-Za-z][\w-]*\}", r"\1", st)   # a tagged phrase reads as its words
         t = re.sub(r"\$\$.*?\$\$", " X ", st)
         t = re.sub(r"\$[^$]+\$", "X", t)
         t = re.sub(r"`[^`]*`", "X", t)
@@ -182,9 +184,10 @@ def main(path):
     warn += order_warnings(pl)
     for ln, msg in sorted(warn):
         print(f"  prose: line {ln}: {msg}", file=sys.stderr)
+    if nlp is None:
+        print("  prose: noun-stack check skipped: spaCy not installed (pip install spacy && python3 -m spacy download en_core_web_sm)", file=sys.stderr)
     if warn:
-        extra = "" if nlp else " (noun-stack check off: pip install spacy && python3 -m spacy download en_core_web_sm)"
-        print(f"  prose: {len(warn)} warning(s). TEMPLATES.md, Tone and Top to bottom.{extra}", file=sys.stderr)
+        print(f"  prose: {len(warn)} warning(s). TEMPLATES.md, Tone and Top to bottom.", file=sys.stderr)
     return len(warn)
 
 

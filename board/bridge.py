@@ -19,7 +19,9 @@ Routes
   GET  /source/<path>    a cited file (pdf, image, text), only from inside the course folder
   GET  /anim/<path>      board/anim/<path>
   GET  /end-card.jpg     the optional end-of-lesson photo (end_card_path()), 404 when none is configured
-  POST /ask              {kind,...} -> appended to queue.jsonl; explain/quiz/grade run headless, the rest is logged
+  GET  /api/answers?id=NNNN   the lesson's item outcome map {item: {kind: self|mcq, result: got|missed, chapter[, choice, sig]}}
+  POST /ask              {kind,...} -> appended to queue.jsonl; explain/quiz/grade run headless, the rest is logged;
+                         kind mcq (a pick or reset) and kind self (a check-in marked got or missed) also go to $WS/learning-records/quiz-log.jsonl
   POST /open             {urls:[board lesson URLs]} -> opened in the default browser (for in-app panes that cannot open tabs)
   POST /define           {text,line,block} -> {text} dictionary definition of 1-5 selected words, in lesson context
   GET  /api/chat?lesson=NNNN        the lesson's chat thread {session_id, messages, running, pending}
@@ -404,22 +406,57 @@ def scores(wsp=None):
     return out
 
 
-def log_mcq(req):
-    """A multiple-choice click is verified evidence: one quiz-log line (score 5 right, 0 wrong), read back by the page (XP, restored answers) and by learning records."""
+def quiz_record(req):
+    """The quiz-log line for one mark on the board, or None. A multiple-choice pick scores 5 right, 0 wrong; its Reset has
+    no score (the item reads as unanswered, earlier picks stay as evidence). A self mark on a check-in row ("Got it" or
+    "Missed it" under a Your turn, drill or practice-exam answer) scores 5 or 0, so scores() and the grid's dots count it."""
+    item, base = req.get("item", ""), {"ts": req.get("ts"), "lesson": str(req.get("lesson", "")), "topic": req.get("item", "")}
+    if req.get("kind") == "mcq" and req.get("event") == "reset":
+        return {**base, "mode": "mcq", "item": item, "event": "reset", "sig": req.get("sig", "")}
+    if req.get("kind") == "mcq":
+        return {**base, "mode": "mcq", "item": item, "choice": req.get("choice", ""), "sig": req.get("sig", ""),
+                "chapter": _clip(req.get("chapter"), 200), "score": 5 if req.get("correct") else 0}
+    if req.get("kind") == "self" and item and isinstance(item, str) and req.get("result") in ("got", "missed"):
+        return {**base, "mode": "self", "item": item, "chapter": _clip(req.get("chapter"), 200),
+                "result": req["result"], "score": 5 if req["result"] == "got" else 0}
+    return None
+
+
+def log_quiz(req):
+    """Append the board mark's line to the workspace's learning-records/quiz-log.jsonl (see quiz_record)."""
+    rec = quiz_record(req)
+    if not rec:
+        return
     try:
         d = os.path.join(ws(req.get("ws")), "learning-records")
         os.makedirs(d, exist_ok=True)
-        rec = {"ts": req.get("ts"), "lesson": str(req.get("lesson", "")), "topic": req.get("item", ""), "mode": "mcq",
-               "item": req.get("item", ""), "choice": req.get("choice", ""), "sig": req.get("sig", ""),
-               "score": 5 if req.get("correct") else 0}
-        if req.get("event") == "reset":
-            # Reset on the board: no score, the item reads as unanswered; earlier picks stay as evidence
-            rec = {"ts": req.get("ts"), "lesson": str(req.get("lesson", "")), "topic": req.get("item", ""), "mode": "mcq",
-                   "item": req.get("item", ""), "event": "reset", "sig": req.get("sig", "")}
         with open(os.path.join(d, "quiz-log.jsonl"), "a") as f:
             f.write(json.dumps(rec, ensure_ascii=False) + "\n")
     except Exception as e:
-        sys.stderr.write(f"mcq log error: {e}\n")
+        sys.stderr.write(f"quiz log error: {e}\n")
+
+
+def outcomes(lines, lid):
+    """One lesson's item outcome map from quiz-log lines in file order: {item: {kind: self|mcq, result: got|missed,
+    chapter[, choice, sig]}}. The latest line per item wins; a multiple-choice Reset clears the item, and a wrong latest
+    pick reads as missed. The page restores marks from it and counts XP, chapter stars and the redo round from it."""
+    out = {}
+    for line in lines:
+        try:
+            r = json.loads(line)
+            item = r.get("item")
+            if str(r.get("lesson")) != str(lid) or not item or not isinstance(item, str):
+                continue
+            if r.get("mode") == "self" and r.get("result") in ("got", "missed"):
+                out[item] = {"kind": "self", "result": r["result"], "chapter": r.get("chapter", "")}
+            elif r.get("mode") == "mcq" and r.get("event") == "reset":
+                out.pop(item, None)
+            elif r.get("mode") == "mcq":
+                out[item] = {"kind": "mcq", "result": "got" if (r.get("score") or 0) >= 3 else "missed",
+                             "chapter": r.get("chapter", ""), "choice": r.get("choice", ""), "sig": r.get("sig", "")}
+        except Exception:
+            continue
+    return out
 
 
 FLAGS_LOCK = threading.Lock()
@@ -534,23 +571,12 @@ def flag_change(wsp, req):
 
 
 def answers(lid, wsp=None):
-    """Latest multiple-choice answer per item for one lesson: {item: {choice, sig, correct}}."""
-    out = {}
+    """The lesson's item outcome map (outcomes()) read from the workspace's quiz log."""
     try:
-        with open(os.path.join(wsp or ws(), "learning-records", "quiz-log.jsonl")) as f:
-            for line in f:
-                try:
-                    r = json.loads(line)
-                except Exception:
-                    continue
-                if r.get("mode") == "mcq" and str(r.get("lesson")) == str(lid) and r.get("item"):
-                    if r.get("event") == "reset":
-                        out.pop(r["item"], None)
-                        continue
-                    out[r["item"]] = {"choice": r.get("choice", ""), "sig": r.get("sig", ""), "correct": r.get("score", 0) >= 3}
+        with open(os.path.join(wsp or ws(), "learning-records", "quiz-log.jsonl"), encoding="utf-8", errors="replace") as f:
+            return outcomes(f, lid)
     except FileNotFoundError:
-        pass
-    return out
+        return {}
 
 
 def lessons_meta(wsp=None):
@@ -1551,7 +1577,7 @@ def wake(req):
         return set_fold(req)
     if k == "remove":
         return remove_exp(req)
-    # predict / mcq and anything else: click logging only; nothing wakes the agent
+    # predict / mcq / self and anything else: click logging only; nothing wakes the agent
     return {"queued": True, "wake": "none"}
 
 
@@ -1880,8 +1906,7 @@ class H(BaseHTTPRequestHandler):
                     sys.stderr.write(f"dedupe error: {e}\n")
             with open(QUEUE, "a") as f:
                 f.write(json.dumps(req, ensure_ascii=False) + "\n")
-            if req.get("kind") == "mcq":
-                log_mcq(req)
+            log_quiz(req)
             return self.send(200, wake(req))
         if u.path == "/open":
             # in-app browser panes (Claude desktop) turn window.open into same-tab navigation, so the page asks

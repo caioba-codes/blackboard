@@ -459,8 +459,36 @@ hr{border:0;border-top:1px solid var(--rule);margin:40px 0}
 .check>details>div p{color:var(--chalk);max-width:none}
 .check>details>div>.mathrow{padding:10px 4px;margin:6px 0}
 .check>details>div>:first-child{margin-top:0}
+/* self-marking under a check-in answer: quiet like the multiple-choice Reset; the picked one reads as selected */
+.check>details>.smark{display:flex;gap:8px;margin:-4px 0 14px;padding:0;border:0;background:none}
+.smark .smbtn{padding:4px 12px;border:1px solid var(--rule);border-radius:6px;background:transparent;color:var(--dim);font:15px var(--body);cursor:pointer}
+.smark .smbtn:hover,.smark .smbtn:focus-visible{color:var(--chalk);border-color:var(--dim)}
+.smark .smbtn[aria-pressed="true"]{color:var(--chalk);border-color:var(--chalk);background:rgba(236,232,218,.06)}
+/* redo rounds: a quiet row under the title, and the round itself in place, everything but its items hidden */
+#redorow{margin:4px 0 20px;font:15px var(--body);color:var(--dim)}
+#redorow .rdgo{padding:0;border:0;background:none;color:var(--chalk);font:inherit;cursor:pointer;text-decoration:underline;text-decoration-color:var(--dim);text-underline-offset:4px}
+#redorow .rdgo:hover{text-decoration-color:currentColor}
+#redorow .rdgo:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+#redohead{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:0 0 24px;padding:0 0 12px;border-bottom:1px solid var(--rule);font:15px var(--body);color:var(--dim)}
+#redohead:focus{outline:none}
+#redohead .rdt{flex:1;min-width:0}
+#redohead button{padding:4px 12px;border:1px solid var(--rule);border-radius:6px;background:transparent;color:var(--dim);font:15px var(--body);cursor:pointer}
+#redohead button:hover,#redohead button:focus-visible{color:var(--chalk);border-color:var(--dim)}
+html.redo main>:not(#redohead,.rd-path,.rd-ctx){display:none}
+html.redo .rd-path>:not(.rd-path,.rd){display:none}
+html.redo #toc-ticks{display:none}
 /* step-by-step reveal */
 .rv .rv-off{display:none}
+/* step sources: a tagged phrase in the given card lights while the step that uses it is shown, hovered, tapped or focused */
+.given .gtag,.mcqi .q .gtag{border-radius:3px;transition:background-color .2s,color .2s,box-shadow .2s}
+.given .gtag.gon,.mcqi .q .gtag.gon{color:var(--chalk);background:color-mix(in srgb,var(--acc) 48%,transparent);box-shadow:0 0 0 2px color-mix(in srgb,var(--acc) 48%,transparent);text-decoration:underline 2px color-mix(in srgb,var(--acc) 85%,var(--chalk));text-underline-offset:4px}
+.gsrcstep{cursor:pointer;border-radius:4px}
+.gline{position:absolute;left:0;right:0;pointer-events:none;border-radius:3px;background:color-mix(in srgb,var(--acc) 30%,transparent);box-shadow:inset 3px 0 0 color-mix(in srgb,var(--acc) 85%,var(--chalk))}
+.gchip code{font:500 11.5px/1.4 ui-monospace,Menlo,monospace;white-space:pre-wrap}
+.gsrcstep:focus-visible{outline:2px solid color-mix(in srgb,var(--acc) 60%,transparent);outline-offset:3px}
+.gchip{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:baseline;width:fit-content;max-width:100%;margin:2px 0 10px;padding:3px 11px;border:1px solid color-mix(in srgb,var(--acc) 40%,transparent);border-radius:999px;font:500 12.5px/1.45 var(--body);color:var(--chalk)}
+.gchip .gchl{font:600 10.5px/1.4 var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
+@media print{.gchip,.gline{display:none}.given .gtag.gon{background:none;box-shadow:none}}
 .rv .mathrow.rv-clip{transition:height .3s cubic-bezier(.2,.8,.2,1)}
 .rv-in{animation:rvin .45s ease-out both}
 @keyframes rvin{from{opacity:0;filter:blur(2px);transform:translateY(3px)}to{opacity:1;filter:none;transform:none}}
@@ -475,7 +503,7 @@ hr{border:0;border-top:1px solid var(--rule);margin:40px 0}
 .srlive{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 .mcqi .fbb .fbhint{color:#b9b5aa;font-size:17px}
 .mcqi .fbb .fbmiss{color:#ece8da;margin-bottom:2px}
-@media print{.rv .rv-off{display:revert!important}.rv .mathrow{height:auto!important}.rv .katex *{visibility:visible!important}.stepctl{display:none!important}.check>details>div{display:block}}
+@media print{.rv .rv-off{display:revert!important}.rv .mathrow{height:auto!important}.rv .katex *{visibility:visible!important}.stepctl{display:none!important}.check>details>div{display:block}.check>details>.smark{display:none}}
 .toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:#1a1a1a;border:1px solid var(--rule);color:var(--chalk);padding:12px 16px;border-radius:6px;font-size:16px;max-width:90vw;display:none;z-index:8}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:22px;margin-top:24px}
 .hubbar{display:flex;flex-wrap:wrap;gap:14px;align-items:center;margin:6px 0 10px}
@@ -992,8 +1020,9 @@ function whyPre(t){ return t.indexOf('\\why')<0?t:whyMap(t,g=>{ const key=g.name
 const KTRUST=c=>c.command==='\\htmlClass'||c.command==='\\htmlData';
 // every formula on the board renders here: hints expanded, and the TeX annotation (what copy and Explain read) kept plain
 function ktx(t,display){
-  const html=katex.renderToString(whyPre(t),{displayMode:display,throwOnError:false,trust:KTRUST});
-  return t.indexOf('\\why')<0?html:html.replace(/(<annotation encoding="application\/x-tex">)[\s\S]*?(<\/annotation>)/,(m,a,b)=>a+esc(stripWhy(t))+b);
+  const refs=t.indexOf('{@')>=0;   // step-source refs: an empty \htmlData mark, never in the plain TeX
+  const html=katex.renderToString(whyPre(refs?texRefs(t):t),{displayMode:display,throwOnError:false,trust:KTRUST});
+  return t.indexOf('\\why')<0&&!refs?html:html.replace(/(<annotation encoding="application\/x-tex">)[\s\S]*?(<\/annotation>)/,(m,a,b)=>a+esc(refs?stripRefs(stripWhy(t)):stripWhy(t))+b);
 }
 function mathify(src){
   const slots=[];
@@ -1008,7 +1037,7 @@ function unslot(html,slots){return html.replace(/<p>\s*@@M(\d+)@@\s*<\/p>/g,(m,i
 function md(src){
   src=src.replace(/==(?=[^\s=`])([^=\n`]+?)(?<=[^\s=`])==/g,'$1'); // legacy Explain anchors (==words==) are plain text; `a == 0 || b == 0` and code spans are left alone
   const {src:s2,slots}=mathify(src);
-  const html=unslot(marked.parse(s2,{mangle:false,headerIds:false}),slots);
+  const html=unslot(marked.parse(stepSrcMd(s2),{mangle:false,headerIds:false}),slots);
   return givenCols(provLabels(html.replace(/<table>/g,'<div class="tablewrap"><table>').replace(/<\/table>/g,'</table></div>')));
 }
 // A table header written ">S1" marks a column copied from the problem (TEMPLATES.md, Given vs calculated): the ">" is
@@ -1079,7 +1108,8 @@ function container(raw){
           let tick=false; for(let i=0;i<l.length-1;i++){ if(l[i]==='`')tick=!tick; else if(!tick&&l[i]==='|'&&l[i+1]==='|') return [L.slice(0,k).concat(l.slice(0,i)).join('\n'),[l.slice(i+2)].concat(L.slice(k+1)).join('\n')]; } }
         return [t,'']; };
       const blockOrInline=t=>/^\s*(```|~~~)/m.test(t)?`<div class="qblock">${md(t)}</div>`:mdInline(t);
-      return '<div class="check">'+items.map(it=>{ const [q,a]=qa(it.join('\n').trim()); return `<details><summary><span class="sq">${blockOrInline(q.trim().replace(/\\displaystyle\s*/g,''))}</span></summary><div>${mdBlocks(a.trim())}</div></details>`; }).join('')+'</div>';
+      // data-ck: the row's id before itemIds() suffixes an exact duplicate
+      return '<div class="check">'+items.map(it=>{ const [q,a]=qa(it.join('\n').trim()); return `<details data-ck="${ckId(q,a)}"><summary><span class="sq">${blockOrInline(q.trim().replace(/\\displaystyle\s*/g,''))}</span></summary><div>${mdBlocks(a.trim())}</div><div class="smark" role="group" aria-label="Mark this answer"><button type="button" class="smbtn" data-r="got" aria-pressed="false">Got it</button><button type="button" class="smbtn" data-r="missed" aria-pressed="false">Missed it</button></div></details>`; }).join('')+'</div>';
     }
     case 'prerequisites': return `<details class="prerequisites"><summary>Prerequisites</summary><div>${md(inner)}</div></details>`;
     case 'sources': return `<details class="prerequisites sources"><summary>Sources</summary><div>${md(inner)}</div></details>`;
@@ -1236,7 +1266,7 @@ function fitMath(el){
   el.innerHTML=ktx(stackNotes(tex),true);
   if(!fits()) el.style.fontSize='.86em';
 }
-let fitT=0; function fitAllMath(){ clearTimeout(fitT); fitT=setTimeout(()=>{ main.querySelectorAll('.mathrow[data-tex]').forEach(fitMath); rvReapply(); whyWire(); },60); }
+let fitT=0; function fitAllMath(){ clearTimeout(fitT); fitT=setTimeout(()=>{ main.querySelectorAll('.mathrow[data-tex]').forEach(fitMath); rvReapply(); whyWire(); srcWire(); },60); }
 window.addEventListener('resize',fitAllMath);
 if('ResizeObserver' in window) new ResizeObserver(fitAllMath).observe(document.body);
 function marginNotes(t){ if(!/\\begin\{(aligned|align\*?|alignedat)\}/.test(t)) return t; let first=true;
@@ -1861,6 +1891,7 @@ function wirePanel(q){
   };
 }
 function wire(){
+  itemIds();
   fitAllMath();
   main.querySelectorAll('.interactive').forEach(wireInteractive);
   main.querySelectorAll('.exp[data-id]').forEach(e=>{
@@ -1884,10 +1915,119 @@ function wire(){
   main.querySelectorAll('.deck').forEach(wireDeck);
   main.querySelectorAll('.mcqi input').forEach(inp=>{inp.onchange=()=>markMcq(inp.closest('.mcqi'),inp.value,true);});
   main.querySelectorAll('.mcqi .mreset').forEach(b=>{b.onclick=()=>resetMcq(b.closest('.mcqi'));});
+  main.querySelectorAll('.smark .smbtn').forEach(b=>{b.onclick=()=>markSelf(b.closest('details'),b.dataset.r);});
   // a check-in answer with worked steps opens one step at a time (see the step-by-step reveal below)
   main.querySelectorAll('.check details').forEach(d=>{ if(d.dataset.rvw)return; d.dataset.rvw='1';
-    d.addEventListener('toggle',()=>{ if(!d.open)return; const box=d.querySelector(':scope>div'); if(!box)return; if(box._rv)rvApply(box,false); else rvSetup(box,1); }); });
+    d.addEventListener('toggle',()=>{ if(!d.open)return; const box=d.querySelector(':scope>div'); if(!box)return; if(box._rv)rvApply(box,false); else rvSetup(box,1); if(box._rv&&box._rv.k<box._rv.plan.steps.length)rvSrc(box); }); d.addEventListener('toggle',()=>{ if(!d.open&&GSRC.el&&d.contains(GSRC.el))srcClear(); }); });
 }
+
+// ---------- step sources: which part of the problem a step comes from ----------
+// The quoted problem tags a phrase in its ::: given card: [the start state is E]{#start}. A solution step names the tags it
+// uses with {@start} (several: {@start @out}), in its prose line or after its margin note in math. The words of the problem
+// stay as written; the board shows them unchanged and the refs not at all. Revealing a step (Next step), hovering it,
+// tapping it or focusing it lights its phrases in that problem's given card; when the card is off screen, a small chip
+// under the step quotes them instead of moving the page. A Your turn's steps are hidden until its answer opens, so
+// nothing lights before that.
+// Code in the problem is never tagged: a step cites its lines instead, {@L3} or {@L3-5}; when the problem shows several
+// blocks, the fence names one (```java {#node}) and the step cites {@node:L3-5}. A ::: mcq stem may carry tags and code
+// too; its explanation cites them, so nothing lights before an answer is picked.
+const GTAG=/\[([^\[\]\n]+?)\]\{#([A-Za-z][\w-]*)\}/g, GREF=/\{@([A-Za-z][\w-]*(?::L\d+(?:-\d+)?)?(?:\s+@?[A-Za-z][\w-]*(?::L\d+(?:-\d+)?)?)*)\}/g;
+const GLINE=/^(?:([A-Za-z][\w-]*):)?L(\d+)(?:-(\d+))?$/, PCARD='.given, .mcqi .q';
+function srcIds(s){ return String(s||'').split(/\s+/).map(x=>x.replace(/^@/,'')).filter(Boolean); }
+function stripRefs(t){ return t.indexOf('{@')<0?t:t.replace(GREF,'').replace(/[ \t]+$/gm,''); }
+function texRefs(t){ return t.indexOf('{@')<0?t:t.replace(GREF,(m,ids)=>`\\htmlData{gref=${srcIds(ids).join(' ')}}{}`); }
+// tags and refs in markdown (math already slotted out); fenced code is left exactly as written
+function stepSrcMd(src){
+  if(src.indexOf('{#')<0&&src.indexOf('{@')<0)return src;
+  return src.split(/(^[ \t]*```[^\n]*\n[\s\S]*?^[ \t]*```[ \t]*$)/m).map((part,i)=>i%2?codeName(part):part
+    .replace(GTAG,(m,txt,id)=>`<span class="gtag" data-g="${id}">${txt}</span>`)
+    .replace(GREF,(m,ids)=>`<span class="gref" data-refs="${srcIds(ids).join(' ')}"></span>`)).join('');
+}
+// a fence named for citing (```java {#node}): the name leaves the info string and the block is wrapped, its code unchanged
+function codeName(fence){
+  const m=fence.match(/^([ \t]*```[^\n{]*?)\s*\{#([A-Za-z][\w-]*)\}[ \t]*\n/); if(!m)return fence;
+  return `<div class="gcode" data-gcode="${m[2]}">\n\n${m[1]}\n${fence.slice(m[0].length)}\n\n</div>`;
+}
+// the tag ids one revealed piece cites: a prose line's refs, a whole display's, or one row of an aligned display
+function stepRefs(el,row){
+  let nodes;
+  if(row==null)nodes=[...el.querySelectorAll('.gref,[data-gref]')];
+  else { const g=(rvGroups(el)||[])[row]||[]; nodes=g.flatMap(c=>c.hosts.flatMap(h=>[...(h.matches('[data-gref]')?[h]:[]),...h.querySelectorAll('[data-gref]')])); }
+  return [...new Set(nodes.flatMap(n=>srcIds(n.dataset.refs||n.dataset.gref)))];
+}
+// the tagged phrases for ids in the problem above el: for each id, the last problem card (a given card or an mcq stem)
+// before el that holds it, so a problem quoted over several cards (two pages, two labels) lights in whichever card has it
+const before=(a,el)=>!!(a.compareDocumentPosition(el)&Node.DOCUMENT_POSITION_FOLLOWING);
+function srcTags(el,ids){
+  const out=[];
+  ids.filter(id=>!GLINE.test(id)).forEach(id=>{ let hit=null;
+    main.querySelectorAll('[data-g]').forEach(t=>{ if(t.dataset.g===id&&t.closest(PCARD)&&before(t,el))hit=t; });
+    if(hit)hit.closest(PCARD).querySelectorAll('[data-g]').forEach(t=>{ if(t.dataset.g===id&&!out.includes(t))out.push(t); }); });
+  return out;
+}
+// the code lines a step cites: {pre, from, to} with pre the named block, else the last code block in a problem card
+function srcCodeLines(el,ids){
+  const out=[];
+  ids.forEach(id=>{ const m=id.match(GLINE); if(!m)return;
+    let pre=null; const sel=m[1]?`[data-gcode="${m[1]}"] pre`:PCARD.split(', ').map(c=>c+' pre').join(', ');
+    main.querySelectorAll(sel).forEach(p=>{ if(before(p,el))pre=p; });
+    if(pre)out.push({pre,from:+m[2],to:+(m[3]||m[2])}); });
+  return out;
+}
+// a band over lines from..to of a pre, drawn on top so the code itself is never rewritten
+function lineBand(pre,from,to){
+  const cs=getComputedStyle(pre), lh=parseFloat(cs.lineHeight)||parseFloat(cs.fontSize)*1.5, pad=parseFloat(cs.paddingTop)||0;
+  if(cs.position==='static')pre.style.position='relative';
+  const b=document.createElement('div'); b.className='gline gon';
+  b.style.top=(pad+(from-1)*lh)+'px'; b.style.height=((to-from+1)*lh)+'px';
+  pre.appendChild(b); return b;
+}
+function codeText(pre,from,to){ return (pre.textContent||'').split('\n').slice(from-1,to).join('\n'); }
+const GSRC={el:null,pin:false,key:''};
+function srcClear(){ main.querySelectorAll('.gtag.gon').forEach(t=>t.classList.remove('gon')); main.querySelectorAll('.gline').forEach(b=>b.remove()); main.querySelectorAll('.gchip').forEach(c=>c.remove()); GSRC.el=null; GSRC.pin=false; GSRC.key=''; }
+function srcLight(el,ids){
+  srcClear(); if(!el||!ids||!ids.length)return;
+  const tags=srcTags(el,ids), lines=srcCodeLines(el,ids); if(!tags.length&&!lines.length)return;
+  tags.forEach(t=>t.classList.add('gon')); GSRC.el=el;
+  const bands=lines.map(l=>({el:lineBand(l.pre,l.from,l.to),text:codeText(l.pre,l.from,l.to)}));
+  const offscr=e=>{ const r=e.getBoundingClientRect(); return r.bottom<0||r.top>innerHeight; };
+  const off=tags.filter(offscr).map(t=>`<q>${esc(t.textContent.replace(/\s+/g,' ').trim())}</q>`)
+    .concat(bands.filter(b=>offscr(b.el)).map(b=>`<code>${esc(b.text)}</code>`));
+  if(!off.length)return;
+  const c=document.createElement('div'); c.className='gchip';
+  c.innerHTML=`<span class="gchl">From the problem</span>${off.join('')}`;
+  el.insertAdjacentElement('afterend',c);
+}
+// the step just revealed by Next step (its refs, if any); before step 1 and after Show all nothing is lit
+function rvSrc(box){
+  const st=box&&box._rv; if(!st)return;
+  const step=st.k>0&&st.k<=st.plan.steps.length?st.plan.steps[st.k-1]:null;
+  if(!step){ if(GSRC.el&&box.contains(GSRC.el))srcClear(); return; }
+  const ents=st.k===1?st.plan.lead.concat(step):step;   // step 1 arrives with the lead line (a code answer's first label)
+  const ids=[...new Set(ents.flatMap(e=>stepRefs(st.items[e.i].el,e.row)))];
+  if(ids.length)srcLight(st.items[step[step.length-1].i].el,ids); else if(GSRC.el&&box.contains(GSRC.el))srcClear();
+}
+// hover, tap and keyboard focus on any step that cites the problem (taught worked examples too)
+function srcHost(n){ return n&&n.closest?n.closest('.gsrcstep'):null; }
+function srcAt(host,y){
+  if(!host.matches('.mathrow'))return stepRefs(host,null);
+  const g=rvGroups(host); if(!g||g.length<2||y==null)return stepRefs(host,null);
+  let best=0, bd=1e9;
+  g.forEach((cs,i)=>{ const t=Math.min(...cs.map(c=>c.top)), b=Math.max(...cs.map(c=>c.bottom)), d=y<t?t-y:y>b?y-b:0; if(d<bd){bd=d;best=i;} });
+  return stepRefs(host,best);
+}
+function srcWire(){
+  main.querySelectorAll('.gref,[data-gref]').forEach(r=>{
+    const host=r.closest('.mathrow')||r.closest('p,li,td,th,h4,div'); if(!host||host.classList.contains('gsrcstep'))return;
+    host.classList.add('gsrcstep'); if(!host.hasAttribute('tabindex'))host.tabIndex=0;
+    host.setAttribute('aria-description','Shows the part of the problem this step uses');
+  });
+}
+main.addEventListener('pointermove',e=>{ if(e.pointerType==='touch'||GSRC.pin)return; const h=srcHost(e.target); if(!h){ if(GSRC.el&&!GSRC.el.closest('.rv'))srcClear(); return; } const ids=srcAt(h,e.clientY), key=ids.join(' '); if(GSRC.el===h&&GSRC.key===key)return; srcLight(h,ids); GSRC.key=key; });
+main.addEventListener('pointerleave',()=>{ if(!GSRC.pin&&GSRC.el&&!GSRC.el.closest('.rv'))srcClear(); });
+main.addEventListener('click',e=>{ const h=srcHost(e.target); if(!h||e.target.closest('a,button,summary'))return; if(GSRC.pin&&GSRC.el===h){ srcClear(); return; } srcLight(h,srcAt(h,e.clientY)); GSRC.pin=true; });
+main.addEventListener('focusin',e=>{ const h=srcHost(e.target); if(h&&e.target===h)srcLight(h,stepRefs(h,null)); });
+main.addEventListener('focusout',e=>{ const h=srcHost(e.target); if(h&&GSRC.el===h&&!GSRC.pin)srcClear(); });
 
 // ---------- step-by-step reveal ----------
 // A solution the student works out themselves (a check-in answer, multiple-choice feedback with worked steps) opens one
@@ -1952,8 +2092,8 @@ function rvCtl(box){
   if(!c){
     c=st.ctl=document.createElement('div'); c.className='stepctl';
     c.innerHTML=`<button type="button" class="stepnext"><span class="stl">Next step</span><span class="stct"></span>${RV_ARROW}</button><button type="button" class="stepall">Show all</button><span class="srlive" aria-live="polite"></span>`;
-    c.querySelector('.stepnext').onclick=e=>{ e.stopPropagation(); rvGo(box,st.k+1); };
-    c.querySelector('.stepall').onclick=e=>{ e.stopPropagation(); rvGo(box,n); };
+    c.querySelector('.stepnext').onclick=e=>{ e.stopPropagation(); rvGo(box,st.k+1); rvSrc(box); };
+    c.querySelector('.stepall').onclick=e=>{ e.stopPropagation(); rvGo(box,n); if(GSRC.el&&box.contains(GSRC.el))srcClear(); };
     box.appendChild(c);
   }
   c.querySelector('.stct').textContent=`${st.k+1} of ${n}`;
@@ -1964,9 +2104,9 @@ function rvCtl(box){
 function rvSetup(box,start){
   if(!box||box._rv||!box.isConnected)return;
   const kids=[...box.children].filter(e=>!e.classList.contains('stepctl'));
-  if(!kids.some(e=>e.classList.contains('mathrow')||e.matches('figure')))return;   // one-line feedback with no derivation stays as it is
+  if(!kids.some(e=>e.classList.contains('mathrow')||e.matches('figure, pre')))return;   // one-line feedback with no derivation stays as it is
   const items=kids.map(el=>{
-    if(el.matches('figure'))return {el,kind:'math'};   // a drawing is a step of its own (Step 1: draw the mux)
+    if(el.matches('figure, pre'))return {el,kind:'math'};   // a drawing or a code block is a step of its own; its label line above it arrives with it
     if(!el.classList.contains('mathrow'))return {el,kind:'prose'};
     const tex=decodeURIComponent(el.dataset.tex||'');
     if(/^\s*\\boxed\s*\{/.test(tex)||!/\\begin\{(aligned|align\*?|alignedat)\}/.test(tex))return {el,kind:'math'};   // the boxed setup grid is one piece
@@ -1979,11 +2119,130 @@ function rvSetup(box,start){
 // after a reflow or a math re-fit (which rebuilds the KaTeX inside a row), put every stepped answer back where it was
 function rvReapply(){ RV.forEach(b=>{ if(!b.isConnected){RV.delete(b);return;} if(b.getClientRects().length)rvApply(b,false); }); }
 
-// XP fills the top bar with verified answers only: a multiple-choice item answered right, or a flashcard graded 4 or 5. Scrolling adds nothing.
+// ---------- quiz items and their outcomes ----------
+// A quiz item is a multiple-choice card or a check-in row (Your turn, drill, practice-exam part); the student marks a
+// check-in row Got it or Missed it after reading its answer. outcomes holds this lesson's latest mark per item, from the
+// bridge's /api/answers and then kept live by every mark: id -> {kind:'self'|'mcq', result:'got'|'missed', chapter,
+// choice?, sig?}. XP, chapter stars and the redo round all read it.
+let outcomes={}, logQ=Promise.resolve();
+const quizItems=root=>[...(root||main).querySelectorAll('.mcqi, .check > details')];
+const itemResult=el=>(outcomes[el.dataset.item]||{}).result||'';
+function textHash(t){ let h=5381; for(let i=0;i<t.length;i++)h=((h<<5)+h+t.charCodeAt(i))|0; return (h>>>0).toString(36); }
+// a check-in row's id: a hash of its question and answer, whitespace-normalised, so it survives reloads, re-renders and
+// edits elsewhere in the lesson, and lessons written before self-marking need no change
+const ckId=(q,a)=>'c-'+textHash(q.replace(/\s+/g,' ').trim()+'||'+a.replace(/\s+/g,' ').trim());
+// exact duplicates in one lesson: the second and later get -2, -3, … in reading order
+const occurrenceIds=bases=>{ const n={}; return bases.map(b=>(n[b]=(n[b]||0)+1)>1?b+'-'+n[b]:b); };
+function itemIds(){ const ds=[...main.querySelectorAll('.check > details[data-ck]')]; occurrenceIds(ds.map(d=>d.dataset.ck)).forEach((id,i)=>{ ds[i].dataset.item=id; }); }
+function itemChapter(el){ let ch=''; tocItems.forEach(it=>{ if(it.lvl===2&&it.h.compareDocumentPosition(el)&Node.DOCUMENT_POSITION_FOLLOWING)ch=it.text; }); return ch; }
+// marks reach the bridge in order, and a restore waits for the ones still on their way
+function logOutcome(req){ logQ=logQ.then(()=>ask(req)); return logQ; }
+function paintSelf(d){ const r=itemResult(d); d.querySelectorAll(':scope > .smark .smbtn').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.r===r))); }
+// one tap records; tapping the other button changes it. Quiet: no sound, no sparks, no streak.
+function markSelf(d,result){
+  const id=d&&d.dataset.item; if(!id)return;
+  const chapter=itemChapter(d);
+  outcomes[id]={kind:'self',result,chapter};
+  paintSelf(d); logOutcome({kind:'self',item:id,chapter,result});
+  tocSig=''; xpUpdate(); scheduleToc();
+}
+// put every item on the page in the state outcomes says; a multiple-choice pick made on an older wording of the question
+// (another stem signature) does not count
+function paintOutcomes(){
+  quizItems().forEach(el=>{
+    const a=outcomes[el.dataset.item];
+    if(!el.matches('.mcqi'))paintSelf(el);
+    else if(a&&a.kind==='mcq'&&(!a.sig||a.sig===stemSig(el)))markMcq(el,a.choice,false);
+    else if(a&&a.kind==='mcq')delete outcomes[el.dataset.item];
+  });
+  tocSig=''; xpUpdate(); scheduleToc();
+}
+async function restoreOutcomes(){
+  if(!lessonId)return;
+  await logQ;
+  const got=await fetch(`/api/answers?id=${lessonId}${WSQ}`).then(r=>r.json()).catch(()=>null);
+  if(!got||typeof got!=='object'||got.error)return;
+  outcomes=got; paintOutcomes();
+}
+
+// ---------- redo rounds: the lesson's missed problems, again ----------
+// The row under the title counts the items whose latest mark is missed (a check-in marked Missed it, a multiple choice
+// whose latest pick is wrong) and opens a round: those items in lesson order, in place, every other block hidden, each
+// check-in under the problem it answers. The round is fixed when it starts, so a Got it never pulls an item away
+// mid-round; Next round and reopening recompute it.
+const redo={open:false,ids:[],y:0};
+const missedIds=(ids,out)=>ids.filter(id=>(out[id]||{}).result==='missed');
+const missedNow=()=>missedIds(quizItems().map(e=>e.dataset.item),outcomes);
+const redoRowHtml=n=>`<span>${n} missed problem${n===1?'':'s'}</span> · <button type="button" class="rdgo">Redo ${n===1?'it':'them'}</button>`;
+const redoHeadHtml=(n,missed)=>n?`<span class="rdt">Redo · <span class="rdn">${missed} missed</span></span><button type="button" class="rdnext">Next round</button><button type="button" class="rdback">Back to lesson</button>`
+  :`<span class="rdt">No misses left.</span><button type="button" class="rdback">Back to lesson</button>`;
+// blocks: the lesson's blocks in order, [{kind:'label'|'body'|'stop', own, items:[id]}]; own when the block is a check-in or
+// a multiple choice by itself, not one inside a quiz. Returns the round's items and the blocks shown whole: the problem an
+// own block answers, from its label (Official · … or Written by Claude) down, when no stop (a heading, another quiz item,
+// a worked example or a solution step) comes between.
+function redoPlan(blocks,ids){
+  const want=new Set(ids), ctx=new Set(), items=[];
+  blocks.forEach((b,i)=>{
+    const hit=b.items.filter(id=>want.has(id)); if(!hit.length)return;
+    hit.forEach(id=>items.push([i,id]));
+    if(!b.own)return;
+    let k=i-1; while(k>=0&&blocks[k].kind==='body')k--;
+    if(k>=0&&blocks[k].kind==='label')for(;k<i;k++)ctx.add(k);
+  });
+  return {ctx:[...ctx].sort((a,b)=>a-b),items};
+}
+function blockKind(b){
+  if(b.querySelector('h1,h2,h3,.check,.mcqi,.quiz')||[...b.querySelectorAll('p > strong:first-child')].some(x=>/^(worked example|step\s*\d)/i.test(x.textContent.trim())))return 'stop';
+  const f=b.firstElementChild;
+  return f&&(f.matches('p.plabel')||(f.matches('p')&&f.firstChild===f.firstElementChild&&f.firstElementChild.matches('.plabel-i')))?'label':'body';
+}
+function redoApply(){
+  main.querySelectorAll('.rd,.rd-path,.rd-ctx').forEach(e=>e.classList.remove('rd','rd-path','rd-ctx'));
+  document.documentElement.classList.toggle('redo',redo.open);
+  let head=document.getElementById('redohead');
+  if(!redo.open){ head?.remove(); return; }
+  const bl=[...main.querySelectorAll(':scope > .blk')];
+  const plan=redoPlan(bl.map(b=>({kind:blockKind(b),own:!!b.firstElementChild?.matches('.check,.mcqi'),items:quizItems(b).map(e=>e.dataset.item)})),redo.ids);
+  plan.ctx.forEach(i=>bl[i].classList.add('rd-ctx'));
+  plan.items.forEach(([i,id])=>{ const el=quizItems(bl[i]).find(e=>e.dataset.item===id); el.classList.add('rd'); for(let p=el.parentElement;p&&p!==main;p=p.parentElement)p.classList.add('rd-path'); });
+  if(!head){ head=document.createElement('div'); head.id='redohead'; head.tabIndex=-1; head.setAttribute('role','region'); head.setAttribute('aria-label','Redo round'); }
+  if(main.firstElementChild!==head)main.prepend(head);
+  head.innerHTML=redoHeadHtml(plan.items.length,missedNow().length);
+  head.querySelector('.rdback').onclick=()=>redoClose();
+  const next=head.querySelector('.rdnext'); if(next)next.onclick=redoOpen;
+}
+function redoOpen(){
+  if(!redo.open)redo.y=window.scrollY;
+  redo.open=true; redo.ids=missedNow();
+  // each check-in in the round starts folded, its solution back at the first step
+  quizItems().forEach(el=>{ if(!el.matches('details')||!redo.ids.includes(el.dataset.item))return; el.open=false; const box=el.querySelector(':scope>div'); if(box&&box._rv)box._rv.k=1; });
+  if(tocOpen)tocToggle(false);
+  redoApply(); window.scrollTo(0,0);
+  document.getElementById('redohead')?.focus({preventScroll:true});
+}
+function redoClose(back=true){
+  if(!redo.open)return;
+  redo.open=false; redoApply();
+  if(back){ window.scrollTo(0,redo.y); document.querySelector('#redorow .rdgo')?.focus({preventScroll:true}); }
+}
+// the row's count follows every mark; no row when nothing is missed
+function redoPaint(n){
+  if(MODE==='grid')return;
+  let row=document.getElementById('redorow'); const first=main.querySelector(':scope > .blk');
+  if(!n||!first)row?.remove();
+  else {
+    if(!row){ row=document.createElement('p'); row.id='redorow'; }
+    if(row.nextElementSibling!==first)first.before(row);
+    if(row.dataset.n!==String(n)){ row.dataset.n=String(n); row.innerHTML=redoRowHtml(n); row.querySelector('.rdgo').onclick=redoOpen; }
+  }
+  const rn=document.querySelector('#redohead .rdn'); if(rn)rn.textContent=n+' missed';
+}
+
+// XP fills the top bar: a multiple-choice item answered right, a check-in marked Got it, or a flashcard graded 4 or 5. Scrolling adds nothing.
 const xpArc=document.querySelector('#tocbtn .arc'), xpText=document.querySelector('#tocbtn .rl'), xpIco=document.querySelector('#tocbtn .ico'), xpSum=document.querySelector('#toc .xpsum');
 function xpUpdate(){
-  const ms=[...main.querySelectorAll('.mcqi')], cs=[...main.querySelectorAll('.fc[data-item]')], total=ms.length+cs.length;
-  const got=ms.filter(m=>{const c=m.querySelector('input:checked');return m.classList.contains('done')&&c&&c.value===m.dataset.key}).length+cs.filter(c=>c.dataset.n!==''&&+c.dataset.n>=4).length;
+  const qs=quizItems(), cs=[...main.querySelectorAll('.fc[data-item]')], total=qs.length+cs.length;
+  const got=qs.filter(e=>itemResult(e)==='got').length+cs.filter(c=>c.dataset.n!==''&&+c.dataset.n>=4).length;
   const full=total>0&&got===total;
   xpArc.style.strokeDashoffset=String(100.53*(1-(total?got/total:0)));
   document.getElementById('tocbtn').classList.toggle('full',full);
@@ -1993,14 +2252,16 @@ function xpUpdate(){
   [...hp.children].forEach((c,i)=>c.classList.toggle('on',i<got));
   xpSum.innerHTML=total?`XP <b>${got}</b> / ${total}`:'';
   document.getElementById('tocbtn').title=total?`Contents (t) · XP ${got}/${total}: questions answered right`:'Contents (t)';
+  redoPaint(missedIds(qs.map(e=>e.dataset.item),outcomes).length);
 }
 // a multiple-choice answer is marked the same way live and when restored from the log
-function stemSig(it){ const t=(it.querySelector('.q')?.textContent||'').replace(/\s+/g,' ').trim(); let h=5381; for(let i=0;i<t.length;i++)h=((h<<5)+h+t.charCodeAt(i))|0; return (h>>>0).toString(36); }
+function stemSig(it){ return textHash((it.querySelector('.q')?.textContent||'').replace(/\s+/g,' ').trim()); }
 function markMcq(it,choice,live){
   // answers stay changeable: a new pick replaces the old verdict; the key is shown only once it is picked
   const inp=it.querySelector(`input[value="${choice}"]`); if(!inp)return; inp.checked=true;
   if(it.classList.contains('done')&&it.dataset.choice===choice)return;
   it.dataset.choice=choice; it.classList.add('done'); const ok=choice===it.dataset.key;
+  if(it.dataset.item)outcomes[it.dataset.item]={kind:'mcq',result:ok?'got':'missed',chapter:itemChapter(it),choice,sig:stemSig(it)};
   it.querySelectorAll('label').forEach(l=>l.classList.remove('right','wrong'));
   inp.closest('label').classList.add(ok?'right':'wrong');
   // right: the worked solution, stepped from its first piece. Wrong: the verdict and a one-line hint (the why's lead
@@ -2010,7 +2271,7 @@ function markMcq(it,choice,live){
   const fbb=it.querySelector('.fbb'); if(fbb&&worked){ fbb.querySelectorAll('.mathrow[data-tex]').forEach(fitMath); rvSetup(fbb,ok?1:0); }
   whyWire(it);
   const rb=it.querySelector('.mreset'); if(rb)rb.hidden=false;
-  if(live)ask({kind:'mcq',item:it.dataset.item,choice,correct:ok,sig:stemSig(it)});
+  if(live)logOutcome({kind:'mcq',item:it.dataset.item,choice,correct:ok,sig:stemSig(it),chapter:itemChapter(it)});
   tocSig=''; xpUpdate(); scheduleToc();
   if(live){ if(ok)celebrate(inp.closest('label'),document.getElementById('tocbtn').classList.contains('full')); else { FX.streak=0; sfx('wrong'); } }
 }
@@ -2018,12 +2279,12 @@ function markMcq(it,choice,live){
 // so a reload keeps it cleared; the earlier picks stay in the log as evidence. Quiet: no sound, no sparks.
 function resetMcq(it){
   if(!it||!it.classList.contains('done'))return;
-  it.classList.remove('done'); delete it.dataset.choice;
+  it.classList.remove('done'); delete it.dataset.choice; delete outcomes[it.dataset.item];
   it.querySelectorAll('input').forEach(i=>{i.checked=false;});
   it.querySelectorAll('label').forEach(l=>l.classList.remove('right','wrong','win'));
   it.querySelector('.fb').innerHTML=''; it.querySelector('.mreset').hidden=true;
   FX.streak=0;
-  ask({kind:'mcq',event:'reset',item:it.dataset.item,sig:stemSig(it)});
+  logOutcome({kind:'mcq',event:'reset',item:it.dataset.item,sig:stemSig(it)});
   tocSig=''; xpUpdate(); scheduleToc();
   it.querySelector('input')?.focus({preventScroll:true});
 }
@@ -2220,11 +2481,6 @@ function endcardTimer(btn){
   }catch(_){}
   timer=setTimeout(()=>endStop&&endStop(),2700);
 }
-async function restoreAnswers(){
-  if(!lessonId)return;
-  const got=await fetch(`/api/answers?id=${lessonId}${WSQ}`).then(r=>r.json()).catch(()=>({}));
-  main.querySelectorAll('.mcqi:not(.done)').forEach(it=>{ const a=got[it.dataset.item]; if(a&&(!a.sig||a.sig===stemSig(it)))markMcq(it,a.choice,false); });
-}
 
 // ---------- contents: drawer + ticks on the progress bar ----------
 // Lists the lesson's ## and ### headings. Reading position only (✓ = scrolled past), never mastery.
@@ -2253,20 +2509,14 @@ function buildToc(hot){
   tocSig=''; scheduleToc();
 }
 function tocStats(it){
-  const ms=it.blocks.flatMap(b=>[...b.querySelectorAll('.mcqi')]);
-  return {total:ms.length,right:ms.filter(m=>{const c=m.querySelector('input:checked');return m.classList.contains('done')&&c&&c.value===m.dataset.key}).length};
+  const qs=it.blocks.flatMap(b=>quizItems(b));
+  return {total:qs.length,right:qs.filter(e=>itemResult(e)==='got').length};
 }
 function tocKind(it){ return /practice (exam|test)|mock (exam|test)/i.test(it.text)?'boss':/cheat ?sheet|formula sheet/i.test(it.text)?'save':/^quiz\b/i.test(it.text)?'quiz':'ch'; }
 const TOC_GLYPH={
   boss:'<svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1 3h1v1h1V2h1v2h2V2h1v2h1V3h1v5H1z" fill="currentColor"/></svg>',
   save:'<svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1 1h7l1 1v7H1zM3 1v3h4V1M3 6h4v3H3z" fill="none" stroke="currentColor" stroke-width="1" shape-rendering="crispEdges"/></svg>',
   quiz:'<svg viewBox="0 0 10 10" aria-hidden="true"><path d="M3 2h4v1h1v2H7v1H5v1H4V5h2V3H4v1H3zM4 8h1v1H4z" fill="currentColor" shape-rendering="crispEdges"/></svg>'};
-function tocScore(it){
-  const ms=it.blocks.flatMap(b=>[...b.querySelectorAll('.mcqi')]); if(!ms.length)return '';
-  const done=ms.filter(m=>m.classList.contains('done')); if(!done.length)return '';
-  const right=done.filter(m=>{const c=m.querySelector('input:checked');return c&&c.value===m.dataset.key}).length;
-  return `${right}/${ms.length}`;
-}
 function tocCurrent(){
   let cur=-1,cur2=-1;
   tocItems.forEach((it,i)=>{ if(it.h.getBoundingClientRect().top<=120){cur=i; if(it.lvl===2)cur2=i;} });
@@ -2286,7 +2536,7 @@ function tocUpdate(){
   const H=document.documentElement.scrollHeight, pos=readPos();
   tocTicks.querySelectorAll('.tick').forEach(t=>{ const it=tocItems.find(x=>x.id===t.dataset.id); if(!it)return; const r=Math.max(0,Math.min(1,(it.h.getBoundingClientRect().top+window.scrollY)/Math.max(1,H))); t.style.top=(r*100)+'%'; t.classList.toggle('past',r<=pos+0.002); t.classList.toggle('cur',it.lvl===2?it===tocItems[cur2]:it===tocItems[cur]); });
   xpUpdate();
-  const scores=tocItems.map(it=>it.lvl===2?tocScore(it):'');
+  const scores=tocItems.map(it=>{ if(it.lvl!==2)return ''; const st=tocStats(it); return st.right+'/'+st.total; });
   const sig=[cur,cur2,tocMax,scores.join(','),[...tocNew].join(','),tocItems.map(x=>x.id).join(','),flags.map(f=>f.id+f.anchor+(f.note||'')+(f.gone?1:0)).join(',')].join('|');
   tocBtn.querySelector('.dot')?.remove(); if(tocNew.size)tocBtn.insertAdjacentHTML('beforeend','<span class="dot"></span>');
   if(sig===tocSig){ if(tocOpen)tocFillPath(); return; } tocSig=sig;
@@ -2334,6 +2584,7 @@ function tocToggle(open){
 }
 function tocGo(id,smooth=true){
   const it=tocItems.find(x=>x.id===id); if(!it)return;
+  redoClose(false);
   if(tocOpen)tocToggle(false);
   tocNew.delete(id); tocSig='';
   const goal=Math.max(0,it.h.getBoundingClientRect().top+window.scrollY-70);
@@ -2440,6 +2691,7 @@ function flagFlash(el){ if(!el)return; el.classList.remove('flagflash'); void el
 // put the item on screen without opening an answer: a check-in row stays folded
 function flagGo(f,smooth=true){
   const t=f.anchor&&flagTargets.find(x=>x.anchor===f.anchor)||flagResolve(f,flagTargets);
+  redoClose(false);
   if(tocOpen)tocToggle(false);
   if(!t){ const ch=tocItems.find(x=>x.text===f.chapter); if(ch)tocGo(ch.id,smooth); flagToast('That flagged item moved or was removed. Showing its chapter.'); return false; }
   const r=t.el.getBoundingClientRect(), goal=Math.max(0,r.top+window.scrollY-Math.max(80,(innerHeight-Math.min(r.height,innerHeight*.6))/2));
@@ -2661,7 +2913,7 @@ async function loadLessonWith(r){
     window.__ph=[];
   }
   renderedUpto=segs.length; imageCredits(b); srcFiles(); endCard(); decorate(main); wire(); inlineSvgs(); buildToc(hot); const flagsReady=flagsLoad();
-  if(r.reset)restoreAnswers();
+  paintOutcomes(); if(redo.open)redoApply(); if(r.reset)restoreOutcomes();
   if(place){ const bl=[...main.querySelectorAll(':scope > .blk')]; let best=null,bd=1e9; bl.forEach((x,i)=>{ if(x.textContent.slice(0,160)===place.sig&&Math.abs(i-place.i)<bd){bd=Math.abs(i-place.i);best=x;} });
     if(best) window.scrollTo(0,window.scrollY+best.getBoundingClientRect().top-place.top); main.style.minHeight=''; }
   else if(r.reset) main.style.minHeight='';
@@ -2772,6 +3024,7 @@ async function chatSendMsg(text){
 // the next message.
 function chatWhere(){
   if(srcv&&srcv.open)return null;   // a file is open: `viewing` says what "this" is
+  if(redo.open)return null;   // a redo round hides the sections: none is "in view"
   let v=null; try{ v=window.LessonVideo&&typeof LessonVideo.context==='function'?LessonVideo.context():null; }catch(_){ v=null; }
   if(v&&typeof v==='object')return Object.assign({source:'video'},v);
   if(!tocItems.length||document.documentElement.classList.contains('lv-watch'))return null;   // Watch hides the text: no section is "in view"

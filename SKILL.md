@@ -31,7 +31,7 @@ The user keeps studying on the live board (port 7331) while the skill is being c
 
 # Lesson writer (required)
 
-Before a new lesson or substantial rewrite, read [LESSON-WRITER.md](./LESSON-WRITER.md): pick the best model online, a separate writer agent writes, a fresh tone editor on the same model edits prose, and answers are recomputed independently before publishing.
+Before a new lesson or substantial rewrite, read [LESSON-WRITER.md](./LESSON-WRITER.md): pick the best model online, a separate writer agent writes, a fresh tone editor on the same model edits prose, and answers are recomputed independently before publishing. Every solved step that uses a fact from the problem says where it is and cites the tagged phrase or the problem's code lines, so the board can light it (TEMPLATES.md **Step sources**).
 
 # Full lesson video (default)
 
@@ -141,7 +141,7 @@ If `MISSION.md` is missing, write it from the course or topic and one question a
 
 # Lessons
 
-**Source check (hard rule, course mode).** Before writing any lesson, before model selection or a single body block, check that every source the lesson depends on exists in `$WS/sources/` (or the course's LMS mirror): (1) the official review sheet(s) for the exam or topic, (2) past exams **with their answer keys**, (3) lecture notes or slides for every topic covered, (4) the homework or WebWork sets for those topics, (5) the syllabus or official topic list that says what the exam covers. For each one that is missing, try to fetch it from the LMS ([LMS.md](./LMS.md)). If any is still missing, **stop**: do not write, outline or stream the lesson, and tell the user in one short message exactly which sources are missing and what they can drop in. A source that does not exist for the course (the professor never published one) counts as present only when the user says so. Self-study lessons and temporary boards are exempt.
+**Source check (hard rule, course mode).** Before writing any lesson, before model selection or a single body block, check that every source the lesson depends on exists in `$WS/sources/` (or the course's LMS mirror): (1) the official review sheet(s) for the exam or topic, (2) past exams **with their answer keys**, (3) lecture notes or slides for every topic covered, (4) the homework or WebWork sets for those topics, (5) the syllabus or official topic list that says what the exam covers. For each one that is missing, try to fetch it from the LMS ([LMS.md](./LMS.md)). If any is still missing, tell the user in one short message which sources are missing and what they can drop in. A missing past exam or official review for this exact test does not block: use the next official problem sources in the blueprint's order (**Problem sources**) and say in Sources which were used. **Stop** without writing, outlining or streaming only when the course has no official problems of any kind. Self-study lessons and temporary boards are exempt.
 
 Read [TEMPLATES.md](./TEMPLATES.md), including its **Didactic writing contract**, **Titles** and **Photos**, before writing or rewriting a lesson. Apply that contract to explanations as well, scaled to the requested depth. Then read the blueprint the lesson uses (**Lesson blueprints** above).
 

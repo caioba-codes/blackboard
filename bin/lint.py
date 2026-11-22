@@ -76,11 +76,12 @@ for m in re.finditer(r"\\(Large|LARGE|large|Huge|huge)(?![A-Za-z])", s):
 # official problems (TEMPLATES.md, Problems and solutions): every problem has a label, every src: file exists, and only a
 # verbatim official multiple-choice item may have other than four (or two) options
 import os
+from urllib.parse import unquote
 raw = open(sys.argv[1]).read()
 lesson_dir = os.path.dirname(os.path.abspath(sys.argv[1]))
 LABEL = re.compile(r"\[Official ·[^\]]*\]\(src:[^)]+\)|\*Written by Claude\*")
 def src_exists(ref):
-    ref = ref.split("#")[0]
+    ref = unquote(ref.split("#")[0])
     for base in (os.path.join(lesson_dir, "..", "sources"), os.path.join(lesson_dir, ".."), lesson_dir, os.path.join(lesson_dir, "..", "..")):
         if os.path.isfile(os.path.normpath(os.path.join(base, ref))):
             return True
@@ -163,4 +164,130 @@ for i, l in enumerate(L):
         if not re.match(r"^(::: (given|mcq|checkin)\b|#{1,6} |\*\*Solution)", t):
             print(f"  lint: line {k + 1}: an official problem's text outside a ::: given block. Wrap what the problem states (text, tables, figures) in ::: given so it reads apart from the work.", file=sys.stderr); warn += 1
         break
+# a Written by Claude problem reads like an official one: its statement sits in the same ::: given card under the label
+for i, l in enumerate(L):
+    if l.strip() != "*Written by Claude*":
+        continue
+    for k in range(i + 1, min(len(L), i + 6)):
+        t = L[k].strip()
+        if not t or t.startswith("<!--"):
+            continue
+        if re.fullmatch(r"\*\*Worked example[^*]*\*\*.*", t):
+            continue
+        if not re.match(r"^(::: (given|mcq|checkin)\b|#{1,6} |\*\*Solution)", t):
+            print(f"  lint: line {k + 1}: a Written by Claude problem's statement outside a ::: given block. Put it in ::: given under the label, as for an official problem.", file=sys.stderr); warn += 1
+        break
+# code lines stay at or under 60 characters (TEMPLATES.md, Board rules); official code quoted in a ::: given block is
+# verbatim and never rewrapped, so it is exempt; so is the stem of an official multiple-choice item, quoted as printed
+MAX_CODE = 60
+OFFICIAL_CODE = set(IN_GIVEN)
+for i, l in enumerate(L):
+    if re.match(r"^::: mcq\b", l) and re.search(r"\[Official ·", "\n".join(L[max(0, i - 14):i])) and label_above(i):
+        j = i + 1
+        while j < len(L) and not re.match(r"^:::\s*$", L[j]):
+            OFFICIAL_CODE.add(j); j += 1
+fence = None
+for n, l in enumerate(L):
+    m = re.match(r"^(\s*)(```+)", l)
+    if m:
+        fence = None if fence is not None else len(m.group(1))
+        continue
+    if fence is None or n in OFFICIAL_CODE:
+        continue
+    code = l[fence:] if l[:fence].strip() == "" else l.lstrip()
+    if len(code.rstrip()) > MAX_CODE:
+        print(f"  lint: line {n + 1}: a code line of {len(code.rstrip())} characters (over {MAX_CODE}). Wrap it, or move a trailing comment onto its own line above.", file=sys.stderr); warn += 1
+# an estimated breakdown (BLUEPRINT-STEM.md, Cumulative finals) is marked "**Exam Topics Breakdown (estimate)**" and must
+# keep the line under its table that says it is an estimate and what it rests on
+for i, l in enumerate(L):
+    if not re.match(r"^\*\*Exam Topics Breakdown \(estimate\)\*\*", l.strip()):
+        continue
+    k = i + 1
+    while k < len(L) and not L[k].strip():
+        k += 1
+    while k < len(L) and L[k].lstrip().startswith("|"):
+        k += 1
+    while k < len(L) and not L[k].strip():
+        k += 1
+    if k >= len(L) or "estimate" not in L[k].lower():
+        print(f"  lint: line {i + 1}: an estimated Exam Topics Breakdown without its estimate line under the table. Keep the line that says the split is an estimate and what it rests on.", file=sys.stderr); warn += 1
+# step sources (TEMPLATES.md, Step sources): a step's {@id} names a [phrase]{#id} tagged in its own problem, and {@L3-5}
+# or {@name:L3-5} names lines of a code block in it. A problem is everything from its first label to the next problem:
+# one quoted over two pages has two labels and two given cards, and a step may cite either. Its cards are its ::: given
+# blocks and ::: mcq stems. In a lesson that uses step sources, a solved problem whose steps never cite it gets a soft note.
+GTAG = re.compile(r"\[[^\[\]\n]+?\]\{#([A-Za-z][\w-]*)\}")
+REF_ID = r"[A-Za-z][\w-]*(?::L\d+(?:-\d+)?)?"
+GREF = re.compile(rf"\{{@({REF_ID}(?:\s+@?{REF_ID})*)\}}")
+GLINE = re.compile(r"^(?:([A-Za-z][\w-]*):)?L(\d+)(?:-(\d+))?$")
+IN_FENCE, FENCES, _open = set(), [], None
+for n, l in enumerate(L):
+    if re.match(r"^\s*```", l):
+        IN_FENCE.add(n)
+        if _open is None:
+            nm = re.search(r"\{#([A-Za-z][\w-]*)\}", l)
+            _open = (n, nm.group(1) if nm else None)
+        else:
+            FENCES.append({"start": _open[0], "end": n, "name": _open[1], "lines": n - _open[0] - 1}); _open = None
+        continue
+    if _open is not None:
+        IN_FENCE.add(n)
+STEM = set()   # ::: mcq stem lines (before its options and why:), fences included
+for i, l in enumerate(L):
+    if not re.match(r"^::: mcq\b", l):
+        continue
+    j, fence = i + 1, False
+    while j < len(L) and not (re.match(r"^:::\s*$", L[j]) and not fence):
+        if re.match(r"^\s*```", L[j]):
+            fence = not fence
+        if not fence and (re.match(r"^\s*-", L[j]) or L[j].startswith("why:")):
+            break
+        STEM.add(j); j += 1
+CARD = IN_GIVEN | STEM
+LABEL_LINES = [n for n, l in enumerate(L) if LABEL.search(l) and not l.lstrip().startswith("-")]
+def chained(j, k):
+    """Labels j < k belong to one problem when only its quoted cards (and blank lines) sit between them."""
+    return all(m in CARD or not L[m].strip() or L[m].lstrip().startswith("<!--") for m in range(j + 1, k))
+STARTS = []
+for idx, k in enumerate(LABEL_LINES):
+    if idx and chained(LABEL_LINES[idx - 1], k):
+        continue
+    STARTS.append(k)
+def problem_of(n):
+    starts = [k for k in STARTS if k <= n]
+    return starts[-1] if starts else 0
+def problem_end(start):
+    nxt = [k for k in STARTS if k > start] + [len(L)]
+    heads = [m for m in range(start + 1, nxt[0]) if re.match(r"^## ", L[m])]
+    return heads[0] if heads else nxt[0]
+for n, l in enumerate(L):
+    if n in IN_FENCE:
+        continue
+    for t in GTAG.findall(l):
+        if GLINE.match(t):
+            print(f"  lint: line {n + 1}: tag {{#{t}}} looks like a line reference. Name tags with a word; {{@L3}} cites code lines.", file=sys.stderr); warn += 1
+    for m in GREF.finditer(l):
+        start = problem_of(n)
+        tags = {t for k in range(start, n + 1) if k not in IN_FENCE for t in GTAG.findall(L[k])}
+        blocks = [f for f in FENCES if start <= f["start"] < n and f["start"] in CARD]
+        for rid in (x.lstrip("@") for x in m.group(1).split()):
+            lm = GLINE.match(rid)
+            if not lm:
+                if rid not in tags:
+                    print(f"  lint: line {n + 1}: the step cites {{@{rid}}} but its problem has no phrase tagged {{#{rid}}}. Tag the phrase in the ::: given card: [its words]{{#{rid}}}.", file=sys.stderr); warn += 1
+                continue
+            name, a, b = lm.group(1), int(lm.group(2)), int(lm.group(3) or lm.group(2))
+            pick = [f for f in blocks if f["name"] == name] if name else blocks
+            if not pick:
+                what = f"code block named {{#{name}}}" if name else "code block"
+                print(f"  lint: line {n + 1}: the step cites {{@{rid}}} but its problem has no {what} in a given card or mcq stem.", file=sys.stderr); warn += 1
+            elif len(pick) > 1 and not name:
+                print(f"  lint: line {n + 1}: {{@{rid}}} is ambiguous: its problem shows {len(pick)} code blocks. Name one (```java {{#node}}) and cite {{@node:{rid}}}.", file=sys.stderr); warn += 1
+            elif not (1 <= a <= b <= pick[-1]["lines"]):
+                print(f"  lint: line {n + 1}: {{@{rid}}} is outside the code block, which has {pick[-1]['lines']} lines.", file=sys.stderr); warn += 1
+if any((GTAG.search(l) or GREF.search(l)) for n, l in enumerate(L) if n not in IN_FENCE):
+    for a in STARTS:
+        end = problem_end(a)
+        worked = any("$$" in L[k] or (re.match(r"^\s*```", L[k]) and k not in CARD) for k in range(a, end))
+        if worked and not any(GREF.search(L[k]) for k in range(a, end)):
+            print(f"  lint: line {a + 1}: (soft) this solved problem has no step citing its problem ({{@id}}). Say where each fact comes from and tag it (TEMPLATES.md, Step sources).", file=sys.stderr)
 if warn: print(f"  lint: {warn} warning(s). TEMPLATES.md: one operation per line; tables as markdown tables.", file=sys.stderr)

@@ -40,7 +40,7 @@ Every graded item appends one line to `learning-records/quiz-log.jsonl`:
 {"ts":"2026-09-02T19:40:11Z","lesson":"0004","topic":"simplifying SOP","mode":"cards","score":4,"misconception":null}
 ```
 
-`misconception` is a short sentence describing the wrong belief when the score is ≤ 2, otherwise `null`. The grid's quiz dots read this file, and so will the redo rounds (ROADMAP.md). When a misconception appears twice, add a line to the current learning record under **Misconceptions** so later quizzes re-probe it in a new context.
+`misconception` is a short sentence describing the wrong belief when the score is ≤ 2, otherwise `null`. The grid's quiz dots read this file, and so does the board's redo row (board/README.md, **Self-marking and redo rounds**). When a misconception appears twice, add a line to the current learning record under **Misconceptions** so later quizzes re-probe it in a new context.
 
 ## Board syntax for quiz items
 
