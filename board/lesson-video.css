@@ -65,6 +65,8 @@ html.lv-on .mcqi{position:relative}
 @keyframes lvspin{to{transform:rotate(360deg)}}
 .lv-stage.lv-carded video{filter:brightness(.38) saturate(.7)}
 .lv-card{position:absolute;left:50%;top:50%;z-index:3;transform:translate(-50%,-50%);width:min(440px,calc(100% - 32px));box-sizing:border-box;padding:16px 20px 18px;border:1px solid var(--lv-acc-line);border-radius:12px;background:rgba(10,10,10,.92);box-shadow:0 14px 40px #000a;text-align:center;cursor:default}
+/* a practice pause: the same card, under the picture (the question on it stays whole and bright) */
+.lv-card.lv-gate{position:static;transform:none;width:auto;border:0;border-top:1px solid var(--lv-acc-line);border-radius:0;background:var(--lv-bg);box-shadow:none}
 .lv-ck{margin:0 0 4px;max-width:none;font:28px/1.2 'Patrick Hand',cursive;color:var(--lv-acc)}
 .lv-ct{margin:0 auto 14px;max-width:34ch;font-size:17px;line-height:1.45;color:#d8d3c4}
 .lv-err .lv-ck{color:#e3b2a2}

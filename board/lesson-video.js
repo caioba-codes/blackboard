@@ -335,7 +335,6 @@ function build(){
 <div class="lv-ccband" hidden aria-hidden="true"></div>
 <div class="lv-cc" hidden aria-hidden="true"><span class="lv-cct"></span></div>
 <div class="lv-spin" hidden aria-hidden="true"></div>
-<div class="lv-card lv-gate" role="group" aria-label="Your turn" hidden><p class="lv-ck">Your turn</p><p class="lv-ct">Pause here and work it out. The answer comes next.</p><div class="lv-cb"><button type="button" class="lv-btn pri" data-a="continue">Continue to the answer</button><button type="button" class="lv-btn" data-a="replayq">Replay the question</button></div></div>
 <div class="lv-card lv-err" role="alert" hidden><p class="lv-ck">Video unavailable</p><p class="lv-ct lv-errt"></p><div class="lv-cb"><button type="button" class="lv-btn pri" data-a="retry">Try again</button><button type="button" class="lv-btn" data-a="toread">Read the lesson</button></div></div>
 <div class="lv-card lv-end" role="group" aria-label="End of the video" hidden><p class="lv-ck">End of the video</p><div class="lv-cb lv-endb"></div><button type="button" class="lv-btn lv-sm" data-a="restart">Replay</button></div>
 <div class="lv-bar"><div class="lv-tl"><div class="lv-zones" aria-hidden="true"></div><input type="range" class="lv-range" min="0" max="${S.dur}" step="0.1" value="0" aria-label="Video position"><div class="lv-tip" hidden aria-hidden="true"><b class="lv-tipc"></b><span class="lv-tipt"></span></div></div>
@@ -347,6 +346,7 @@ function build(){
 <button type="button" class="lv-ib lv-ccb" data-a="cc" aria-pressed="false" aria-label="Turn captions on" title="Captions (C)" hidden>${I.cc}</button>
 <button type="button" class="lv-ib" data-a="fs" aria-label="Full screen" title="Full screen (F)">${I.fs}</button></div></div>
 </div>
+<div class="lv-card lv-gate" role="group" aria-label="Your turn" hidden><p class="lv-ck">Your turn</p><p class="lv-ct">Pause here and work it out. The answer comes next.</p><div class="lv-cb"><button type="button" class="lv-btn pri" data-a="continue">Continue to the answer</button><button type="button" class="lv-btn" data-a="replayq">Replay the question</button></div></div>
 <ol class="lv-list" aria-label="Explanations in this video">${S.segs.map(s=>`<li><button type="button" data-a="seg" data-i="${s.i}"><span class="lv-lt">${fmt(s.start)}</span><span class="lv-ll">${esc(s.label)}</span>${s.p?'<span class="lv-tag">Your turn</span>':''}</button></li>`).join('')}</ol>
 <div class="lv-sr lv-live" aria-live="polite"></div>`;
   document.body.insertBefore(p,ctx.main);
@@ -560,6 +560,7 @@ function showGate(s){
   if(S.meta&&Math.abs(v.currentTime-s.p.pauseAt)>.05)v.currentTime=s.p.pauseAt; else if(!S.meta)S.pendingT=s.p.pauseAt;
   S.prevT=s.p.pauseAt; paintTime(s.p.pauseAt,true); setSeg(s.i,'gate'); paintCards(); paintPlay();
   say('Paused before the answer. Work it out, then choose Continue to the answer.');
+  if(!S.panel.classList.contains('lv-idle'))wake();   // shown controls fade off the question; faded ones stay faded
   const a=document.activeElement;
   if(S.mode!=='read'&&(!a||a===document.body||S.panel.contains(a)))S.gateBtn.focus({preventScroll:true});
 }
@@ -781,8 +782,10 @@ function paintPlay(){
 function paintCards(){
   if(!S.gateEl)return;
   S.gateEl.hidden=!S.gate; S.errEl.hidden=!S.err||!!S.gate; S.endEl.hidden=!S.ended||!!S.gate||S.err;
-  const card=!!S.gate||S.err||S.ended;
-  S.big.hidden=card||!S.video.paused;
+  // the practice card sits under the picture, so the paused question stays whole and bright; only the error and end
+  // cards lie on it
+  const card=!S.errEl.hidden||!S.endEl.hidden;
+  S.big.hidden=card||!!S.gate||!S.video.paused;
   S.stage.classList.toggle('lv-carded',card);
 }
 function paintMenu(){
@@ -800,14 +803,15 @@ function paintFs(){
   S.fsBtn.innerHTML=on?I.fsx:I.fs; const lab=on?'Exit full screen':'Full screen'; S.fsBtn.setAttribute('aria-label',lab); S.fsBtn.title=lab+' (F)';
   S.panel.classList.toggle('lv-fs',on);
 }
-// controls fade while the video plays and come back on any pointer move, tap or key
+// controls fade while the video plays, and at a practice pause (the question under them stays readable; Continue and
+// Replay are under the picture), and come back on any pointer move, tap or key
 function wake(){
   if(!S||!S.panel)return;
   S.panel.classList.remove('lv-idle'); clearTimeout(S.idleT);
-  if(!S.video.paused)S.idleT=setTimeout(idle,2600);
+  if(!S.video.paused||S.gate)S.idleT=setTimeout(idle,2600);
 }
 function idle(){
-  if(S.video.paused||S.menuOpen||S.scrub||S.gate||S.ended||S.bar.matches(':hover')||S.bar.querySelector(':focus-visible'))return wake();
+  if((S.video.paused&&!S.gate)||S.menuOpen||S.scrub||S.ended||S.bar.matches(':hover')||S.bar.querySelector(':focus-visible'))return wake();
   S.panel.classList.add('lv-idle'); hideTip();
 }
 function openMenu(){ S.menuOpen=true; S.menu.hidden=false; S.menu.style.maxHeight=Math.max(120,S.stage.clientHeight-64)+'px'; S.moreBtn.setAttribute('aria-expanded','true'); paintMenu(); S.menu.querySelector('button')?.focus({preventScroll:true}); }
@@ -873,7 +877,7 @@ function wire(){
     else seek(S.pendingT,'restore'); });
   v.addEventListener('play',()=>{ if(S.gate)return cont(); S.ended=false; S.touched=true; paintPlay(); loop(); wake(); emit(); });   // Play from system controls at the gate = Continue
   v.addEventListener('playing',()=>{ waiting(false); paintPlay(); });
-  v.addEventListener('pause',()=>{ wake(); paintPlay(); save(); paintIntro(); emit(); });
+  v.addEventListener('pause',()=>{ if(!S.gate)wake(); paintPlay(); save(); paintIntro(); emit(); });
   v.addEventListener('waiting',()=>waiting(true));
   v.addEventListener('canplay',()=>waiting(false));
   v.addEventListener('seeked',()=>{

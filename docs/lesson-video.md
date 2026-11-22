@@ -37,6 +37,8 @@ The map is JSON with exactly these top-level keys:
 
 `line` is a 1-based line in the original lesson source, not a rendered block ID. Times are seconds; intervals are ascending, do not overlap, and use an exclusive `end`. Covering the whole MP4 is preferred. Use `step` only where a verified derivation step is supported; otherwise use `null`. A practice gate's `pauseAt` and `revealAt` must both fall inside its segment, with the pause before the reveal. The map hash must match the current lesson exactly. The board's installed manifest validator enforces this structure during validation and import.
 
+At `pauseAt` the player stops on the question frame and shows its Your turn card (Continue to the answer, Replay the question) under the picture, never on it: the question stays whole and at full brightness, and the control bar fades off it as it does during playback, returning on any pointer move, tap or key. Only the end and error cards lie on the dimmed picture.
+
 The player's seek bar has one zone per lesson chapter, taken from the lesson's `## ` headings: a segment belongs to the last heading at or above its `line`, or to the chapter its label names ("Chapter 3 card", "Practice exam intro", "Quiz 1: …"), so a map whose lines drifted after an edit still lands in the right zone. Segments before the first `## ` heading form an Introduction zone, a chapter the video does not cover gets no zone, and practice pauses are not drawn on the bar.
 
 ## Captions
