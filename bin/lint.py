@@ -76,11 +76,12 @@ for m in re.finditer(r"\\(Large|LARGE|large|Huge|huge)(?![A-Za-z])", s):
 # official problems (TEMPLATES.md, Problems and solutions): every problem has a label, every src: file exists, and only a
 # verbatim official multiple-choice item may have other than four (or two) options
 import os
+from urllib.parse import unquote
 raw = open(sys.argv[1]).read()
 lesson_dir = os.path.dirname(os.path.abspath(sys.argv[1]))
 LABEL = re.compile(r"\[Official ·[^\]]*\]\(src:[^)]+\)|\*Written by Claude\*")
 def src_exists(ref):
-    ref = ref.split("#")[0]
+    ref = unquote(ref.split("#")[0])
     for base in (os.path.join(lesson_dir, "..", "sources"), os.path.join(lesson_dir, ".."), lesson_dir, os.path.join(lesson_dir, "..", "..")):
         if os.path.isfile(os.path.normpath(os.path.join(base, ref))):
             return True

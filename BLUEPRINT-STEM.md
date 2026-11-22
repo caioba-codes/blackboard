@@ -35,7 +35,7 @@ Inside a chapter, in this order:
 1. **The problem.** One official problem of this type, verbatim, with its label, in a `::: given` block.
 2. **What it asks.** In plain words, written for a student who does not know the fundamentals yet.
 3. **What you need.** Only the concepts and formulas this problem uses, each stated once.
-4. **Worked example A.** That problem solved from start to end. Every step is shown and labelled by what it does ("find the constructor that runs", "test the endpoints"). Each step has one line of why, and the final answer is boxed.
+4. **Worked example A.** That problem solved from start to end. Every step is shown and labelled by what it does ("find the constructor that runs", "test the endpoints"). Each step has one line of why, and the final answer is boxed. A code answer's final answer is the complete code block shown last under **Final answer**, with nothing boxed inside the code; a "what does this print" answer boxes the output.
 5. **Your turn.** An official near-copy, shown exactly as on the exam. The solution sits behind the step-by-step reveal.
 6. **Variations.** For each variation of this type that really appeared on a past exam:
    - what is different, and the one extra concept it needs;
