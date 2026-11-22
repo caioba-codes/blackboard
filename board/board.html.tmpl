@@ -2025,25 +2025,25 @@ const missedIds=(ids,out)=>ids.filter(id=>(out[id]||{}).result==='missed');
 const redoRowHtml=n=>`<span>${n} missed problem${n===1?'':'s'}</span> · <button type="button" class="rdgo">Redo ${n===1?'it':'them'}</button>`;
 const redoHeadHtml=(n,missed)=>n?`<span class="rdt">Redo · <span class="rdn">${missed} missed</span></span><button type="button" class="rdnext">Next round</button><button type="button" class="rdback">Back to lesson</button>`
   :`<span class="rdt">No misses left.</span><button type="button" class="rdback">Back to lesson</button>`;
-// blocks: the lesson's blocks in order, [{kind:'label'|'given'|'figure'|'other', own, items:[id]}], own when the block is a
-// check-in or a multiple choice by itself (not one inside a quiz). Returns the blocks shown whole (the problem before an
-// own block: back to its label, when that run holds a label or quoted text, not just figures) and the round's items.
+// blocks: the lesson's blocks in order, [{kind:'label'|'body'|'stop', own, items:[id]}]; own when the block is a check-in or
+// a multiple choice by itself, not one inside a quiz. Returns the round's items and the blocks shown whole: the problem an
+// own block answers, from its label (Official · … or Written by Claude) down, when no stop (a heading, another quiz item,
+// a worked example or a solution step) comes between.
 function redoPlan(blocks,ids){
   const want=new Set(ids), ctx=new Set(), items=[];
   blocks.forEach((b,i)=>{
     const hit=b.items.filter(id=>want.has(id)); if(!hit.length)return;
     hit.forEach(id=>items.push([i,id]));
     if(!b.own)return;
-    const run=[]; for(let k=i-1;k>=0&&['label','given','figure'].includes(blocks[k].kind);k--){ run.push(k); if(blocks[k].kind==='label')break; }
-    if(run.some(k=>blocks[k].kind!=='figure'))run.forEach(k=>ctx.add(k));
+    let k=i-1; while(k>=0&&blocks[k].kind==='body')k--;
+    if(k>=0&&blocks[k].kind==='label')for(;k<i;k++)ctx.add(k);
   });
   return {ctx:[...ctx].sort((a,b)=>a-b),items};
 }
 function blockKind(b){
-  const f=b.firstElementChild; if(!f||b.querySelector('h1,h2,h3,.check,.mcqi,.quiz'))return 'other';
-  if(f.matches('p.plabel')||(f.matches('p')&&f.firstChild===f.firstElementChild&&f.firstElementChild.matches('.plabel-i')))return 'label';
-  if(f.matches('blockquote.given'))return 'given';
-  return [...b.children].every(e=>e.matches('figure'))?'figure':'other';
+  if(b.querySelector('h1,h2,h3,.check,.mcqi,.quiz')||[...b.querySelectorAll('p > strong:first-child')].some(x=>/^(worked example|step\s*\d)/i.test(x.textContent.trim())))return 'stop';
+  const f=b.firstElementChild;
+  return f&&(f.matches('p.plabel')||(f.matches('p')&&f.firstChild===f.firstElementChild&&f.firstElementChild.matches('.plabel-i')))?'label':'body';
 }
 function redoApply(){
   main.querySelectorAll('.rd,.rd-path,.rd-ctx').forEach(e=>e.classList.remove('rd','rd-path','rd-ctx'));

@@ -31,6 +31,6 @@ ctx.outcomes['c-1h0fueu']={kind:'self',result:'got'};
 assert.deepEqual({...ctx.tocStats({blocks:[blk]})},{total:4,right:3},'changing Missed it to Got it adds a star');
 // wiring: XP reads the same outcomes; a render paints them, a reset refetches them after pending marks land
 assert(source.includes("const got=qs.filter(e=>itemResult(e)==='got').length+"));
-assert(source.includes("paintOutcomes(); if(r.reset)restoreOutcomes();"));
+assert(/\n  paintOutcomes\(\);[^\n]* if\(r\.reset\)restoreOutcomes\(\);\n/.test(source));
 assert(/async function restoreOutcomes\(\)\{\n  if\(!lessonId\)return;\n  await logQ;/.test(source));
 console.log('PASS: Got it counts in chapter stars and XP like a right multiple-choice pick');
