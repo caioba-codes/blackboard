@@ -464,13 +464,15 @@ html.redo #toc-ticks{display:none}
 /* step-by-step reveal */
 .rv .rv-off{display:none}
 /* step sources: a tagged phrase in the given card lights while the step that uses it is shown, hovered, tapped or focused */
-.given .gtag{border-radius:3px;transition:background-color .2s,color .2s,box-shadow .2s}
-.given .gtag.gon{color:var(--chalk);background:color-mix(in srgb,var(--acc) 48%,transparent);box-shadow:0 0 0 2px color-mix(in srgb,var(--acc) 48%,transparent);text-decoration:underline 2px color-mix(in srgb,var(--acc) 85%,var(--chalk));text-underline-offset:4px}
+.given .gtag,.mcqi .q .gtag{border-radius:3px;transition:background-color .2s,color .2s,box-shadow .2s}
+.given .gtag.gon,.mcqi .q .gtag.gon{color:var(--chalk);background:color-mix(in srgb,var(--acc) 48%,transparent);box-shadow:0 0 0 2px color-mix(in srgb,var(--acc) 48%,transparent);text-decoration:underline 2px color-mix(in srgb,var(--acc) 85%,var(--chalk));text-underline-offset:4px}
 .gsrcstep{cursor:pointer;border-radius:4px}
+.gline{position:absolute;left:0;right:0;pointer-events:none;border-radius:3px;background:color-mix(in srgb,var(--acc) 30%,transparent);box-shadow:inset 3px 0 0 color-mix(in srgb,var(--acc) 85%,var(--chalk))}
+.gchip code{font:500 11.5px/1.4 ui-monospace,Menlo,monospace;white-space:pre-wrap}
 .gsrcstep:focus-visible{outline:2px solid color-mix(in srgb,var(--acc) 60%,transparent);outline-offset:3px}
 .gchip{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:baseline;width:fit-content;max-width:100%;margin:2px 0 10px;padding:3px 11px;border:1px solid color-mix(in srgb,var(--acc) 40%,transparent);border-radius:999px;font:500 12.5px/1.45 var(--body);color:var(--chalk)}
 .gchip .gchl{font:600 10.5px/1.4 var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
-@media print{.gchip{display:none}.given .gtag.gon{background:none;box-shadow:none}}
+@media print{.gchip,.gline{display:none}.given .gtag.gon{background:none;box-shadow:none}}
 .rv .mathrow.rv-clip{transition:height .3s cubic-bezier(.2,.8,.2,1)}
 .rv-in{animation:rvin .45s ease-out both}
 @keyframes rvin{from{opacity:0;filter:blur(2px);transform:translateY(3px)}to{opacity:1;filter:none;transform:none}}
@@ -1895,16 +1897,25 @@ function wire(){
 // tapping it or focusing it lights its phrases in that problem's given card; when the card is off screen, a small chip
 // under the step quotes them instead of moving the page. A Your turn's steps are hidden until its answer opens, so
 // nothing lights before that.
-const GTAG=/\[([^\[\]\n]+?)\]\{#([A-Za-z][\w-]*)\}/g, GREF=/\{@([A-Za-z][\w-]*(?:\s+@?[A-Za-z][\w-]*)*)\}/g;
+// Code in the problem is never tagged: a step cites its lines instead, {@L3} or {@L3-5}; when the problem shows several
+// blocks, the fence names one (```java {#node}) and the step cites {@node:L3-5}. A ::: mcq stem may carry tags and code
+// too; its explanation cites them, so nothing lights before an answer is picked.
+const GTAG=/\[([^\[\]\n]+?)\]\{#([A-Za-z][\w-]*)\}/g, GREF=/\{@([A-Za-z][\w-]*(?::L\d+(?:-\d+)?)?(?:\s+@?[A-Za-z][\w-]*(?::L\d+(?:-\d+)?)?)*)\}/g;
+const GLINE=/^(?:([A-Za-z][\w-]*):)?L(\d+)(?:-(\d+))?$/, PCARD='.given, .mcqi .q';
 function srcIds(s){ return String(s||'').split(/\s+/).map(x=>x.replace(/^@/,'')).filter(Boolean); }
 function stripRefs(t){ return t.indexOf('{@')<0?t:t.replace(GREF,'').replace(/[ \t]+$/gm,''); }
 function texRefs(t){ return t.indexOf('{@')<0?t:t.replace(GREF,(m,ids)=>`\\htmlData{gref=${srcIds(ids).join(' ')}}{}`); }
 // tags and refs in markdown (math already slotted out); fenced code is left exactly as written
 function stepSrcMd(src){
   if(src.indexOf('{#')<0&&src.indexOf('{@')<0)return src;
-  return src.split(/(^[ \t]*```[^\n]*\n[\s\S]*?^[ \t]*```[ \t]*$)/m).map((part,i)=>i%2?part:part
+  return src.split(/(^[ \t]*```[^\n]*\n[\s\S]*?^[ \t]*```[ \t]*$)/m).map((part,i)=>i%2?codeName(part):part
     .replace(GTAG,(m,txt,id)=>`<span class="gtag" data-g="${id}">${txt}</span>`)
     .replace(GREF,(m,ids)=>`<span class="gref" data-refs="${srcIds(ids).join(' ')}"></span>`)).join('');
+}
+// a fence named for citing (```java {#node}): the name leaves the info string and the block is wrapped, its code unchanged
+function codeName(fence){
+  const m=fence.match(/^([ \t]*```[^\n{]*?)\s*\{#([A-Za-z][\w-]*)\}[ \t]*\n/); if(!m)return fence;
+  return `<div class="gcode" data-gcode="${m[2]}">\n\n${m[1]}\n${fence.slice(m[0].length)}\n\n</div>`;
 }
 // the tag ids one revealed piece cites: a prose line's refs, a whole display's, or one row of an aligned display
 function stepRefs(el,row){
@@ -1913,24 +1924,47 @@ function stepRefs(el,row){
   else { const g=(rvGroups(el)||[])[row]||[]; nodes=g.flatMap(c=>c.hosts.flatMap(h=>[...(h.matches('[data-gref]')?[h]:[]),...h.querySelectorAll('[data-gref]')])); }
   return [...new Set(nodes.flatMap(n=>srcIds(n.dataset.refs||n.dataset.gref)))];
 }
-// the tagged phrases for ids in the nearest problem above el: the last given card before el that holds the tag
+// the tagged phrases for ids in the problem above el: for each id, the last problem card (a given card or an mcq stem)
+// before el that holds it, so a problem quoted over several cards (two pages, two labels) lights in whichever card has it
+const before=(a,el)=>!!(a.compareDocumentPosition(el)&Node.DOCUMENT_POSITION_FOLLOWING);
 function srcTags(el,ids){
   const out=[];
-  ids.forEach(id=>{ let hit=null;
-    main.querySelectorAll('.given [data-g]').forEach(t=>{ if(t.dataset.g===id&&(t.compareDocumentPosition(el)&Node.DOCUMENT_POSITION_FOLLOWING))hit=t; });
-    if(hit)hit.closest('.given').querySelectorAll('[data-g]').forEach(t=>{ if(t.dataset.g===id&&!out.includes(t))out.push(t); }); });
+  ids.filter(id=>!GLINE.test(id)).forEach(id=>{ let hit=null;
+    main.querySelectorAll('[data-g]').forEach(t=>{ if(t.dataset.g===id&&t.closest(PCARD)&&before(t,el))hit=t; });
+    if(hit)hit.closest(PCARD).querySelectorAll('[data-g]').forEach(t=>{ if(t.dataset.g===id&&!out.includes(t))out.push(t); }); });
   return out;
 }
+// the code lines a step cites: {pre, from, to} with pre the named block, else the last code block in a problem card
+function srcLines(el,ids){
+  const out=[];
+  ids.forEach(id=>{ const m=id.match(GLINE); if(!m)return;
+    let pre=null; const sel=m[1]?`[data-gcode="${m[1]}"] pre`:PCARD.split(', ').map(c=>c+' pre').join(', ');
+    main.querySelectorAll(sel).forEach(p=>{ if(before(p,el))pre=p; });
+    if(pre)out.push({pre,from:+m[2],to:+(m[3]||m[2])}); });
+  return out;
+}
+// a band over lines from..to of a pre, drawn on top so the code itself is never rewritten
+function lineBand(pre,from,to){
+  const cs=getComputedStyle(pre), lh=parseFloat(cs.lineHeight)||parseFloat(cs.fontSize)*1.5, pad=parseFloat(cs.paddingTop)||0;
+  if(cs.position==='static')pre.style.position='relative';
+  const b=document.createElement('div'); b.className='gline gon';
+  b.style.top=(pad+(from-1)*lh)+'px'; b.style.height=((to-from+1)*lh)+'px';
+  pre.appendChild(b); return b;
+}
+function codeText(pre,from,to){ return (pre.textContent||'').split('\n').slice(from-1,to).join('\n'); }
 const GSRC={el:null,pin:false,key:''};
-function srcClear(){ main.querySelectorAll('.gtag.gon').forEach(t=>t.classList.remove('gon')); main.querySelectorAll('.gchip').forEach(c=>c.remove()); GSRC.el=null; GSRC.pin=false; GSRC.key=''; }
+function srcClear(){ main.querySelectorAll('.gtag.gon').forEach(t=>t.classList.remove('gon')); main.querySelectorAll('.gline').forEach(b=>b.remove()); main.querySelectorAll('.gchip').forEach(c=>c.remove()); GSRC.el=null; GSRC.pin=false; GSRC.key=''; }
 function srcLight(el,ids){
   srcClear(); if(!el||!ids||!ids.length)return;
-  const tags=srcTags(el,ids); if(!tags.length)return;
+  const tags=srcTags(el,ids), lines=srcLines(el,ids); if(!tags.length&&!lines.length)return;
   tags.forEach(t=>t.classList.add('gon')); GSRC.el=el;
-  const off=tags.filter(t=>{ const r=t.getBoundingClientRect(); return r.bottom<0||r.top>innerHeight; });
+  const bands=lines.map(l=>({el:lineBand(l.pre,l.from,l.to),text:codeText(l.pre,l.from,l.to)}));
+  const offscr=e=>{ const r=e.getBoundingClientRect(); return r.bottom<0||r.top>innerHeight; };
+  const off=tags.filter(offscr).map(t=>`<q>${esc(t.textContent.replace(/\s+/g,' ').trim())}</q>`)
+    .concat(bands.filter(b=>offscr(b.el)).map(b=>`<code>${esc(b.text)}</code>`));
   if(!off.length)return;
   const c=document.createElement('div'); c.className='gchip';
-  c.innerHTML=`<span class="gchl">From the problem</span>${off.map(t=>`<q>${esc(t.textContent.replace(/\s+/g,' ').trim())}</q>`).join('')}`;
+  c.innerHTML=`<span class="gchl">From the problem</span>${off.join('')}`;
   el.insertAdjacentElement('afterend',c);
 }
 // the step just revealed by Next step (its refs, if any); before step 1 and after Show all nothing is lit

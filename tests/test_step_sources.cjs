@@ -4,7 +4,9 @@ const source=fs.readFileSync(path.join(__dirname,'../board/board.html.tmpl'),'ut
 const grab=name=>{const a=source.indexOf('function '+name+'(');assert(a>0,name);const b=source.indexOf('\nfunction ',a+10);return source.slice(a,b);};
 const ctx={};vm.createContext(ctx);
 vm.runInContext(source.match(/^const GTAG=.*$/m)[0].replace(/^const /,'var '),ctx);
-for(const f of ['srcIds','stripRefs','texRefs','stepSrcMd','rvSrc'])vm.runInContext(grab(f),ctx);
+vm.runInContext(source.match(/^const GLINE=.*$/m)[0].replace(/^const /,'var '),ctx);
+vm.runInContext(source.match(/^const before=.*$/m)[0].replace(/^const /,'var '),ctx);
+for(const f of ['srcIds','stripRefs','texRefs','stepSrcMd','codeName','srcTags','srcLines','rvSrc'])vm.runInContext(grab(f),ctx);
 
 // tags wrap the problem's words without changing them
 const g=ctx.stepSrcMd('The machine [starts in state E]{#start} and must [output 1 on XYZ]{#out}.');
@@ -24,9 +26,36 @@ assert.equal(ctx.stripRefs('x &= E && \\text{start state} {@start}'),'x &= E && 
 assert.equal(ctx.texRefs('\\frac{1}{2}'),'\\frac{1}{2}');
 assert.deepEqual([...ctx.srcIds('@a  b @c')],['a','b','c']);
 
+// code lines: {@L3}, {@L3-5}, {@node:L2-4}; a named fence keeps its code, loses only the name from its info string
+assert.match(ctx.stepSrcMd('Line 3 builds the node. {@node:L2-4 @L3}'),/data-refs="node:L2-4 L3"/);
+const named='```java {#node}\nclass Node {\n  int v;\n}\n```';
+const wrapped=ctx.codeName(named);
+assert.equal(wrapped,'<div class="gcode" data-gcode="node">\n\n```java\nclass Node {\n  int v;\n}\n```\n\n</div>');
+assert.equal(ctx.codeName('```java\nint x;\n```'),'```java\nint x;\n```','an unnamed fence is untouched');
+assert.equal(JSON.stringify('L3 L3-5 node:L2'.split(' ').map(x=>[...x.match(ctx.GLINE).slice(1)])),JSON.stringify([[null,'3',null],[null,'3','5'],['node','2',null]]));
+assert(!ctx.GLINE.test('start'),'a word tag is not a line ref');
+
+// a tiny DOM: elements in document order, each knowing its card
+const FOLLOW=4; let order=0;
+const node=(o)=>Object.assign({pos:order++,compareDocumentPosition(other){return other.pos>this.pos?FOLLOW:2;}},o);
+const card=(sel,kids)=>{ const c=node({sel,kids:[]}); kids.forEach(k=>{k.card=c;c.kids.push(k);}); c.querySelectorAll=()=>c.kids.filter(k=>k.dataset&&k.dataset.g); return c; };
+// a problem quoted over two pages: two labels, two given cards, each with its own tag; then an mcq stem with a tag
+const t1=node({dataset:{g:'start'},closest:()=>c1}), c1=card('.given',[t1]);
+const t2=node({dataset:{g:'out'},closest:()=>c2}), c2=card('.given',[t2]);
+const pre1=node({}), pre2=node({named:'node'});
+const step=node({});
+const mt=node({dataset:{g:'stem'},closest:()=>mc}), mc=card('.mcqi .q',[mt]);
+ctx.Node={DOCUMENT_POSITION_FOLLOWING:FOLLOW};
+ctx.main={querySelectorAll:q=>q==='[data-g]'?[t1,t2,mt]:q.includes('data-gcode="node"')?[pre2]:[pre1,pre2]};
+assert.equal(ctx.srcTags(step,['start','out']).map(t=>t.dataset.g).join(),'start,out','a step cites tags on both pages of its problem');
+assert.equal(ctx.srcTags(step,['stem']).length,0,'a later mcq stem is not part of this problem');
+assert.equal(ctx.srcLines(step,['node:L2-4'])[0].pre,pre2,'a named block');
+assert.deepEqual(JSON.parse(JSON.stringify(ctx.srcLines(step,['L3']).map(l=>[l.from,l.to]))),[[3,3]],'the last code block before the step');
+assert.equal(ctx.srcTags(step,['L3']).length,0,'line refs are not tags');
+
 // Next step lights the refs of the step just shown; Show all / before step 1 lights nothing
 const lit=[];let cleared=0;
-Object.assign(ctx,{GSRC:{el:null},srcLight:(el,ids)=>lit.push([el.name,[...ids]]),srcClear:()=>{cleared++;},
+delete ctx.main; Object.assign(ctx,{GSRC:{el:null},srcLight:(el,ids)=>lit.push([el.name,[...ids]]),srcClear:()=>{cleared++;},
   stepRefs:(el,row)=>(el.refs&&el.refs[row==null?'all':row])||[]});
 const box={contains:()=>true,_rv:{k:1,items:[{el:{name:'lead',refs:{all:['arr']}}},{el:{name:'grid',refs:{all:['start']}}},{el:{name:'rows',refs:{0:[],1:['out']}}}],
   plan:{lead:[{i:0,row:null}],steps:[[{i:1,row:null}],[{i:2,row:0}],[{i:2,row:1}]]}}};
@@ -42,7 +71,7 @@ assert(source.includes("if(!d.open&&GSRC.el&&d.contains(GSRC.el))srcClear();"));
 assert(source.includes("whyWire(); srcWire();"));
 assert(source.includes("marked.parse(stepSrcMd(s2)"));
 assert(source.includes("main.addEventListener('focusin'")&&source.includes("main.addEventListener('click',e=>{ const h=srcHost"),'keyboard and tap');
-assert(/@media print\{\.gchip\{display:none\}/.test(source),'print shows no chip');
+assert(/@media print\{\.gchip,\.gline\{display:none\}/.test(source),"print shows no chip and no line band");
 // video engine: quoted text shows tags as lightable words and never shows a ref; S.src lights only inside its spans
 const engine=fs.readFileSync(path.join(__dirname,'../video/engine.js'),'utf8');
 const vctx={};vm.createContext(vctx);

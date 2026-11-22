@@ -31,7 +31,7 @@ The user keeps studying on the live board (port 7331) while the skill is being c
 
 # Lesson writer (required)
 
-Before a new lesson or substantial rewrite, read [LESSON-WRITER.md](./LESSON-WRITER.md): pick the best model online, a separate writer agent writes, a fresh tone editor on the same model edits prose, and answers are recomputed independently before publishing. Every solved step that uses a fact from the problem says where it is and cites the tagged phrase, so the board can light it (TEMPLATES.md **Step sources**).
+Before a new lesson or substantial rewrite, read [LESSON-WRITER.md](./LESSON-WRITER.md): pick the best model online, a separate writer agent writes, a fresh tone editor on the same model edits prose, and answers are recomputed independently before publishing. Every solved step that uses a fact from the problem says where it is and cites the tagged phrase or the problem's code lines, so the board can light it (TEMPLATES.md **Step sources**).
 
 # Full lesson video (default)
 

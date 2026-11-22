@@ -122,6 +122,21 @@ These rules apply to every blueprint that uses official problems (STEM and human
   E &\xrightarrow{1} B && \text{the output needs 101 to begin with 1} {@out}
   \end{aligned}$$
   ```
+
+  A problem quoted over two pages (two labels, two given cards, nothing else between them) is one problem: a step may cite a tag in either card. Code in the problem is never tagged; a step cites its lines with `{@L3}` or `{@L3-5}`, and the board lights those lines. When the problem shows more than one code block, name the one cited in its fence and cite `{@name:L3-5}`. A `::: mcq` stem may carry tags and code too, cited from its `why:` lines, so nothing lights before an answer is picked. `bin/lint.py` checks that each cited range exists.
+
+  ````md
+  ::: given
+  ```java {#node}
+  class Node {
+      int val;
+      Node next;
+  }
+  ```
+  :::
+
+  `next` links one node to the following one. {@node:L3}
+  ````
 - **Solutions open one step at a time.** The board steps every solution that the student works out alone (a `::: checkin` answer, an `::: mcq` `why:` with display math): the lead sentence and the first piece (the boxed setup, else row 1 with its reason), then **Next step** adds one aligned row with its reason and the last press shows the boxed answer; **Show all** opens everything. A wrong pick shows the verdict and the lead sentence as its hint first. Taught worked examples are never stepped. No markup is needed: write the solution in the format above and the steps come from its rows, so keep one operation per row and the boxed answer on the last row. A code answer steps by its code blocks: write each part as a label line naming its subgoal ("Read the input.") followed by its code block, and the board shows one label with its code per **Next step**, ending with the complete code under a **Final answer** label.
 - **No exam logistics.** No date, time, room, closed-book or grading-policy paragraph. The topic scope is the breakdown table. A rule the grader takes points off for becomes one `::: callout` instead (see **What a lesson leaves out**).
 - **No inline provenance.** No "officially stated" tags in the body. Where things came from goes in the `::: sources` drop-down under Contents. The one exception is the problem label below. Two lines are required content, not provenance, and are never cut, by the writer or the tone editor: the estimate line under an Exam Topics Breakdown whose split is estimated, and the line in Sources saying no past exam of this test exists. Step sources (below) are teaching, not provenance.
@@ -191,7 +206,7 @@ Block syntax the renderer understands:
 - `::: checkin … :::` with `- question || answer` items → Notion-style toggles. An item may continue on lines indented two spaces and hold a fenced code block; the first `||` outside code splits question from answer.
 - `units: …` on the line after a display equation → "symbols & units" toggle.
 - `::: predict` / option lines / `reveal: …` / `:::` → prediction buttons; the reveal opens after a click. Older lessons only: new lessons do not write one.
-- `[words]{#id}` inside a `::: given` card / `{@id}` on a solution step → step sources: the step lights the tagged words of its problem (**Problems and solutions**, Step sources). Lessons without them render as before.
+- `[words]{#id}` inside a `::: given` card or `::: mcq` stem / `{@id}`, `{@L3-5}` or `{@name:L3-5}` on a solution step → step sources: the step lights the tagged words or code lines of its problem (**Problems and solutions**, Step sources). Lessons without them render as before.
 - `\why{math}{rule}` inside any `$…$` → the math with a dotted underline; a tap shows the rule (BLUEPRINT-STEM.md **STEM writing rules**).
 - `::: sheet` / `::: group <label>` cards / `:::` → a cheat-sheet chapter: cards of formulas with small-caps labels, two columns when there is room (BLUEPRINT-STEM.md **STEM writing rules**).
 - `::: big` / a display or table / `:::` → size level 1 (the chapter's fundamental rule); `::: key` → level 2 (a tool formula). See BLUEPRINT-STEM.md **STEM writing rules**.
