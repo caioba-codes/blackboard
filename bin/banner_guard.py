@@ -50,24 +50,16 @@ def locked():
         fcntl.flock(f, fcntl.LOCK_EX)
         yield
 
-EXAMPLES = (ROOT / 'examples').resolve()
-
-def exempt(path):
-    # The skill's model lessons (examples/) are copies of a real lesson and may share its banner; test fixtures are not lessons.
-    p = Path(path).resolve()
-    return p.is_relative_to(EXAMPLES) or any(seg in p.as_posix() for seg in ('/blackboard/examples/', '/blackboard/board/fixtures/'))
-
 def conflicts(owner, candidate, include_reservations=True):
-    if exempt(owner): return None
     owner = str(Path(owner).resolve())
     for p in lessons(owner):
-        if str(p) != owner and not exempt(p) and candidate & keys(p): return str(p)
+        if str(p) != owner and candidate & keys(p): return str(p)
     if include_reservations:
         try: reservations = json.loads((HOME / 'banner-reservations.json').read_text())
         except FileNotFoundError: reservations = {}
         for p, entry in reservations.items():
             # Keep only real owners: removed lessons do not reserve banners forever.
-            if p != owner and Path(p).is_file() and not exempt(p) and candidate.intersection(entry): return p
+            if p != owner and Path(p).is_file() and candidate.intersection(entry): return p
     return None
 
 def claim(owner, data, source, credit, out, lid):
@@ -97,7 +89,6 @@ def claim(owner, data, source, credit, out, lid):
 def audit():
     seen, errors = {}, []
     for p in lessons():
-        if exempt(p): continue
         fm = frontmatter(p)
         if fm.get('plain') == 'true': continue
         if not fm.get('photo'):

@@ -8,7 +8,7 @@ Prints {"text": ..., "term": ..., "via": "lesson"|"local"|"cli"}.
 
 Nothing is written to the lesson file: this feeds a transient popup, so it is built to come
 back fast, in three tiers, cheapest first:
-  lesson  the lesson (or the workspace GLOSSARY.md) already defines the term -> instant, no model
+  lesson  the lesson already defines the term -> instant, no model
   local   Ollama with thinking off -> ~2-3 s warm
   cli     claude -p -> 12-20 s, only when Ollama is not running
 """
@@ -102,7 +102,7 @@ def from_lesson(s, t):
         pats += [
             rf"^\|\s*{e}\s*\|\s*(?P<d>[^|\n]+?)\s*\|",            # | Term | definition |
             rf"^\*\*{e}\*\*\s*[:—-]\s*(?P<d>[^\n]+)",         # **Term** — definition
-            rf"^\*\*{e}\*\*:\s*\n(?P<d>[^\n*_][^\n]*)",            # GLOSSARY.md: **Term**:\ndefinition
+            rf"^\*\*{e}\*\*:\s*\n(?P<d>[^\n*_][^\n]*)",            # **Term**:\ndefinition
             rf"^{e}\s*[:—]\s*(?P<d>[^\n]{{12,}})",            # Term: definition
         ]
     for p in pats:
@@ -116,14 +116,6 @@ def from_lesson(s, t):
 
 
 hit = from_lesson(src, text)
-if not hit:
-    # the workspace glossary, if this lesson does not define it
-    gl = os.path.join(os.path.dirname(os.path.dirname(path)), "GLOSSARY.md")
-    if os.path.exists(gl):
-        try:
-            hit = from_lesson(open(gl).read(), text)
-        except Exception:
-            hit = None
 if hit:
     print(json.dumps({"text": hit, "term": text, "via": "lesson"})); sys.exit(0)
 

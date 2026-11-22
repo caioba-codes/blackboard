@@ -8,9 +8,10 @@ Routes
   GET  /<prefix>[/N]     short link: unique slug prefix -> /w/<slug>/lessons[/000N] (e.g. /m/3)
   GET  /w/<slug>/        board page pinned to one workspace: follows that workspace's current lesson
   GET  /w/<slug>/lessons/NNNN, /w/<slug>/assets/<file>, and every /api route accepts ?ws=<slug>
-  GET  /api/state        {ws, slug, current, page_version, lessons:[...], sequence:{title,total,lessons:[...]}, brainstorm:{lesson,lines,rev}, workspaces:[{slug,name,path,current,count,last,lessons,sequence}]}
+  GET  /api/state        {ws, slug, current, page_version, lessons:[...], sequence:{title,total,lessons:[...]}, writing:{chapters,finished,total,eta_s}|null, workspaces:[{slug,name,path,current,count,last,lessons,sequence}]}
   GET  /api/lesson?id=NNNN&from=N&hash=H   {text, offset, reset}  (text = new bytes cut at last blank line)
-  GET  /api/video-status?id=NNNN   live progress of the lesson's video while it is made (bin/video_status.py status)
+  GET  /api/video-status?id=NNNN[&chapter=N]   live progress of the lesson's (or one chapter's) video while it is made (bin/video_status.py status)
+  GET  /api/lesson-video-captions?id=NNNN   the chapter videos' caption tracks on the playlist's clock
   GET  /events?id=NNNN   SSE: `change` when the lesson file or state changes
   GET  /assets/<file>    $WS/lessons/assets/<file>
   GET  /api/sources?id=NNNN   {files: [...]} every file the lesson cites, with its viewer URL
@@ -18,7 +19,7 @@ Routes
   GET  /source/<path>    a cited file (pdf, image, text), only from inside the course folder
   GET  /anim/<path>      board/anim/<path>
   GET  /end-card.jpg     the optional end-of-lesson photo (end_card_path()), 404 when none is configured
-  POST /ask              {kind,...} -> appended to queue.jsonl, wake per host
+  POST /ask              {kind,...} -> appended to queue.jsonl; explain/quiz/grade run headless, the rest is logged
   POST /open             {urls:[board lesson URLs]} -> opened in the default browser (for in-app panes that cannot open tabs)
   POST /define           {text,line,block} -> {text} dictionary definition of 1-5 selected words, in lesson context
   GET  /api/chat?lesson=NNNN        the lesson's chat thread {session_id, messages, running, pending}
@@ -30,7 +31,7 @@ Routes
   GET  /api/flags?all=1  every workspace's flags {folders:[{slug, name, flags}]} for the hub's All flagged view
   POST /flags            {ws, op: add|remove|note|move, ...} -> $WS/learning-records/flags.json
   GET  /health           ok
-State lives in $BLACKBOARD_HOME/state.json (default ~/.cache/blackboard), written by render.sh: {ws, current, agent, layout, cli_surface, opened}
+State lives in $BLACKBOARD_HOME/state.json (default ~/.cache/blackboard), written by render.sh: {ws, current, agent, layout, opened}
 """
 import unicodedata
 import calendar, fnmatch, glob, hashlib, json, os, re, shutil, signal, subprocess, sys, tempfile, threading, time, urllib.parse, uuid
@@ -42,6 +43,7 @@ ROOT = os.path.dirname(BOARD)
 HOME_DIR = os.environ.get("BLACKBOARD_HOME") or os.path.join(os.path.expanduser("~"), ".cache", "blackboard")
 sys.path.insert(0, os.path.join(ROOT, "bin"))
 import video_status  # noqa: E402  (bin/video_status.py: progress computed from the video project's files)
+import lesson_chapters  # noqa: E402  (bin/lesson_chapters.py: chapter spans and hashes for chapter videos)
 os.makedirs(HOME_DIR, exist_ok=True)
 STATE = os.path.join(HOME_DIR, "state.json")
 QUEUE = os.path.join(HOME_DIR, "queue.jsonl")
@@ -209,81 +211,177 @@ def lesson_path(lid, wsp=None):
     return None
 
 
+def verify_video(wsp, slug, key, source, extra=None):
+    """Verified, workspace-local media metadata for the map reference/video-<key>.json, checked against `source`
+    (the bytes its lines and SHA refer to: the lesson, or one chapter's text). None when there is no map;
+    raises ValueError when it is invalid. `extra` names the map's one additional key and its required value."""
+    workspace = os.path.realpath(wsp)
+    reference = os.path.realpath(os.path.join(wsp, "reference"))
+    manifest_path = os.path.realpath(os.path.join(reference, f"video-{key}.json"))
+    if not reference.startswith(workspace + os.sep) or not manifest_path.startswith(reference + os.sep) or not os.path.isfile(manifest_path):
+        return None
+    with open(manifest_path, encoding="utf-8") as f:
+        manifest = json.load(f)
+    if not isinstance(manifest, dict) or manifest.get("version") != 1 or isinstance(manifest.get("version"), bool):
+        raise ValueError
+    keys = {"version", "lessonId", "lessonSha256", "video", "duration", "captionsBurnedIn", "segments"}
+    if set(manifest) != keys | (set(extra) if extra else set()):
+        raise ValueError
+    for k, v in (extra or {}).items():
+        if manifest.get(k) != v or isinstance(manifest.get(k), bool):
+            raise ValueError
+    source_hash = manifest["lessonSha256"]
+    if manifest.get("lessonId") != key[:4] or not isinstance(source_hash, str) or not re.fullmatch(r"[0-9a-fA-F]{64}", source_hash):
+        raise ValueError
+    video = manifest.get("video")
+    if not isinstance(video, str) or video != f"{key}-lecture.mp4":
+        raise ValueError
+    assets = os.path.realpath(os.path.join(wsp, "lessons", "assets"))
+    media = os.path.realpath(os.path.join(assets, video))
+    if not assets.startswith(workspace + os.sep) or not media.startswith(assets + os.sep) or not os.path.isfile(media):
+        raise ValueError
+    duration = manifest.get("duration")
+    if isinstance(duration, bool) or not isinstance(duration, (int, float)) or not math.isfinite(duration) or duration <= 0:
+        raise ValueError
+    if not isinstance(manifest.get("captionsBurnedIn"), bool):
+        raise ValueError
+    segments = manifest.get("segments")
+    if not isinstance(segments, list) or not segments:
+        raise ValueError
+    mapping_valid = hashlib.sha256(source).hexdigest().lower() == source_hash.lower()
+    line_count = len(source.decode("utf-8").splitlines())
+    seen, previous_end = set(), 0
+    for segment in segments:
+        if not isinstance(segment, dict):
+            raise ValueError
+        if not {"id", "label", "start", "end", "line"} <= set(segment) or set(segment) - {"id", "label", "start", "end", "line", "step", "practice"}:
+            raise ValueError
+        sid, label = segment.get("id"), segment.get("label")
+        if not isinstance(sid, str) or not sid.strip() or sid in seen or not isinstance(label, str) or not label.strip():
+            raise ValueError
+        seen.add(sid)
+        start, end = segment.get("start"), segment.get("end")
+        if any(isinstance(x, bool) or not isinstance(x, (int, float)) or not math.isfinite(x) for x in (start, end)):
+            raise ValueError
+        if start < previous_end or end <= start or end > duration + 0.01:
+            raise ValueError
+        previous_end = end
+        line, step = segment.get("line"), segment.get("step")
+        if isinstance(line, bool) or not isinstance(line, int) or line < 1 or (mapping_valid and line > line_count):
+            raise ValueError
+        if step is not None and (isinstance(step, bool) or not isinstance(step, int) or step < 1):
+            raise ValueError
+        practice = segment.get("practice")
+        if practice is not None:
+            if not isinstance(practice, dict) or set(practice) != {"pauseAt", "revealAt"}:
+                raise ValueError
+            pause, reveal = practice["pauseAt"], practice["revealAt"]
+            if any(isinstance(x, bool) or not isinstance(x, (int, float)) or not math.isfinite(x) for x in (pause, reveal)):
+                raise ValueError
+            if not start <= pause < reveal <= end:
+                raise ValueError
+    url = f"/w/{urllib.parse.quote(slug, safe='')}/assets/{video}" if slug else f"/assets/{video}"
+    return dict(manifest, available=True, mappingValid=mapping_valid, videoUrl=url)
+
+
+def lesson_source(lid, wsp):
+    """The lesson's bytes, or None when the lesson is missing or outside the workspace."""
+    if not re.fullmatch(r"\d{4}", str(lid)):
+        return None
+    lesson = lesson_path(lid, wsp)
+    if not lesson or not os.path.realpath(lesson).startswith(os.path.realpath(wsp) + os.sep):
+        return None
+    with open(lesson, "rb") as f:
+        return f.read()
+
+
+def chapter_video(lid, n, wsp, slug=""):
+    """One chapter's installed video (video-NNNN-chNN.json): its lines count from the chapter's first line and its
+    SHA is the chapter text's, so edits elsewhere in the lesson leave it valid."""
+    try:
+        source = lesson_source(lid, wsp)
+        if source is None:
+            return {"available": False, "error": "Lesson not found."}
+        text = source.decode("utf-8")
+        if not 1 <= n <= len(lesson_chapters.spans(text)):
+            return {"available": False, "error": "No such chapter."}
+        found = verify_video(wsp, slug, lesson_chapters.key(lid, n), lesson_chapters.chapter_text(text, n).encode("utf-8"), {"chapter": n})
+        return found or {"available": False}
+    except (OSError, UnicodeError, ValueError, TypeError, KeyError, json.JSONDecodeError):
+        return {"available": False, "error": "Chapter video manifest is invalid."}
+
+
+def chapter_videos(lid, wsp, slug=""):
+    """The lesson's chapter videos joined into one playlist manifest: `parts` (one file per ready chapter, with its
+    offset), segments on the playlist's clock with absolute lesson lines, and `chapters` (ready, stale, making or
+    missing per ## chapter). None when the lesson has no chapter map or chapter project at all."""
+    source = lesson_source(lid, wsp)
+    if source is None:
+        return None
+    text = source.decode("utf-8", "replace")
+    spans, titles = lesson_chapters.spans(text), lesson_chapters.titles(text)
+    ref = os.path.join(wsp, "reference")
+    keys = [lesson_chapters.key(lid, n) for n in range(1, len(spans) + 1)]
+    if not any(os.path.isfile(os.path.join(ref, f"video-{k}.json")) or os.path.isfile(os.path.join(ref, video_status.POINTER.format(k))) for k in keys):
+        return None
+    parts, segments, chapters, t = [], [], [], 0.0
+    for n, (key, (first, _), title) in enumerate(zip(keys, spans, titles), 1):
+        cv = chapter_video(lid, n, wsp, slug)
+        state = "ready" if cv.get("available") and cv.get("mappingValid") else "stale" if cv.get("available") else "missing"
+        chapters.append({"chapter": n, "title": title, "key": key, "state": state})
+        if state != "ready":
+            continue
+        parts.append({"chapter": n, "url": cv["videoUrl"], "offset": round(t, 3), "duration": cv["duration"],
+                      "captionsUrl": cv["videoUrl"][:-len(".mp4")] + ".captions.json"})
+        for seg in cv["segments"]:
+            p = seg.get("practice")
+            segments.append(dict(seg, id=f"ch{n:02d}-{seg['id']}", start=round(seg["start"] + t, 3), end=round(seg["end"] + t, 3),
+                                 line=seg["line"] + first - 1,
+                                 practice={"pauseAt": round(p["pauseAt"] + t, 3), "revealAt": round(p["revealAt"] + t, 3)} if p else None))
+        chapters[-1]["offset"] = round(t, 3)
+        t += cv["duration"]
+    out = {"available": False, "chapters": chapters}
+    if parts:
+        q = f"?id={lid}" + (f"&ws={urllib.parse.quote(slug, safe='')}" if slug else "")
+        out.update(available=True, mappingValid=True, version=1, lessonId=lid, video=parts[0]["url"].rsplit("/", 1)[-1],
+                   lessonSha256=hashlib.sha256("".join(lesson_chapters.chapter_sha(text, c["chapter"]) for c in chapters if c["state"] == "ready").encode()).hexdigest(),
+                   duration=round(t, 3), captionsBurnedIn=False, segments=segments, parts=parts, videoUrl=parts[0]["url"],
+                   captionsUrl="/api/lesson-video-captions" + q)
+    return out
+
+
+def chapter_captions(lid, wsp, slug=""):
+    """The playlist's caption track: each ready chapter's track shifted by its offset."""
+    joined = chapter_videos(lid, wsp, slug)
+    if not joined or not joined.get("available"):
+        return {"available": False}
+    cues = []
+    for part in joined["parts"]:
+        path = os.path.join(wsp, "lessons", "assets", part["captionsUrl"].rsplit("/", 1)[-1])
+        try:
+            with open(path, encoding="utf-8") as f:
+                track = json.load(f)
+        except (OSError, ValueError):
+            continue
+        for c in track.get("cues") or []:
+            if isinstance(c, dict) and all(isinstance(c.get(k), (int, float)) for k in ("s", "e")):
+                cues.append(dict(c, s=round(c["s"] + part["offset"], 3), e=round(c["e"] + part["offset"], 3)))
+    return {"version": 1, "lessonId": lid, "video": joined["video"], "duration": joined["duration"], "cues": cues}
+
+
 def lesson_video(lid, wsp, slug=""):
-    """Return only verified, workspace-local media metadata to the lesson page."""
+    """Return only verified, workspace-local media metadata to the lesson page: the whole-lesson video when one is
+    installed (video-NNNN.json), else the ready chapter videos as one playlist."""
     if not re.fullmatch(r"\d{4}", lid):
         return {"available": False, "error": "Invalid lesson id."}
-    lesson = lesson_path(lid, wsp)
-    if not lesson:
-        return {"available": False, "error": "Lesson not found."}
-    workspace = os.path.realpath(wsp)
-    if not os.path.realpath(lesson).startswith(workspace + os.sep):
-        return {"available": False, "error": "Lesson video manifest is invalid."}
-    reference = os.path.realpath(os.path.join(wsp, "reference"))
-    manifest_path = os.path.realpath(os.path.join(reference, f"video-{lid}.json"))
-    if not reference.startswith(workspace + os.sep) or not manifest_path.startswith(reference + os.sep) or not os.path.isfile(manifest_path):
-        return {"available": False}
     try:
-        with open(manifest_path, encoding="utf-8") as f:
-            manifest = json.load(f)
-        if not isinstance(manifest, dict) or manifest.get("version") != 1 or isinstance(manifest.get("version"), bool):
-            raise ValueError
-        if set(manifest) != {"version", "lessonId", "lessonSha256", "video", "duration", "captionsBurnedIn", "segments"}:
-            raise ValueError
-        source_hash = manifest["lessonSha256"]
-        if manifest.get("lessonId") != lid or not isinstance(source_hash, str) or not re.fullmatch(r"[0-9a-fA-F]{64}", source_hash):
-            raise ValueError
-        video = manifest.get("video")
-        if not isinstance(video, str) or video != f"{lid}-lecture.mp4":
-            raise ValueError
-        assets = os.path.realpath(os.path.join(wsp, "lessons", "assets"))
-        media = os.path.realpath(os.path.join(assets, video))
-        if not assets.startswith(workspace + os.sep) or not media.startswith(assets + os.sep) or not os.path.isfile(media):
-            raise ValueError
-        duration = manifest.get("duration")
-        if isinstance(duration, bool) or not isinstance(duration, (int, float)) or not math.isfinite(duration) or duration <= 0:
-            raise ValueError
-        if not isinstance(manifest.get("captionsBurnedIn"), bool):
-            raise ValueError
-        segments = manifest.get("segments")
-        if not isinstance(segments, list) or not segments:
-            raise ValueError
-        with open(lesson, "rb") as f:
-            source = f.read()
-        mapping_valid = hashlib.sha256(source).hexdigest().lower() == source_hash.lower()
-        line_count = len(source.decode("utf-8").splitlines())
-        seen, previous_end = set(), 0
-        for segment in segments:
-            if not isinstance(segment, dict):
-                raise ValueError
-            if not {"id", "label", "start", "end", "line"} <= set(segment) or set(segment) - {"id", "label", "start", "end", "line", "step", "practice"}:
-                raise ValueError
-            sid, label = segment.get("id"), segment.get("label")
-            if not isinstance(sid, str) or not sid.strip() or sid in seen or not isinstance(label, str) or not label.strip():
-                raise ValueError
-            seen.add(sid)
-            start, end = segment.get("start"), segment.get("end")
-            if any(isinstance(x, bool) or not isinstance(x, (int, float)) or not math.isfinite(x) for x in (start, end)):
-                raise ValueError
-            if start < previous_end or end <= start or end > duration + 0.01:
-                raise ValueError
-            previous_end = end
-            line, step = segment.get("line"), segment.get("step")
-            if isinstance(line, bool) or not isinstance(line, int) or line < 1 or (mapping_valid and line > line_count):
-                raise ValueError
-            if step is not None and (isinstance(step, bool) or not isinstance(step, int) or step < 1):
-                raise ValueError
-            practice = segment.get("practice")
-            if practice is not None:
-                if not isinstance(practice, dict) or set(practice) != {"pauseAt", "revealAt"}:
-                    raise ValueError
-                pause, reveal = practice["pauseAt"], practice["revealAt"]
-                if any(isinstance(x, bool) or not isinstance(x, (int, float)) or not math.isfinite(x) for x in (pause, reveal)):
-                    raise ValueError
-                if not start <= pause < reveal <= end:
-                    raise ValueError
-        url = f"/w/{urllib.parse.quote(slug, safe='')}/assets/{video}" if slug else f"/assets/{video}"
-        return dict(manifest, available=True, mappingValid=mapping_valid, videoUrl=url)
+        source = lesson_source(lid, wsp)
+        if source is None:
+            return {"available": False, "error": "Lesson not found."}
+        whole = verify_video(wsp, slug, lid, source)
+        if whole:
+            return whole
+        return chapter_videos(lid, wsp, slug) or {"available": False}
     except (OSError, UnicodeError, ValueError, TypeError, KeyError, json.JSONDecodeError):
         return {"available": False, "error": "Lesson video manifest is invalid."}
 
@@ -632,6 +730,68 @@ def cut_at_blank(text):
     return head
 
 
+# While a lesson is being written (render.sh --live), the page shows the finished chapters and a quiet row for each
+# planned one. The plan is the lesson's Contents block; a chapter is finished once the next `##` heading (or the end
+# of the lesson) is written. Heading times are first-seen times in this bridge, so an ETA needs two chapters that
+# finished while the bridge was watching.
+WRITE_SEEN = {}
+WRITE_LOCK = threading.Lock()
+
+
+def planned_chapters(text):
+    """Chapter titles listed in the `::: contents` block, in order."""
+    m = re.search(r"(?ms)^::: contents[^\n]*\n(.*?)^:::\s*$", text)
+    out = []
+    for line in (m.group(1).splitlines() if m else []):
+        item = re.match(r"\s*\d+\.\s*(?:\[(.+?)\]\([^)]*\)|(.+?))(?:\s+[—–-]\s+.*)?$", line)
+        if item:
+            out.append((item.group(1) or item.group(2) or "").strip())
+    return [t for t in out if t]
+
+
+def written_chapters(text):
+    """`##` headings outside fenced code, in order."""
+    heads, fence = [], False
+    for line in text.splitlines():
+        if line.lstrip().startswith("```"):
+            fence = not fence
+        elif not fence and line.startswith("## "):
+            heads.append(line[3:].strip())
+    return heads
+
+
+def write_progress(path, streaming, now=None):
+    """{"chapters": [{title, state}], "finished", "total", "eta_s"} while the lesson is live, else None."""
+    now = time.time() if now is None else now
+    with WRITE_LOCK:
+        if not streaming or not path or not os.path.isfile(path):
+            WRITE_SEEN.pop(path, None)
+            return None
+        text = open(path, encoding="utf-8", errors="replace").read()
+        plan, heads = planned_chapters(text), written_chapters(text)
+        seen = WRITE_SEEN.setdefault(path, {})
+        batch = [h for h in heads if h not in seen]
+        for h in batch:
+            seen[h] = (now, len(batch) == 1)   # (first seen, seen alone: its time is real)
+    finished = max(0, len(heads) - 1)
+    key = lambda t: re.sub(r"\W+", " ", t).strip().lower()
+    written = {key(h) for h in heads}
+    chapters = [{"title": h, "state": "done" if i < finished else "writing"} for i, h in enumerate(heads)]
+    chapters += [{"title": t, "state": "planned"} for t in plan if key(t) not in written][: max(0, len(plan) - len(heads))]
+    durations = []
+    for a, b in zip(heads, heads[1:]):
+        (ta, ra), (tb, rb) = seen.get(a, (0, False)), seen.get(b, (0, False))
+        if ra and rb and tb > ta:
+            durations.append(tb - ta)
+    eta = None
+    if finished >= 2 and len(durations) >= 2:
+        avg = sum(durations) / len(durations)
+        left = len(chapters) - finished
+        started = seen.get(heads[-1], (now, False))[0] if heads else now
+        eta = max(avg * (left - 1), avg * left - (now - started))
+    return {"chapters": chapters, "finished": finished, "total": len(chapters), "eta_s": None if eta is None else round(eta)}
+
+
 def read_lesson(lid, frm, h, wsp=None):
     p = lesson_path(lid, wsp)
     if not p:
@@ -645,35 +805,6 @@ def read_lesson(lid, frm, h, wsp=None):
         return {"reset": False, "text": complete, "offset": end, "hash": hashlib.md5(data[:end]).hexdigest()}
     text = data.decode("utf-8", "replace")
     return {"reset": True, "text": text, "offset": len(data), "hash": hashlib.md5(data).hexdigest()}
-
-
-def host_command(req):
-    """Build the agent command for a queue item."""
-    agent = state().get("agent", "claude")
-    prefix = "$blackboard" if agent == "codex" else "/blackboard"
-    k = req.get("kind")
-    q = lambda s: '"' + str(s).replace('"', "'") + '"'
-    if k == "explain":
-        parts = [prefix, "explain", f"L{req.get('line', 0)}", q(req.get("text", ""))]
-        if req.get("depth") == "deep":
-            parts.append("deep")
-        if req.get("parent"):
-            parts.append(f"parent={req['parent']}")
-        if req.get("grow"):
-            parts.append(f"grow={req['grow']}")
-        parts.append(f"lesson={req.get('lesson','')}")
-        return " ".join(parts)
-    if k == "remove":
-        return f"{prefix} remove {req.get('id')} lesson={req.get('lesson','')}"
-    if k == "quiz":
-        return f"{prefix} quiz {q(req.get('topic',''))} {req.get('mode','recall')} lesson={req.get('lesson','')}"
-    if k == "predict":
-        return f"{prefix} predict {req.get('block')} {req.get('choice')} lesson={req.get('lesson','')}"
-    if k == "mcq":
-        return f"{prefix} mcq {req.get('item')} {'reset' if req.get('event') == 'reset' else req.get('choice')} lesson={req.get('lesson','')}"
-    if k == "grid":
-        return f"{prefix} grid"
-    return f"{prefix} {json.dumps(req)}"
 
 
 PENDING = {}
@@ -1407,7 +1538,6 @@ def stop_turn(turn):
 
 
 def wake(req):
-    st = state()
     k = req.get("kind")
     if k == "explain":
         return headless("explain.py", req, keep=("id",))
@@ -1421,20 +1551,8 @@ def wake(req):
         return set_fold(req)
     if k == "remove":
         return remove_exp(req)
-    if k in ("predict", "mcq"):
-        # click logging only; no agent wake
-        return {"queued": True, "wake": "none"}
-    cmd = host_command(req)
-    layout, agent = st.get("layout", "tab"), st.get("agent", "claude")
-    if layout == "cmux" and st.get("cli_surface"):
-        try:
-            subprocess.run(["cmux", "send", "--surface", st["cli_surface"], cmd + "\n"], check=False, timeout=5)
-            return {"queued": True, "wake": "cmux", "command": cmd}
-        except Exception as e:
-            return {"queued": True, "wake": "cmux-failed", "command": cmd, "error": str(e)}
-    if agent == "codex":
-        return {"queued": True, "fallback": "paste", "command": cmd}
-    return {"queued": True, "wake": "waiter", "command": cmd}
+    # predict / mcq and anything else: click logging only; nothing wakes the agent
+    return {"queued": True, "wake": "none"}
 
 
 class H(BaseHTTPRequestHandler):
@@ -1521,7 +1639,8 @@ class H(BaseHTTPRequestHandler):
             body = {"ws": wsp, "slug": slug or slug_of(wsp), "current": current(slug), "agent": w.get("agent", st.get("agent", "claude")),
                     "page_version": int(max(os.path.getmtime(p) for p in page_files if os.path.isfile(p))),
                     "layout": w.get("layout", st.get("layout", "tab")), "streaming": bool(w.get("streaming", st.get("streaming"))),
-                    "lessons": lessons, "sequence": lesson_sequence(wsp, lessons), "brainstorm": w.get("brainstorm"),
+                    "lessons": lessons, "sequence": lesson_sequence(wsp, lessons),
+                    "writing": write_progress(lesson_path(current(slug), wsp), bool(w.get("streaming", st.get("streaming")))),
                     "end_card": {"image": bool(end_card_path()), "key": slug_of(wsp) if wsp else ""}}
             if qs.get("all"):
                 body["workspaces"] = hub()
@@ -1537,14 +1656,23 @@ class H(BaseHTTPRequestHandler):
             return self.send(200, read_lesson(lid, frm, h, wsp))
         if path == "/api/lesson-video":
             return self.send(200, lesson_video(qs.get("id", [current(slug)])[0], wsp, slug))
+        if path == "/api/lesson-video-captions":
+            lid = qs.get("id", [current(slug)])[0]
+            if not re.fullmatch(r"\d{4}", lid) or not wsp:
+                return self.send(400, {"error": "id must be NNNN"})
+            return self.send(200, chapter_captions(lid, wsp, slug))
         if path == "/api/video-status":
             if self.foreign():
                 return self.send(403, {"error": "only the board may read video progress"})
             lid = qs.get("id", [current(slug)])[0]
-            if not re.fullmatch(r"\d{4}", lid):
-                return self.send(400, {"error": "id must be NNNN"})
+            ch = qs.get("chapter", [""])[0]
+            if not re.fullmatch(r"\d{4}", lid) or (ch and not re.fullmatch(r"\d{1,2}", ch)):
+                return self.send(400, {"error": "id must be NNNN, chapter a number"})
             if not wsp:
                 return self.send(200, {"active": False})
+            if ch:
+                ready = chapter_video(lid, int(ch), wsp, slug)
+                return self.send(200, video_status.status(wsp, lesson_chapters.key(lid, int(ch)), installed=bool(ready.get("available") and ready.get("mappingValid"))))
             return self.send(200, video_status.status(wsp, lid, installed=bool(lesson_video(lid, wsp, slug).get("available"))))
         if path == "/events":
             return self.events(qs.get("id", [current(slug)])[0], slug)
@@ -1705,11 +1833,12 @@ class H(BaseHTTPRequestHandler):
                 if p and os.path.exists(p):
                     s = os.stat(p)
                     sig = (s.st_mtime_ns, s.st_size)
-                bs = w.get("brainstorm") or {}
-                ssig = (cur, w.get("streaming", st.get("streaming")), w.get("rev", st.get("rev")), bs.get("rev"))
+                streaming = bool(w.get("streaming", st.get("streaming")))
+                ssig = (cur, streaming, w.get("rev", st.get("rev")))
                 if sig != last or ssig != last_state:
                     last, last_state = sig, ssig
-                    payload = json.dumps({"current": cur, "streaming": bool(w.get("streaming", st.get("streaming"))), "size": sig[1] if sig else 0, "brainstorm": bs or None})
+                    payload = json.dumps({"current": cur, "streaming": streaming, "size": sig[1] if sig else 0,
+                                          "writing": write_progress(p, streaming and (lid or cur) == cur)})
                     self.wfile.write(f"event: change\ndata: {payload}\n\n".encode())
                     self.wfile.flush()
                 else:
@@ -1740,11 +1869,11 @@ class H(BaseHTTPRequestHandler):
             # dedupe: same explain text+block+lesson within 120 s is a repeat click, not a new question
             if req.get("kind") == "explain":
                 try:
-                    key = (req.get("text"), req.get("block"), req.get("lesson"), req.get("depth"), req.get("parent"), req.get("grow"))
+                    key = (req.get("text"), req.get("block"), req.get("lesson"), req.get("parent"))
                     now = time.time()
                     for line in reversed(open(QUEUE).read().splitlines()[-20:]):
                         r = json.loads(line)
-                        if r.get("kind") == "explain" and (r.get("text"), r.get("block"), r.get("lesson"), r.get("depth"), r.get("parent"), r.get("grow")) == key \
+                        if r.get("kind") == "explain" and (r.get("text"), r.get("block"), r.get("lesson"), r.get("parent")) == key \
                            and now - calendar.timegm(time.strptime(r.get("ts", "1970-01-01T00:00:00Z"), "%Y-%m-%dT%H:%M:%SZ")) < 120:
                             return self.send(200, {"queued": False, "duplicate": True})
                 except Exception as e:

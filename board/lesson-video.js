@@ -5,8 +5,8 @@
    The end of the video offers Practice this lesson (the lesson's quiz), Next lesson (Back to course on the route's last
    lesson) and Replay; nothing moves on by itself. A video played to its end stays ended after a reload.
 
-   Views: Read (the board as always), Watch (the video alone, with its list of explanations), Both (video fixed on the
-   left and the text on the right on wide screens; video stuck above the text on narrow ones).
+   Views: Read (the board as always) and Watch (the video alone, with its list of explanations). A saved "both" view
+   from older versions opens as Read.
 
    Segment `step` (1-based) never reveals anything by itself: in a check-in answer opened after the practice gate it
    advances the step-by-step reveal to that step (never backwards); otherwise it marks that row of the block's single
@@ -23,7 +23,7 @@
    seeked on this page); a `lessonvideo:context` event on window carries the same object whenever it changes. */
 (function(){
 'use strict';
-const SPEEDS=[.5,.75,1,1.25,1.5,2], SKIP=10, NUDGE=5, WIDE=1080, TOPBAR=70;
+const SPEEDS=[.5,.75,1,1.25,1.5,2], SKIP=10, NUDGE=5, TOPBAR=70;
 const root=document.documentElement, reduced=matchMedia('(prefers-reduced-motion: reduce)');
 const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const num=x=>typeof x==='number'&&isFinite(x);
@@ -43,9 +43,7 @@ const I={
   more:svg('<circle cx="3.5" cy="8" r="1.3" fill="currentColor"/><circle cx="8" cy="8" r="1.3" fill="currentColor"/><circle cx="12.5" cy="8" r="1.3" fill="currentColor"/>'),
   read:svg('<path d="M2.5 3.5c2-.6 3.9-.4 5.5.8 1.6-1.2 3.5-1.4 5.5-.8v9c-2-.6-3.9-.4-5.5.8-1.6-1.2-3.5-1.4-5.5-.8z"/><path d="M8 4.3v9"/>',STROKE),
   watch:svg('<rect x="1.8" y="3.2" width="12.4" height="9.6" rx="1.6"/><path d="M6.6 6v4l3.4-2z" fill="currentColor" stroke="none"/>',STROKE),
-  both:svg('<rect x="1.8" y="3.2" width="12.4" height="9.6" rx="1.6"/><path d="M8.2 3.2v9.6"/><path d="M3.8 6.4v3.2l2.5-1.6z" fill="currentColor" stroke="none"/><path d="M10 6.2h2.4M10 8h2.4M10 9.8h1.6"/>',STROKE),
   cc:svg('<rect x="1.6" y="3.4" width="12.8" height="9.2" rx="1.8" fill="none" stroke="currentColor" stroke-width="1.4"/><text x="8" y="10.4" font-size="5.4" font-weight="700" text-anchor="middle" fill="currentColor" font-family="inherit">CC</text>'),
-  wfh:svg('<circle cx="8" cy="8" r="6.4" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M6.5 5.3v5.4L10.9 8z" fill="currentColor"/>')
 };
 let ctx=null, S=null, probe=null;
 
@@ -66,10 +64,68 @@ function usable(m){
 function refresh(c){
   if(!c||!c.main||!c.lessonId)return;
   ctx=c;
-  if(!probe)probe=fetchManifest().then(m=>{ if(usable(m))mount(m); else progress(); });
+  if(!probe)probe=fetchManifest().then(m=>{ CH.m=m; if(usable(m))mount(m); else progress(); });
   // a rebuilt lesson may no longer match the video: ask again whether the map still holds
   else if(S&&c.reset&&!c.first)fetchManifest().then(m=>{ if(S)setSync(!!(m&&m.available&&m.mappingValid)); });
-  probe.then(()=>{ if(S)decorate(); else if(P&&P.el)placeCard(P.el); });
+  probe.then(()=>{ if(S)decorate(); else if(P&&P.el)placeCard(P.el); chapterRows(); });
+}
+
+// ---------- chapter videos ----------
+// A lesson video made chapter by chapter arrives as one playlist manifest: `parts` (one file per ready chapter, with
+// its offset on the playlist's clock) and `chapters` (ready, stale or missing). Read mode puts a row under each
+// chapter's heading: "Play this chapter's video" when it is ready, else the chapter's own progress while it is made.
+const CH={m:null,st:{},timer:0,ready:new Set()};
+function chapterHeading(n){
+  // chapter n's heading is the lesson's n-th `##` (bin/lesson_chapters.py); chapter 1 may have none
+  const hs=[...ctx.main.querySelectorAll(':scope > .blk > h2')];
+  return hs[n-1]?hs[n-1].closest('.blk'):null;
+}
+function chapterRows(){
+  const m=CH.m; if(!m||!Array.isArray(m.chapters)||!ctx||!ctx.main)return;
+  for(const c of m.chapters){
+    const blk=chapterHeading(c.chapter); if(!blk)continue;
+    let row=blk.nextElementSibling&&blk.nextElementSibling.classList.contains('lv-chrow')?blk.nextElementSibling:null;
+    const part=(m.parts||[]).find(p=>p.chapter===c.chapter);
+    const st=CH.st[c.chapter];
+    let html='';
+    if(part&&S)html=`<button type="button" class="lv-chplay" data-off="${part.offset}">${I.play}<span>Play this chapter's video</span><span class="lv-chd">${fmt(part.duration)}</span></button>`;
+    else if(CH.ready.has(c.chapter))html=`<span class="lv-chst">Video ready · reload the page to play it</span>`;
+    else if(st&&st.active){ const t=progressText(st), pct=clamp(num(st.percent)?st.percent:0,0,100);
+      html=`<span class="lv-chst"><b>Video being made</b> · ${Math.floor(pct)}% · ${esc(t.line)}</span><span class="lv-chmeta${st.stalled?' warn':''}">${esc(t.meta)}</span><span class="lv-chbar"><i style="width:${pct}%"></i></span>`; }
+    if(!html){ if(row)row.remove(); continue; }
+    if(!row){ row=document.createElement('div'); row.className='lv-chrow'; row.dataset.ch=c.chapter; blk.after(row); }
+    if(row.innerHTML!==html)row.innerHTML=html;
+    const b=row.querySelector('.lv-chplay'); if(b)b.onclick=()=>{ if(!S)return; setMode('watch'); seek(+b.dataset.off,'nav'); play(); };
+  }
+  pollChapters();
+}
+function chapterStatusUrl(n){ return statusUrl()+`&chapter=${n}`; }
+function pollChapters(){
+  const m=CH.m; if(CH.timer||!m||!Array.isArray(m.chapters))return;
+  const todo=m.chapters.filter(c=>c.state!=='ready'&&!CH.ready.has(c.chapter));
+  if(!todo.length)return;
+  CH.timer=setTimeout(()=>{ CH.timer=0;
+    if(document.hidden)return pollChapters();
+    Promise.all(todo.map(c=>fetch(chapterStatusUrl(c.chapter),{cache:'no-store'}).then(r=>r.ok?r.json():null).catch(()=>null).then(d=>{ if(d){ CH.st[c.chapter]=d; if(d.installed)CH.ready.add(c.chapter); } })))
+      .then(()=>{ if(!S&&[...CH.ready].length)fetchManifest().then(m2=>{ CH.m=m2; if(usable(m2)&&!S){ mount(m2); decorate(); } chapterRows(); }); else chapterRows(); });
+  },Object.keys(CH.st).length?POLL:0);
+}
+// The player's one <video> plays the parts in turn: currentTime and duration are the playlist's, a seek loads the
+// part that holds that time, and the end of a part goes straight on to the next. No file is ever joined.
+function playlist(v,parts){
+  const D=k=>Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype,k), CT=D('currentTime'), SRC=D('src'), BUF=D('buffered');
+  const total=parts.reduce((a,p)=>Math.max(a,p.offset+p.duration),0);
+  let k=0, want=null, loaded=false, first=true;
+  const at=t=>{ let i=0; while(i<parts.length-1&&parts[i+1].offset<=t+1e-3)i++; return i; };
+  const load=(i,t,go)=>{ k=i; want={t:Math.max(0,t-parts[i].offset),go}; loaded=true; SRC.set.call(v,parts[i].url); };
+  Object.defineProperty(v,'currentTime',{configurable:true,get(){ return parts[k].offset+CT.get.call(v); },
+    set(t){ const i=at(t); if(!loaded||i!==k)load(i,t,loaded&&!v.paused); else CT.set.call(v,Math.max(0,t-parts[k].offset)); }});
+  Object.defineProperty(v,'duration',{configurable:true,get(){ return total; }});
+  Object.defineProperty(v,'src',{configurable:true,get(){ return SRC.get.call(v); },set(){ if(!loaded)load(0,0,false); }});
+  Object.defineProperty(v,'buffered',{configurable:true,get(){ const b=BUF.get.call(v), o=parts[k].offset; return {length:b.length,start:i=>o+b.start(i),end:i=>o+b.end(i)}; }});
+  // registered before the player's own listeners: a part switch is not a new video for them
+  v.addEventListener('loadedmetadata',e=>{ if(!want)return; const w=want; want=null; CT.set.call(v,w.t); if(first){ first=false; return; } e.stopImmediatePropagation(); if(w.go)v.play().catch(()=>{}); });
+  v.addEventListener('ended',e=>{ if(k<parts.length-1){ e.stopImmediatePropagation(); load(k+1,parts[k+1].offset,true); } });
 }
 
 // ---------- while the video is being made: a progress card where the video will go ----------
@@ -162,19 +218,19 @@ function segAt(t){ const a=S.segs; let lo=0,hi=a.length-1,ans=0; while(lo<=hi){ 
 function mount(m){
   const segs=m.segments.map((s,i)=>({id:s.id,label:s.label,start:s.start,end:s.end,line:s.line,step:Number.isInteger(s.step)&&s.step>0?s.step:null,p:s.practice||null,i}));
   S={m,segs,prac:segs.filter(s=>s.p),dur:m.duration,key:`bb-video:v1:${ctx.ws||''}:${ctx.lessonId}:${String(m.lessonSha256||m.version||'').slice(0,12)}`,
-    mode:'read',sync:!!m.mappingValid,follow:false,detach:'mode',i:-1,targets:[],first:new Map(),
+    mode:'read',sync:!!m.mappingValid,i:-1,targets:[],
     armed:new Set(),granted:new Set(),gate:null,ended:false,err:false,errMsg:'',src:false,meta:false,pendingT:0,prevT:0,
-    scrub:false,scrubT:0,scrubRaf:0,loop:false,rate:1,raf:0,saveAt:0,readY:0,ignoreUntil:0,autoY:0,waitT:0,lastSec:-1,
-    menuOpen:false,introVis:true,band:null,intro:null,io:null,opened:new Map()};
+    scrub:false,scrubT:0,scrubRaf:0,loop:false,rate:1,raf:0,saveAt:0,readY:0,waitT:0,lastSec:-1,
+    menuOpen:false,introVis:true,intro:null,io:null,opened:new Map()};
   S.prac.forEach(s=>S.armed.add(s.id));
   const saved=load();
   S.rate=SPEEDS.includes(saved.rate)?saved.rate:1; S.loop=!!saved.loop;
   S.ended=endedAt(saved,S.dur);
   S.pendingT=S.ended?Math.max(0,S.dur-.05):num(saved.t)?clamp(saved.t,0,Math.max(0,S.dur-.5)):0; S.prevT=S.pendingT;
-  build(); S.video.muted=!!saved.muted;
+  build(); S.video.muted=false;
   root.classList.add('lv-on');
   wire();
-  setMode(['read','watch','both'].includes(saved.mode)?saved.mode:'read',{init:true});
+  setMode(['read','watch'].includes(saved.mode)?saved.mode:'read',{init:true});
   paintTime(S.pendingT,true); setSeg(segAt(S.pendingT),'init'); paintEnd(); paintPlay(); paintMenu(); paintCards(); paintFoot();
   lastVideo(S.pendingT,S.ended);
   loadCaptions();
@@ -189,7 +245,7 @@ function usableCaps(d){
   return cues.length?cues:null;
 }
 function loadCaptions(){
-  return fetch(capsUrl(S.m.videoUrl),{cache:'no-store'}).then(r=>r.ok?r.json():null).catch(()=>null).then(d=>{
+  return fetch(S.m.captionsUrl||capsUrl(S.m.videoUrl),{cache:'no-store'}).then(r=>r.ok?r.json():null).catch(()=>null).then(d=>{
     const cues=usableCaps(d); if(!S||!cues)return;
     S.caps=cues; S.barBurned=d.progressBarBurnedIn===true;
     let on=null; try{ on=localStorage.getItem(CC_KEY(S.m.captionsBurnedIn)); }catch(_){}
@@ -248,7 +304,7 @@ function sectionAt(line){
     if(+b.dataset.line<=line&&(!best||+b.dataset.line>=best.l))best={l:+b.dataset.line,h};
   });
   if(!best)return null;
-  const c=best.h.cloneNode(true); c.querySelectorAll('.tag,.katex-mathml,.chalkdeco,.flagbtn,.lv-wfh').forEach(x=>x.remove());
+  const c=best.h.cloneNode(true); c.querySelectorAll('.tag,.katex-mathml,.chalkdeco,.flagbtn').forEach(x=>x.remove());
   return {id:best.h.id||null,heading:c.textContent.replace(/\s+/g,' ').trim()};
 }
 function context(){
@@ -267,7 +323,7 @@ function emit(){
 
 // ---------- DOM ----------
 function modesHtml(cls,labels){
-  return `<div class="lv-modes ${cls}" role="radiogroup" aria-label="Lesson view">${[['read','Read',I.read,'Read the lesson'],['watch','Watch',I.watch,'Watch the video'],['both','Both',I.both,'Video beside the text']]
+  return `<div class="lv-modes ${cls}" role="radiogroup" aria-label="Lesson view">${[['read','Read',I.read,'Read the lesson'],['watch','Watch',I.watch,'Watch the video']]
     .map(([k,l,ic,t])=>`<button type="button" role="radio" data-mode="${k}" aria-checked="false" tabindex="-1" title="${t}"${labels?'':` aria-label="${l}"`}>${ic}${labels?`<span>${l}</span>`:''}</button>`).join('')}</div>`;
 }
 function build(){
@@ -285,7 +341,6 @@ function build(){
 <div class="lv-bar"><div class="lv-tl"><div class="lv-zones" aria-hidden="true"></div><input type="range" class="lv-range" min="0" max="${S.dur}" step="0.1" value="0" aria-label="Video position"><div class="lv-tip" hidden aria-hidden="true"><b class="lv-tipc"></b><span class="lv-tipt"></span></div></div>
 <div class="lv-ctl"><button type="button" class="lv-ib lv-play" data-a="play" aria-label="Play" title="Play (Space)">${I.play}</button>
 <span class="lv-time"><span class="lv-el">0:00</span><span class="lv-du"> / ${fmt(S.dur)}</span><span class="lv-ch"></span></span>
-<button type="button" class="lv-chip lv-follow" data-a="follow" hidden title="Scroll the text back to what the video is saying">Follow</button>
 <label class="lv-speed" title="Playback speed (Shift+&lt; and Shift+&gt;)"><span class="lv-sr">Playback speed</span><select>${SPEEDS.map(r=>`<option value="${r}">${r}×</option>`).join('')}</select></label>
 <div class="lv-more"><button type="button" class="lv-ib" data-a="more" aria-label="More video options" aria-expanded="false" aria-controls="lvmenu" title="More">${I.more}</button>
 <div class="lv-menu" id="lvmenu" hidden><button type="button" data-a="back">Back 10 seconds<kbd>←</kbd></button><button type="button" data-a="fwd">Forward 10 seconds<kbd>→</kbd></button><button type="button" data-a="prev">Previous explanation<kbd>⇧←</kbd></button><button type="button" data-a="next">Next explanation<kbd>⇧→</kbd></button><button type="button" data-a="replay">Replay this explanation<kbd>R</kbd></button><button type="button" data-a="loop" aria-pressed="false">Loop this explanation</button><button type="button" data-a="mute" aria-pressed="false">Mute</button><button type="button" data-a="pip" hidden>Picture in picture</button><button type="button" data-a="read">Read from here</button></div></div>
@@ -300,9 +355,10 @@ function build(){
   S.route=document.createElement('nav'); S.route.className='lv-route'; S.route.setAttribute('aria-label','Course'); S.route.hidden=true;
   document.body.insertBefore(S.route,p);
   const q=s=>p.querySelector(s);
+  if(Array.isArray(S.m.parts)&&S.m.parts.length)playlist(q('video'),S.m.parts);
   Object.assign(S,{panel:p,video:q('video'),stage:q('.lv-stage'),big:q('.lv-big'),spin:q('.lv-spin'),gateEl:q('.lv-gate'),errEl:q('.lv-err'),endEl:q('.lv-end'),endB:q('.lv-endb'),
     bar:q('.lv-bar'),range:q('.lv-range'),tip:q('.lv-tip'),tl:q('.lv-tl'),zones:q('.lv-zones'),chEl:q('.lv-ch'),playBtn:q('.lv-play'),el:q('.lv-el'),speed:q('.lv-speed select'),moreBtn:q('[data-a="more"]'),menu:q('.lv-menu'),
-    fsBtn:q('[data-a="fs"]'),prevBtn:q('[data-a="prev"]'),nextBtn:q('[data-a="next"]'),readBtn:q('[data-a="read"]'),followBtn:q('.lv-follow'),
+    fsBtn:q('[data-a="fs"]'),prevBtn:q('[data-a="prev"]'),nextBtn:q('[data-a="next"]'),readBtn:q('[data-a="read"]'),
     list:q('.lv-list'),live:q('.lv-live'),gateBtn:q('[data-a="continue"]'),capEl:q('.lv-cc'),band2:q('.lv-ccband'),capText:q('.lv-cct'),ccBtn:q('.lv-ccb'),mask:q('.lv-mask')});
   S.speed.value=String(S.rate);
   if(!(document.pictureInPictureEnabled&&!S.video.disablePictureInPicture))q('[data-a="pip"]').remove(); else q('[data-a="pip"]').hidden=false;
@@ -363,13 +419,16 @@ function buildZones(){
 function chapAt(t){ const a=S.chaps; let j=0; while(j<a.length-1&&a[j+1].start<=t+1e-3)j++; return j; }
 function buildIntro(){
   const el=document.createElement('div'); el.className='lv-intro'; el.setAttribute('role','group'); el.setAttribute('aria-label','Video lesson');
-  el.innerHTML=`<span class="lv-ic" aria-hidden="true">${I.play}</span><div class="lv-itx"><b>Video lesson</b><span class="lv-imeta">${fmt(S.dur)}${S.m.captionsBurnedIn?' · captions in the video':''}</span><span class="lv-ist" hidden></span></div>${modesHtml('lv-imodes',true)}`;
+  const chs=Array.isArray(S.m.chapters)?S.m.chapters:null, notYet=chs?chs.filter(c=>c.state!=='ready'):[];
+  const chMeta=chs?` · ${chs.length-notYet.length} of ${chs.length} chapters${notYet.length?` (not available yet: ${notYet.map(c=>c.chapter).join(', ')})`:''}`:'';
+  el.innerHTML=`<span class="lv-ic" aria-hidden="true">${I.play}</span><div class="lv-itx"><b>Video lesson</b><span class="lv-imeta">${fmt(S.dur)}${chMeta}${S.m.captionsBurnedIn?' · captions in the video':''}</span><span class="lv-ist" hidden></span></div>${modesHtml('lv-imodes',true)}`;
   return el;
 }
 
 // ---------- lesson decoration (every render) ----------
 function decorate(){
   const main=ctx.main; if(!main)return;
+  chapterRows();
   if(ctx.src!==S.srcSeen)buildZones();
   intro();
   const blks=[...main.querySelectorAll('.blk[data-line]')].filter(b=>!b.parentElement.closest('.blk')).map(b=>({b,line:+b.dataset.line})).sort((a,b)=>a.line-b.line);
@@ -381,19 +440,7 @@ function decorate(){
     let lo=0,hi=blks.length-1,ans=-1; while(lo<=hi){ const m=(lo+hi)>>1; if(blks[m].line<=s.line){ans=m;lo=m+1;} else hi=m-1; }
     return ans<0?title:(nested(blks[ans],s.line,src)||blks[ans].b);
   });
-  S.first=new Map();
-  if(S.sync)S.targets.forEach((b,i)=>{ if(isAnchor(b)&&!S.first.has(b))S.first.set(b,i); });
-  main.querySelectorAll('.lv-wfh').forEach(btn=>{ if(S.first.get(btn.parentElement)!==+btn.dataset.seg)btn.remove(); });
-  S.first.forEach((i,b)=>{
-    if(b.querySelector(':scope>.lv-wfh'))return;
-    const s=S.segs[i], btn=document.createElement('button');
-    btn.type='button'; btn.className='lv-wfh'; btn.dataset.seg=String(i); btn.innerHTML=I.wfh;
-    btn.setAttribute('aria-label',`Watch from here: ${s.label}, at ${fmt(s.start)}`); btn.title=`Watch from here · ${fmt(s.start)}`;
-    b.appendChild(btn);
-  });
-  paintHighlight(); applyStep(S.i); paintEnd();
-  // the board may have just restored the reader's place: that scroll is not the reader leaving the video
-  S.ignoreUntil=performance.now()+400; S.autoY=window.scrollY;
+  applyStep(S.i); paintEnd();
 }
 // A container block (::: quiz) renders several questions from one source block: a cue line inside a `::: mcq <item>`
 // points at that question, found by its item id, not at the top of the whole block. Needs the lesson source text.
@@ -407,7 +454,6 @@ function nested(e,line,src){
   }
   return null;
 }
-const isAnchor=el=>!!el&&el.nodeType===1&&el.matches('.blk,.mcqi');
 function intro(){
   const main=ctx.main;
   if(!S.intro)S.intro=buildIntro();
@@ -421,44 +467,36 @@ function intro(){
   }
   paintModes(); paintIntro();
 }
-function setSync(v){ if(S.sync===v)return; S.sync=v; if(!v){ S.follow=false; } decorate(); paintFoot(); paintIntro(); }
+function setSync(v){ if(S.sync===v)return; S.sync=v; decorate(); paintFoot(); paintIntro(); }
 
 // ---------- views ----------
 function placeAnchor(){ const b=[...ctx.main.querySelectorAll('.blk')].find(x=>x.getBoundingClientRect().bottom>TOPBAR+10); return b?{el:b,top:b.getBoundingClientRect().top}:null; }
 function restoreAnchor(a){ if(a&&a.el.isConnected){ const dy=a.el.getBoundingClientRect().top-a.top; if(Math.abs(dy)>1)window.scrollTo(0,window.scrollY+dy); } }
-function inView(b){ const r=b.getBoundingClientRect(), top=topOffset(); return r.bottom>top+20&&r.top<innerHeight-40; }
 function setMode(mode,o={}){
   const prev=S.mode;
   if(!o.init&&mode===prev){ paintModes(); return; }
   const anchor=!o.init&&prev!=='watch'?placeAnchor():null;
   if(!o.init&&prev!=='watch')S.readY=window.scrollY;
   S.mode=mode;
-  root.classList.toggle('lv-watch',mode==='watch'); root.classList.toggle('lv-both',mode==='both');
+  root.classList.toggle('lv-watch',mode==='watch');
   S.panel.hidden=mode==='read';
   if(mode==='read'){ if(!S.video.paused)S.video.pause(); closeMenu(); exitFs(); }
   else { ensureSrc(); if(S.err)retry(); }
-  layout(); paintModes(); paintHighlight(); paintCards();
-  S.ignoreUntil=performance.now()+500;
-  const tgt=S.sync?S.targets[S.i]:null;
-  if(o.init){ S.follow=false; S.detach='mode'; }   // after a reload the text stays put until Play
+  layout(); paintModes(); paintCards();
+  if(o.init);   // after a reload the text stays put
   else if(mode==='watch')window.scrollTo(0,0);
-  else if(mode==='both'&&prev==='watch'){ if(tgt){ attach(); snapTo(tgt,false); } else window.scrollTo(0,S.readY); }
-  else if(mode==='both'){ restoreAnchor(anchor); if(tgt&&inView(tgt)){ S.follow=true; S.detach=''; } else { S.follow=false; S.detach='mode'; } }
   else if(prev==='watch')window.scrollTo(0,S.readY);
   else restoreAnchor(anchor);
-  S.autoY=window.scrollY; applyStep(S.i); paintFoot(); paintIntro();
+  applyStep(S.i); paintFoot(); paintIntro();
   if(!o.init&&o.persist!==false)save();
 }
 function layout(){
   const cw=parseFloat(getComputedStyle(root).getPropertyValue('--chatw'))||0, avail=innerWidth-cw;
-  const side=S.mode==='both'&&avail>=WIDE;
-  root.classList.toggle('lv-side',side); root.classList.toggle('lv-stack',S.mode==='both'&&!side);
-  if(side)root.style.setProperty('--lvw',Math.round(clamp(Math.min(avail-780,(innerHeight-270)*16/9),360,760))+'px');
   // Watch: the video as large as the window allows, its list of explanations beside it when there is room
   const wide=S.mode==='watch'&&avail>=1100; root.classList.toggle('lv-wwide',wide);
   if(S.mode==='watch')root.style.setProperty('--lvtw',Math.round(clamp(Math.min(1120,avail-(wide?380:32),(innerHeight-(wide?250:300))*16/9),260,1120))+'px');
 }
-function topOffset(){ return S.mode==='both'&&root.classList.contains('lv-stack')?TOPBAR+S.panel.offsetHeight+12:TOPBAR+14; }
+function topOffset(){ return TOPBAR+14; }
 function paintModes(){
   document.querySelectorAll('.lv-modes [data-mode]').forEach(b=>{ const on=b.dataset.mode===S.mode; b.setAttribute('aria-checked',String(on)); b.tabIndex=on?0:-1; });
   paintTopModes();
@@ -473,14 +511,10 @@ function paintIntro(){
   st.textContent=msg; st.hidden=!msg; st.classList.toggle('warn',S.err||!S.sync);
 }
 
-// ---------- following the text ----------
-function attach(){ S.follow=true; S.detach=''; paintFoot(); }
-function detach(why){ if(!S.follow&&S.detach===why)return; S.follow=false; S.detach=why; paintFoot(); }
+// ---------- reading from the video's place ----------
 function scrollByAuto(dy,smooth){
   const sm=smooth&&!reduced.matches;
-  S.ignoreUntil=performance.now()+(sm?1400:300);
   window.scrollTo({top:Math.max(0,window.scrollY+dy),behavior:sm?'smooth':'auto'});
-  if(!sm)S.autoY=window.scrollY;
 }
 // exact place: the block's top a little below the free top edge; when the explained row of a long derivation would then
 // sit below the screen, that row is placed in the upper third instead
@@ -492,36 +526,15 @@ function snapDy(b){
   return dy;
 }
 function snapTo(b,smooth){ const dy=snapDy(b); if(Math.abs(dy)>6)scrollByAuto(dy,smooth); }
-// while playing: move only when the block (or its explained row) is not already comfortably on screen
-function followTo(b){
-  const top=topOffset(), free=innerHeight-top, r=rowOf(b)||b.getBoundingClientRect();
-  if(r.top>=top&&r.top<=top+free*.55&&(r.bottom<=innerHeight-8||r.bottom-r.top>free*.8))return;
-  snapTo(b,true);
-}
-function snapCurrent(smooth){ if(S.mode==='both'&&S.sync&&S.follow){ const b=S.targets[S.i]; if(b)snapTo(b,!!smooth); } }
 function flash(b){ if(!b||!b.classList)return; b.classList.remove('lv-flash'); void b.offsetWidth; b.classList.add('lv-flash'); setTimeout(()=>b.classList.remove('lv-flash'),1800); }
-function paintHighlight(){
-  const want=S.mode==='both'&&S.sync?S.targets[S.i]:null;
-  ctx.main.querySelectorAll('.lv-cur').forEach(x=>{ if(x!==want)x.classList.remove('lv-cur'); });
-  if(isAnchor(want))want.classList.add('lv-cur');
-  if(!want)clearBand();
-}
 
 // ---------- steps ----------
-function clearBand(){ if(S.band){ S.band.remove(); S.band=null; } }
 const grantedBlk=b=>S.prac.some(s=>S.granted.has(s.id)&&S.targets[s.i]===b);
 function applyStep(i){
-  clearBand();
   const s=S.segs[i]; if(!s||!s.step||!S.sync)return;
   const b=S.targets[i]; if(!b||!b.classList.contains('blk'))return;
   const box=b.querySelector('.check>details[open]>div');
-  if(box&&box._rv&&grantedBlk(b)){ if(box._rv.k<s.step&&ctx.rvGo)ctx.rvGo(box,s.step); return; }
-  if(S.mode!=='both')return;
-  const row=stepRow(i); if(!row)return;
-  const br=b.getBoundingClientRect(), sc=b.offsetHeight/(br.height||1), q=row.rect;
-  const band=document.createElement('div'); band.className='lv-band'; band.setAttribute('aria-hidden','true');
-  Object.assign(band.style,{top:((q.top-br.top)*sc-3)+'px',height:((q.bottom-q.top)*sc+6)+'px',left:((q.left-br.left)*sc)+'px',width:((q.right-q.left)*sc)+'px'});
-  b.appendChild(band); S.band=band;
+  if(box&&box._rv&&grantedBlk(b)&&box._rv.k<s.step&&ctx.rvGo)ctx.rvGo(box,s.step);
 }
 // the on-screen row of segment i's step in its block's single aligned derivation (client coordinates), or null
 function stepRow(i){
@@ -578,7 +591,7 @@ function cont(){
 function replayQ(){
   const s=S.gate||S.segs[S.i]; S.gate=null;
   let t=s.start; if(s.p&&s.p.pauseAt-s.start<1&&s.i>0)t=S.segs[s.i-1].start;   // the question was asked before this segment
-  attach(); seek(t,'replay'); play();
+  seek(t,'replay'); play();
 }
 
 // ---------- end of the video: practice, the next lesson, replay ----------
@@ -625,11 +638,10 @@ function paintEnd(){
     ?`<a class="lv-btn${x.pri?' pri':''}" href="${esc(x.href)}"${x.title?` title="${esc(x.title)}"`:''}>${esc(x.label)}</a>`
     :`<button type="button" class="lv-btn${x.pri?' pri':''}" data-a="${x.a}">${esc(x.label)}</button>`).join('');
 }
-// Practice: out of Watch (and out of the stacked Both of a narrow screen, where the video would cover the questions) and
-// onto the quiz, which gets the focus. Nothing is answered or recorded.
+// Practice: out of Watch and onto the quiz, which gets the focus. Nothing is answered or recorded.
 function practice(){
   const q=quizTarget(); closeMenu(); exitFs();
-  if(S.mode==='watch'||root.classList.contains('lv-stack'))setMode('read'); else if(S.follow)detach('user');
+  if(S.mode==='watch')setMode('read');
   if(!q)return;
   S.ignoreUntil=performance.now()+600;
   window.scrollTo(0,Math.max(0,window.scrollY+q.getBoundingClientRect().top-topOffset()));
@@ -661,8 +673,6 @@ function seek(t,kind,from){
   rawSeek(t);
   if(gate)showGate(gate);
   paintCards(); paintPlay();
-  if(kind==='nav'||kind==='replay'||kind==='scrub'||kind==='media')snapCurrent();
-  else if(kind==='skip'&&S.mode==='both'&&S.sync&&S.follow&&S.targets[S.i])followTo(S.targets[S.i]);
   if(kind!=='preview')save();
   if(kind!=='restore'&&kind!=='preview'){ S.touched=true; emit(); }
 }
@@ -671,24 +681,22 @@ function play(){
   ensureSrc();
   if(S.err){ retry(); }
   if(S.ended){ S.ended=false; seek(0,'nav'); }
-  if(!S.follow&&S.detach==='mode'&&S.sync){ attach(); snapCurrent(true); }
   const pr=S.video.play();
   if(pr&&pr.catch)pr.catch(e=>{ if(e&&e.name==='AbortError')return; paintPlay(); if(e&&e.name==='NotAllowedError')say('Press Play to start the video.'); });
 }
 function toggle(){ if(S.gate)return cont(); if(S.video.paused||S.ended)play(); else S.video.pause(); }
 function skip(d){ const t=cur(); seek(t+d,'skip',t); }
-function navPrev(){ const s=S.segs[S.i]; let j=S.i; if(cur()-s.start<3&&j>0)j--; attach(); seek(S.segs[j].start,'nav'); }
-function navNext(){ if(S.i<S.segs.length-1){ attach(); seek(S.segs[S.i+1].start,'nav'); } }
-function replaySeg(){ const s=S.segs[S.i]; if(!s)return; attach(); seek(s.start,'replay'); play(); }
+function navPrev(){ const s=S.segs[S.i]; let j=S.i; if(cur()-s.start<3&&j>0)j--; seek(S.segs[j].start,'nav'); }
+function navNext(){ if(S.i<S.segs.length-1){ seek(S.segs[S.i+1].start,'nav'); } }
+function replaySeg(){ const s=S.segs[S.i]; if(!s)return; seek(s.start,'replay'); play(); }
 function stepRate(d){ const i=clamp(SPEEDS.indexOf(S.rate)+d,0,SPEEDS.length-1); setRate(SPEEDS[i]); say(`Speed ${SPEEDS[i]}×`); }
 function setRate(r){ S.rate=r; S.video.defaultPlaybackRate=S.video.playbackRate=r; S.speed.value=String(r); save(); }
 function retry(){ S.err=false; S.pendingT=S.prevT; S.meta=false; paintCards(); paintIntro(); S.video.load(); }
-function watchFrom(i){ const s=S.segs[i]; if(!s)return; if(S.mode==='read')setMode('both'); attach(); seek(s.start,'nav'); play(); }
 function readFrom(){
   const b=S.sync?S.targets[S.i]:null;
   if(!S.video.paused)S.video.pause();
   if(S.mode==='watch')setMode('read');
-  if(b){ attach(); scrollByAuto(snapDy(b),false); flash(b); }
+  if(b){ scrollByAuto(snapDy(b),false); flash(b); }
 }
 function loop(){ if(S.raf)return; const f=()=>{ S.raf=0; if(S.video.paused)return; tick(); S.raf=requestAnimationFrame(f); }; S.raf=requestAnimationFrame(f); }
 function tick(){
@@ -702,14 +710,12 @@ function tick(){
 }
 function setSeg(i,why){
   if(i===S.i||!S.segs[i])return;
-  const old=S.targets[S.i]; S.i=i; const s=S.segs[i];
+  S.i=i;
   S.nextBtn.disabled=i>=S.segs.length-1;
   S.list.querySelectorAll('[aria-current]').forEach(x=>x.removeAttribute('aria-current'));
   const li=S.list.querySelector(`[data-i="${i}"]`);
   if(li){ li.setAttribute('aria-current','true'); const L=S.list, y=li.parentElement.offsetTop; if(S.mode==='watch'&&L.clientHeight&&(y<L.scrollTop||y+li.offsetHeight>L.scrollTop+L.clientHeight))L.scrollTop=Math.max(0,y-L.clientHeight/3); }
-  paintHighlight(); applyStep(i); emit();
-  const b=S.targets[i];
-  if(why==='play'&&S.mode==='both'&&S.sync&&S.follow&&b&&(b!==old||S.band))followTo(b);   // next block, or the next row of the same derivation
+  applyStep(i); emit();
 }
 function onError(){
   const e=S.video.error; if(!e)return;
@@ -788,7 +794,6 @@ function paintMenu(){
 function paintFoot(){
   if(!S.readBtn)return;
   S.readBtn.hidden=!S.sync;
-  S.followBtn.hidden=!(S.sync&&S.mode==='both'&&!S.follow);
 }
 function paintFs(){
   const on=fsOn();
@@ -839,14 +844,13 @@ function act(a,el){
     case 'mute': S.video.muted=!S.video.muted; paintMenu(); return save();
     case 'pip': closeMenu(); return togglePip();
     case 'read': closeMenu(); exitFs(); return readFrom();
-    case 'follow': attach(); return snapCurrent(true);
     case 'continue': return cont();
     case 'replayq': return replayQ();
     case 'retry': return retry();
     case 'toread': exitFs(); return setMode('read');
-    case 'restart': S.ended=false; attach(); seek(0,'nav'); return play();
+    case 'restart': S.ended=false; seek(0,'nav'); return play();
     case 'practice': return practice();
-    case 'seg': attach(); seek(S.segs[+el.dataset.i].start,'nav'); return play();
+    case 'seg': seek(S.segs[+el.dataset.i].start,'nav'); return play();
   }
 }
 function owns(e){
@@ -857,14 +861,11 @@ function owns(e){
   const fs=fsEl(); if(fs)return false;
   if(S.panel.contains(t))return true;
   if(t.closest('#toc,#topresults,.lv-modes'))return false;
-  // Both: once the video has been played or sought on this page, its keys work from anywhere in the lesson, like
-  // YouTube's; a button, link or quiz control keeps its own Space and arrows
-  if(S.mode==='both')return !!S.touched&&!t.closest('button,a,summary,label,.mcq,.checkin');
   return S.mode==='watch';
 }
 function volume(d){ const v=S.video; v.muted=false; v.volume=clamp(Math.round((v.volume+d)*20)/20,0,1); paintMenu(); save(); say(`Volume ${Math.round(v.volume*100)}%`); }
 function mute(){ S.video.muted=!S.video.muted; paintMenu(); save(); say(S.video.muted?'Muted':'Unmuted'); }
-function seekPct(n){ const d=S.dur||S.video.duration; if(!num(d)||d<=0)return; attach(); seek(d*n/10,'nav'); }
+function seekPct(n){ const d=S.dur||S.video.duration; if(!num(d)||d<=0)return; seek(d*n/10,'nav'); }
 function wire(){
   const v=S.video, p=S.panel;
   v.addEventListener('loadedmetadata',()=>{ fitCaptions(); S.meta=true; if(num(v.duration)&&v.duration>0)S.dur=v.duration; S.range.max=String(S.dur); buildZones(); v.defaultPlaybackRate=v.playbackRate=S.rate;
@@ -872,7 +873,7 @@ function wire(){
     else seek(S.pendingT,'restore'); });
   v.addEventListener('play',()=>{ if(S.gate)return cont(); S.ended=false; S.touched=true; paintPlay(); loop(); wake(); emit(); });   // Play from system controls at the gate = Continue
   v.addEventListener('playing',()=>{ waiting(false); paintPlay(); });
-  v.addEventListener('pause',()=>{ wake(); paintPlay(); save(); paintIntro(); if(!S.scrub)snapCurrent(); emit(); });
+  v.addEventListener('pause',()=>{ wake(); paintPlay(); save(); paintIntro(); emit(); });
   v.addEventListener('waiting',()=>waiting(true));
   v.addEventListener('canplay',()=>waiting(false));
   v.addEventListener('seeked',()=>{
@@ -921,7 +922,6 @@ function wire(){
   document.addEventListener('fullscreenchange',fsChange); document.addEventListener('webkitfullscreenchange',fsChange);
   document.addEventListener('pointerdown',e=>{ if(S.menuOpen&&!e.target.closest('.lv-more'))closeMenu(); });
   // Watch from here (beside lesson blocks)
-  ctx.main.addEventListener('click',e=>{ const b=e.target.closest('.lv-wfh'); if(!b)return; e.preventDefault(); e.stopPropagation(); watchFrom(+b.dataset.seg); });
   // the view switch: header card and top bar
   document.addEventListener('click',e=>{
     const b=e.target.closest&&e.target.closest('.lv-modes [data-mode]'); if(!b)return;
@@ -949,7 +949,7 @@ function wire(){
     else if(k==='ArrowUp'||k==='ArrowDown')volume(k==='ArrowUp'?.05:-.05);
     else if(k==='m'||k==='M')mute();
     else if(/^[0-9]$/.test(k))seekPct(+k);
-    else if(k==='Home'||k==='End'){ if(k==='Home'){ attach(); seek(0,'nav'); } else seekPct(10); }
+    else if(k==='Home'||k==='End'){ if(k==='Home'){ seek(0,'nav'); } else seekPct(10); }
     else if(k==='i'||k==='I')togglePip();
     else if(k===']')navNext(); else if(k==='[')navPrev();
     else if(k==='f'||k==='F')toggleFs();
@@ -959,28 +959,13 @@ function wire(){
     else done=false;
     if(done){ e.preventDefault(); e.stopPropagation(); }
   });
-  // the reader taking over the scroll releases the follow; "Follow the video" re-attaches
-  const intent=e=>{ if(S.mode!=='both'||!S.follow)return; if(e.target instanceof Element&&e.target.closest('#lvpanel,#chat,#toc,#topresults'))return; detach('user'); };
-  window.addEventListener('wheel',intent,{passive:true});
-  window.addEventListener('touchmove',intent,{passive:true});
-  document.addEventListener('keydown',e=>{
-    if(!['PageUp','PageDown','Home','End','ArrowUp','ArrowDown',' '].includes(e.key)||e.defaultPrevented||owns(e))return;
-    if(e.target instanceof Element&&e.target.closest('input,textarea,select,button,[contenteditable],#chat'))return;
-    intent(e);
-  });
-  document.addEventListener('pointerdown',e=>{ if(e.target instanceof Element&&e.target.closest('.rail'))intent({target:document.body}); },true);
-  // a jump from Contents: in Watch it brings the text back first, in Both it is the reader leaving the video
+  // a jump from Contents in Watch brings the text back first
   document.addEventListener('click',e=>{
     if(!(e.target instanceof Element)||!e.target.closest('#toc a[data-id],#toc-ticks .tick'))return;
-    if(S.mode==='watch')setMode('read'); else if(S.mode==='both'&&S.follow)detach('user');
+    if(S.mode==='watch')setMode('read');
   },true);
-  window.addEventListener('scroll',()=>{
-    if(S.mode!=='both')return;
-    if(performance.now()<S.ignoreUntil){ S.autoY=window.scrollY; return; }
-    if(S.follow&&Math.abs(window.scrollY-S.autoY)>160)detach('user');
-  },{passive:true});
   if('ResizeObserver' in window)new ResizeObserver(fitCaptions).observe(S.stage);
-  let rt=0; window.addEventListener('resize',()=>{ layout(); fitCaptions(); clearTimeout(rt); rt=setTimeout(()=>{ applyStep(S.i); if(S.mode==='both')S.autoY=window.scrollY; },160); });
+  let rt=0; window.addEventListener('resize',()=>{ layout(); fitCaptions(); clearTimeout(rt); rt=setTimeout(()=>applyStep(S.i),160); });
   window.addEventListener('pagehide',save);
   document.addEventListener('visibilitychange',()=>{ if(document.hidden)save(); });
   if('mediaSession' in navigator){

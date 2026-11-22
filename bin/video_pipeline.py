@@ -14,6 +14,7 @@ import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import captions  # noqa: E402  (bin/captions.py: say/show alignment, spelled-math lint, the caption track)
 import video_status  # noqa: E402  (bin/video_status.py: the board's live progress card)
+import lesson_chapters  # noqa: E402  (bin/lesson_chapters.py: chapter spans and hashes for chapter videos)
 
 
 ROLE = {"model": "claude-opus-5-5", "effort": "high"}
@@ -21,11 +22,10 @@ RUNTIME = ("engine.js", "style.css", "capture.mjs", "finish.sh", "tts.py", "inde
 OPTIONAL_RUNTIME = ("README.md", "package-lock.json", ".gitignore")
 VIDEO_EFFORTS = frozenset(("low", "medium", "high"))
 SCRIPT_EFFORTS = {ROLE["model"]: VIDEO_EFFORTS, "gpt-6-astra": frozenset(("medium",))}
-# The pace reference is ECE 2020 lesson 0010 (2026-11-02, Caio: "this is the right length / pace"): 20,100 lesson words
-# became 41,883 spoken words, 204,456 narrated characters and 4 h 54 min of video with 83 pause-and-solve gates.
-PACE_REF = {"lesson": "ece2020 0010", "spoken_per_lesson_word": 2.08, "minutes_per_1000_lesson_words": 14.6,
-            "chars_per_spoken_word": 4.88}
-PACE_FLOOR = 0.67   # check fails below two thirds of the reference density: the video is rushing the material
+# Video length is not standardized: it follows the lesson's steps. `check` verifies that every
+# step row of every written solution is narrated (coverage) and that nothing is spoken that no lesson line backs
+# (padding), apart from an opening of at most three sentences.
+OPENING_SENTENCES = 3
 ACCENTS = {"red": "#9b3a4a", "blue": "#3f6f9b", "green": "#4a8b5f", "amber": "#a8762f", "violet": "#7a5a9b", "teal": "#3d8080"}
 ACCENT_ORDER = ("red", "blue", "green", "amber", "violet", "teal")   # the board's cycle (board.html.tmpl applyAccent)
 EPS = 0.02
@@ -58,7 +58,7 @@ def sha(path):
 def project(project_dir):
     config = read(project_dir / "project.json")
     base_keys = {"version", "lesson", "lessonSha256", "videoRole"}
-    if not isinstance(config, dict) or set(config) not in (base_keys, base_keys | {"scriptRole"}) or config["version"] != 1:
+    if not isinstance(config, dict) or set(config) - {"scriptRole", "chapter"} != base_keys or config["version"] != 1:
         raise PipelineError("project.json: invalid project schema")
     role = config["videoRole"]
     if not isinstance(role, dict) or set(role) != {"model", "effort"} or role["model"] != ROLE["model"] or not isinstance(role["effort"], str) or role["effort"] not in VIDEO_EFFORTS:
@@ -73,7 +73,14 @@ def project(project_dir):
     lesson = Path(config["lesson"])
     if not lesson.is_absolute() or not lesson.is_file():
         raise PipelineError(f"lesson is missing: {lesson}")
-    if sha(lesson) != config["lessonSha256"]:
+    n = config.get("chapter")
+    if n is not None:
+        text = lesson.read_text(encoding="utf-8")
+        if isinstance(n, bool) or not isinstance(n, int) or not 1 <= n <= len(lesson_chapters.spans(text)):
+            raise PipelineError(f"project.json: chapter {n!r} is not a chapter of the lesson")
+        if lesson_chapters.chapter_sha(text, n) != config["lessonSha256"]:
+            raise PipelineError(f"chapter {n} changed since init; create a fresh video project for this chapter")
+    elif sha(lesson) != config["lessonSha256"]:
         raise PipelineError("lesson changed since init; obtain designated lesson-author correction and create a fresh video project")
     if not lesson.name[:4].isascii() or not lesson.name[:4].isdigit() or lesson.name[4:5] != "-":
         raise PipelineError("lesson filename must begin NNNN-")
@@ -104,6 +111,11 @@ def init(args):
         raise PipelineError("project cannot be a symlink")
     config = {"version": 1, "lesson": str(lesson), "lessonSha256": sha(lesson),
               "videoRole": {"model": ROLE["model"], "effort": args.video_effort}}
+    if args.chapter is not None:
+        text = lesson.read_text(encoding="utf-8")
+        if not 1 <= args.chapter <= len(lesson_chapters.spans(text)):
+            raise PipelineError(f"--chapter must be 1 to {len(lesson_chapters.spans(text))} (the lesson's ## chapters)")
+        config["chapter"], config["lessonSha256"] = args.chapter, lesson_chapters.chapter_sha(text, args.chapter)
     base_config = config.copy()
     if args.script_model is not None:
         config["scriptRole"] = {"model": args.script_model, "effort": args.script_effort}
@@ -135,19 +147,14 @@ def init(args):
     except (ValueError, OSError) as exc:
         print(f"board progress card not registered: {exc}", file=sys.stderr)
     script_role = config.get("scriptRole", config["videoRole"])
-    print(f"initialized {dest}; lesson SHA-256 {config['lessonSha256']}; script author {script_role['model']} {script_role['effort']}; visual builders {ROLE['model']} {args.video_effort}")
+    what = f"chapter {config['chapter']} SHA-256" if "chapter" in config else "lesson SHA-256"
+    print(f"initialized {dest}; {what} {config['lessonSha256']}; script author {script_role['model']} {script_role['effort']}; visual builders {ROLE['model']} {args.video_effort}")
     print("next: author script.json and anchors.json from the lesson; no model receipt was generated")
 
 
 def front_matter(text):
     m = re.match(r"---\n(.*?)\n---\n", text, re.S)
     return dict(re.findall(r"^([A-Za-z_]+):[ \t]*(.*?)[ \t]*$", m.group(1), re.M)) if m else {}
-
-
-def lesson_words(text):
-    """Words a reader sees: no front matter, no HTML comments."""
-    body = re.sub(r"<!--.*?-->", "", re.sub(r"\A---\n.*?\n---\n", "", text, flags=re.S), flags=re.S)
-    return len(re.findall(r"[A-Za-z0-9]+", body))
 
 
 def lesson_look(lesson):
@@ -175,26 +182,134 @@ def write_look(lesson, dest):
     return look
 
 
-def estimate(args):
-    lesson = args.lesson.expanduser().resolve(strict=True)
-    words = lesson_words(lesson.read_text(encoding="utf-8"))
-    minutes = words * PACE_REF["minutes_per_1000_lesson_words"] / 1000
-    spoken = words * PACE_REF["spoken_per_lesson_word"]
-    print(json.dumps({"lessonWords": words, "minutes": round(minutes), "spokenWords": round(spoken),
-                      "elevenLabsCharacters": round(spoken * PACE_REF["chars_per_spoken_word"]),
-                      "reference": PACE_REF["lesson"]}, indent=2))
+ALIGNED = re.compile(r"\\begin\{aligned\}(.*?)\\end\{aligned\}", re.S)
 
 
-def pace_ok(lesson, project_dir):
-    """Spoken words per lesson word against the 0010 reference; a short lesson (< 300 words) is not judged."""
-    words = lesson_words(lesson.read_text(encoding="utf-8"))
-    script = read(project_dir / "script.json")
-    spoken = sum(len(str(c.get("say", "")).split()) for sc in script.get("scenes", []) for c in sc.get("cues", []))
-    ratio, ref = (spoken / words if words else 0), PACE_REF["spoken_per_lesson_word"]
-    if words >= 300 and ratio < ref * PACE_FLOOR:
-        raise PipelineError(f"too fast: {spoken} spoken words for {words} lesson words ({ratio:.2f} per word); "
-                            f"the 0010 reference is {ref} and the floor {ref * PACE_FLOOR:.2f}. Add steps, values and bridges")
-    return f"ready ({ratio:.2f} spoken words per lesson word; reference {ref})"
+def aligned_rows(text):
+    """Visible rows of every aligned derivation in `text`. A row with nothing before its `&&` note joins the row
+    above it, as the board shows it."""
+    rows = 0
+    for body in ALIGNED.findall(text):
+        for row in re.split(r"\\\\", body):
+            if re.sub(r"[&\s]", "", row.split("&&")[0]):
+                rows += 1
+    return rows
+
+
+def solution_items(lines):
+    """The written solutions the video must narrate step by step, as dicts with 1-based `first`/`last` lines and
+    `rows`: each aligned derivation outside every `:::` block (worked examples), and each practice item (a check-in
+    bullet or an mcq, see practice_items) with the rows of the derivations inside it (at least 1). Fenced code and
+    derivations inside other blocks (cheat sheet, given, big/key, explanations) are skipped."""
+    items, depth, fence, start = [], 0, False, None
+    for n, raw in enumerate(lines, 1):
+        line = raw.strip()
+        if line.startswith("```"):
+            fence = not fence
+            continue
+        if fence:
+            continue
+        if line == ":::" and start is None:
+            depth = max(0, depth - 1)
+        elif line.startswith("::: ") and start is None:
+            depth += 1
+        if depth == 0 and start is None and r"\begin{aligned}" in line:
+            start = n
+        if start is not None and r"\end{aligned}" in line:
+            text = "\n".join(lines[start - 1:n])
+            items.append({"kind": "worked", "first": start, "last": n, "rows": max(1, aligned_rows(text))})
+            start = None
+    for a, b in practice_items(lines):
+        items.append({"kind": "practice", "first": a, "last": b,
+                      "rows": max(1, aligned_rows("\n".join(lines[a - 1:b])))})
+    return sorted(items, key=lambda i: i["first"])
+
+
+def spoken_cues(script, timeline):
+    """[(absolute start, say)] for every spoken cue, in video order."""
+    says = {(s["id"], c["id"]): c.get("say") for s in script["scenes"] for c in s["cues"]}
+    out = []
+    for sc in timeline["scenes"]:
+        for cid, c in sc["cues"].items():
+            text = says.get((sc["id"], cid))
+            if c.get("pause") is not True and isinstance(text, str) and text.strip():
+                out.append((sc["start"] + c["s"], text))
+    return out
+
+
+def segment_cues(segment, cues):
+    """Spoken cues inside a map segment; for a practice segment, only the solution (from its reveal on)."""
+    start = segment["practice"]["revealAt"] if segment.get("practice") else segment["start"]
+    return [text for t, text in cues if start - EPS <= t < segment["end"] - EPS]
+
+
+def coverage_ok(lesson, segments, script, timeline, span=None):
+    """Every worked derivation and every practice item has anchored segments (line inside the item) whose spoken
+    cues are at least as many as its solution rows, so no step is skipped. One cue per row is the floor; the check
+    cannot tell which cue narrates which row."""
+    lines = lesson.read_text(encoding="utf-8").splitlines()
+    cues = spoken_cues(script, timeline)
+    short = []
+    items = [i for i in solution_items(lines) if not span or span[0] <= i["first"] <= span[1]]
+    for item in items:
+        said = sum(len(segment_cues(s, cues)) for s in segments if item["first"] <= s["line"] <= item["last"])
+        if said < item["rows"]:
+            short.append(f"line {item['first']} ({item['kind']}, {item['rows']} rows): {said} spoken cue(s)")
+    if short:
+        more = f" (+{len(short) - 8} more)" if len(short) > 8 else ""
+        raise PipelineError(f"{len(short)} of {len(items)} written solutions are not narrated step by step "
+                            f"(need one anchored spoken cue per solution row): {'; '.join(short[:8])}{more}")
+    rows = sum(i["rows"] for i in items)
+    return f"ready ({len(items)} written solutions, {rows} solution rows, each row has an anchored spoken cue)"
+
+
+def teaching_lines(lines):
+    """1-based lines that teach: not front matter, the `#`/`##` headings, or the Contents/Sources drop-downs."""
+    skip, n = set(), 0
+    if lines and lines[0].strip() == "---":
+        for n in range(1, len(lines)):
+            if lines[n].strip() == "---":
+                break
+        skip.update(range(1, n + 2))
+    block = None
+    for i, raw in enumerate(lines, 1):
+        line = raw.strip()
+        if block:
+            skip.add(i)
+            if line == ":::":
+                block = None
+        elif re.match(r"::: (contents|sources|prerequisites)\b", line):
+            block = line
+            skip.add(i)
+        elif re.match(r"#{1,2} ", line):
+            skip.add(i)
+    return {i for i, l in enumerate(lines, 1) if l.strip() and i not in skip}
+
+
+def sentences(text):
+    return [s for s in re.split(r"(?<=[.!?])\s+", text.strip()) if s]
+
+
+def padding_ok(lesson, segments, script, timeline, opening_max=OPENING_SENTENCES):
+    """Speech must be backed by a lesson line. The opening (the segments before the first one anchored to a
+    teaching line) may say at most three sentences; any later segment anchored to no teaching line (a heading,
+    the title, Contents, Sources, front matter) must be silent."""
+    teach = teaching_lines(lesson.read_text(encoding="utf-8").splitlines())
+    cues = spoken_cues(script, timeline)
+    opening, found, pad = 0, False, []
+    for seg in segments:
+        said = segment_cues(dict(seg, practice=None), cues)
+        if seg["line"] in teach:
+            found = True
+        elif not found:
+            opening += sum(len(sentences(t)) for t in said)
+        elif said:
+            pad.append(f"{seg['id']} (line {seg['line']}): {len(said)} spoken cue(s)")
+    if opening > opening_max:
+        pad.insert(0, f"opening: {opening} sentences (at most {opening_max})")
+    if pad:
+        raise PipelineError("speech that no lesson line backs: " + "; ".join(pad[:8]))
+    return f"ready (opening {opening} sentence(s); every later spoken cue is anchored to a lesson line)"
 
 
 def look(args):
@@ -272,6 +387,14 @@ def boundary(scene, cue, is_end):
     return scene["start"] + c["s"]
 
 
+def scope(config, lesson, lid):
+    """(video key, chapter number or None, (first, last) lesson lines the video covers)."""
+    n = config.get("chapter")
+    if n is None:
+        return lid, None, (1, len(lesson.read_text(encoding="utf-8").splitlines()))
+    return lesson_chapters.key(lid, n), n, lesson_chapters.spans(lesson.read_text(encoding="utf-8"))[n - 1]
+
+
 def anchors_ok(project_dir, config, lesson, script, timeline):
     anchors = read(project_dir / "anchors.json")
     if not isinstance(anchors, dict) or set(anchors) != {"version", "lessonSha256", "segments"} or anchors["version"] != 1 or anchors["lessonSha256"] != config["lessonSha256"]:
@@ -294,6 +417,10 @@ def anchors_ok(project_dir, config, lesson, script, timeline):
         line, step = anchor["line"], anchor["step"]
         if isinstance(line, bool) or not isinstance(line, int) or line < 1 or line > len(lines) or not lines[line - 1].strip():
             raise PipelineError(f"anchor {aid}: line must refer to nonblank lesson source")
+        if config.get("chapter") is not None:
+            first, last = lesson_chapters.spans("\n".join(lines))[config["chapter"] - 1]
+            if not first <= line <= last:
+                raise PipelineError(f"anchor {aid}: line {line} is outside chapter {config['chapter']} (lines {first}-{last})")
         if step is not None and (isinstance(step, bool) or not isinstance(step, int) or step < 1):
             raise PipelineError(f"anchor {aid}: step must be positive integer or null")
         if step is not None:
@@ -364,11 +491,12 @@ def practice_items(lines):
     return [tuple(i) for i in items]
 
 
-def practice_ok(lesson, segments):
-    """Every lesson practice item needs a video segment with a pause and reveal anchored inside it."""
+def practice_ok(lesson, segments, span=None):
+    """Every lesson practice item (inside `span`, for a chapter video) needs a video segment with a pause and reveal
+    anchored inside it."""
     lines = lesson.read_text(encoding="utf-8").splitlines()
     gated = [s["line"] for s in segments if s.get("practice")]
-    items = practice_items(lines)
+    items = [i for i in practice_items(lines) if not span or span[0] <= i[0] <= span[1]]
     missing = [a for a, b in items if not any(a <= g <= b for g in gated)]
     if missing:
         shown = "; ".join(f"line {a}: {lines[a - 1].strip()[:60]}" for a in missing[:8])
@@ -378,11 +506,22 @@ def practice_ok(lesson, segments):
 
 
 def map_data(project_dir, captions_burned_in=False):
+    """The board map with absolute lesson lines (what the checks use); `stored` gives the file's form."""
     config, lesson, lid = project(project_dir)
     script, timeline = timing(project_dir)
     split_ok(project_dir, timeline)
     segments = anchors_ok(project_dir, config, lesson, script, timeline)
-    return {"version": 1, "lessonId": lid, "lessonSha256": config["lessonSha256"], "video": f"{lid}-lecture.mp4", "duration": timeline["total"], "captionsBurnedIn": captions_burned_in, "segments": segments}
+    vk = scope(config, lesson, lid)[0]
+    return {"version": 1, "lessonId": lid, "lessonSha256": config["lessonSha256"], "video": f"{vk}-lecture.mp4", "duration": timeline["total"], "captionsBurnedIn": captions_burned_in, "segments": segments}
+
+
+def stored(project_dir, data):
+    """The map as written: a chapter map adds `chapter` and counts each line from the chapter's first line."""
+    config, lesson, lid = project(project_dir)
+    _, n, (first, _) = scope(config, lesson, lid)
+    if n is None:
+        return data
+    return dict(data, chapter=n, segments=[dict(s, line=s["line"] - first + 1) for s in data["segments"]])
 
 
 def caption_track(project_dir, lesson_id):
@@ -395,12 +534,13 @@ def write_json(path, data):
 
 
 def build_map(args):
-    data = map_data(args.project, args.captions_burned_in)
-    target = args.project / f"video-{data['lessonId']}.json"
+    data = stored(args.project, map_data(args.project, args.captions_burned_in))
+    vk = data["video"][:-len("-lecture.mp4")]
+    target = args.project / f"video-{vk}.json"
     if target.exists() and read(target) != data and not args.replace:
         raise PipelineError(f"{target}: stale or different map; review changes, then rerun with --replace")
     write_json(target, data)
-    track = caption_track(args.project, data["lessonId"])
+    track = caption_track(args.project, vk)
     write_json(args.project / "captions.json", track)   # display only: always rebuilt from the script's show texts
     print(f"built {target}: {len(data['segments'])} source-linked segments, {data['duration']:.3f}s; "
           f"captions.json: {len(track['cues'])} captions")
@@ -532,7 +672,7 @@ def media_ok(project_dir, duration):
 
 def check(args):
     stages = {name: "blocked by an earlier stage" for name in
-              ("source", "timing", "split", "anchors", "practice", "pace", "map", "captions", "scenes", "receipts", "media")}
+              ("source", "timing", "split", "anchors", "practice", "coverage", "padding", "map", "captions", "scenes", "receipts", "media")}
     warnings = []
     cfg = lesson = timeline = split = data = None
     try:
@@ -560,25 +700,31 @@ def check(args):
             stages["anchors"] = str(exc)
     if data:
         try:
-            count = practice_ok(lesson, data["segments"])
+            vk, chapter, span = scope(cfg, lesson, lid)
+            count = practice_ok(lesson, data["segments"], span)
             stages["practice"] = f"ready ({count} lesson practice items each have a pause-and-solve segment)"
         except PipelineError as exc:
             stages["practice"] = str(exc)
-        try:
-            stages["pace"] = pace_ok(lesson, args.project)
-        except (PipelineError, OSError, AttributeError) as exc:
-            stages["pace"] = str(exc)
+        vk, chapter, span = scope(cfg, lesson, lid)
+        checks = (("coverage", lambda *a: coverage_ok(*a, span=span)),
+                  ("padding", lambda *a: padding_ok(*a, opening_max=OPENING_SENTENCES if chapter in (None, 1) else 0)))
+        for name, fn in checks:
+            try:
+                script, _ = timing(args.project)
+                stages[name] = fn(lesson, data["segments"], script, timeline)
+            except (PipelineError, OSError, KeyError, TypeError) as exc:
+                stages[name] = str(exc)
     if data:
-        target = args.project / f"video-{lid}.json"
+        target = args.project / f"video-{vk}.json"
         try:
             installed = read(target)
-            if not isinstance(installed, dict) or not isinstance(installed.get("captionsBurnedIn"), bool) or installed != dict(data, captionsBurnedIn=installed["captionsBurnedIn"]):
+            if not isinstance(installed, dict) or not isinstance(installed.get("captionsBurnedIn"), bool) or installed != stored(args.project, dict(data, captionsBurnedIn=installed["captionsBurnedIn"])):
                 raise PipelineError("map is stale; rerun build-map after reviewing anchors")
             stages["map"] = "ready"
         except PipelineError as exc:
             stages["map"] = str(exc)
         try:
-            stages["captions"] = captions_ok(args.project, lid)
+            stages["captions"] = captions_ok(args.project, vk)
         except (PipelineError, OSError, KeyError, TypeError) as exc:
             stages["captions"] = str(exc)
         try:
@@ -620,14 +766,13 @@ def main(argv=None):
     p.add_argument("--video-effort", default="high", help="explicit Opus effort; high recommended")
     p.add_argument("--script-model", help="explicit script author model; default is the Opus video role")
     p.add_argument("--script-effort", help="explicit script author effort; required with --script-model")
+    p.add_argument("--chapter", type=int, help="make the video of this ## chapter only (1-based; chapter 1 holds the opening)")
     p = sub.add_parser("build-map", help="derive a board manifest from source anchors and measured timing")
     p.add_argument("--project", type=Path, required=True)
     p.add_argument("--replace", action="store_true", help="replace a reviewed stale map")
     p.add_argument("--captions-burned-in", action="store_true", help="set only after visually confirming rendered captions")
     p = sub.add_parser("check", help="report each stage of project readiness")
     p.add_argument("--project", type=Path, required=True)
-    p = sub.add_parser("estimate", help="expected video length and narration characters at the 0010 pace")
-    p.add_argument("--lesson", type=Path, required=True)
     p = sub.add_parser("look", help="rewrite look.css from the lesson's board accent and surface")
     p.add_argument("--project", type=Path, required=True)
     args = parser.parse_args(argv)
@@ -636,8 +781,6 @@ def main(argv=None):
             init(args)
         elif args.command == "build-map":
             build_map(args)
-        elif args.command == "estimate":
-            estimate(args)
         elif args.command == "look":
             look(args)
         else:

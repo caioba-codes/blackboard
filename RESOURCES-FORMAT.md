@@ -14,16 +14,11 @@
 - [Practice Test 1 (Spring 2026)](sources/exams/practice-test-1.pdf)
   kind: practice-exam · tier: 3 · Use for: practice problems on K-maps, SOP, timing.
 - [HW2 — Boolean simplification](sources/hw/hw2.pdf)
-  kind: hw · tier: 5 · assigned: yes · Use for: which skills are due; never solve its problems.
+  kind: hw · tier: 5 · assigned: yes · Use for: which skills are due; never solve a currently assigned, not-yet-due problem (past homework is used like any official problem).
 - [Week 2 Lecture 2 slides](sources/slides/week2-l2.pdf)
   kind: slides · tier: 6 · Use for: notation, the professor's step order.
 - youtube: [3Blue1Brown — But what is a neural network?](https://www.youtube.com/watch?v=aircAruvnKk)
   transcript: sources/youtube/aircAruvnKk.txt · used-in: 0007 · Use for: intuition for layers and weights.
-
-## Wisdom (Communities)
-
-- [r/ECE](https://reddit.com/r/ECE)
-  Use for: sanity-checking a design choice.
 
 ## Channels            # self-study only; edit freely
 
@@ -52,7 +47,7 @@
 
 Auto-tiering when files arrive (LMS pull or `add`): assignments → 5; file name matches practice/past/sample/exam/midterm/final → 3 or 4; module pages and slides → 6; announcements mentioning exam/test/quiz → 2; a page titled topics/syllabus/review → 1 or 2; everything else → 7. Show the tiering once and let the user correct it.
 
-Claim labels for RESOURCES.md and a lesson's `::: sources` drop-down when a fact's authority matters (never inline in STEM lessons): `officially stated`, `professor emphasized`, `repeated in practice`, `inferred`, `out of scope`.
+Claim labels for RESOURCES.md and a lesson's `::: sources` drop-down when a fact's authority matters (never inline in a lesson): `officially stated`, `professor emphasized`, `repeated in practice`, `inferred`, `out of scope`.
 
 ## Rules
 
@@ -62,4 +57,3 @@ Claim labels for RESOURCES.md and a lesson's `::: sources` drop-down when a fact
 - **Self-study**: primary sources first; one video from the channel list may be used as a source, its transcript saved under `sources/youtube/` and its entry marked `used-in: NNNN`. Only a used video is embedded in a lesson.
 - **Surface gaps.** `## Gaps` lists what is missing; the onboarding ask and `sync` try to fill it.
 - **Prune.** Wrong, shallow, or off-mission sources are removed.
-- **Record community preferences.** If the user opted out of communities, note it here.

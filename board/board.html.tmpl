@@ -275,6 +275,17 @@ video.video{width:100%;border-radius:3px;background:#000;margin:12px 0;display:b
 .vb{display:inline-block;margin-left:10px;width:21px;height:21px;line-height:21px;text-align:center;border-radius:50%;color:#0c0c0c;font-size:13px;font-weight:700;vertical-align:-4px}
 .btn.primary{border-color:var(--chalk)}
 .btn:hover{border-color:var(--dim)}
+/* Given: what the problem itself states (its text, data tables, figures), quoted so it never reads as our work.
+   A quiet card with a quote rule and a small label; inside a solution it marks what was copied, not calculated. */
+.given{margin:14px 0 22px;padding:10px 20px 6px 18px;border-left:3px solid color-mix(in srgb,var(--dim) 70%,transparent);border-radius:2px 8px 8px 2px;background:color-mix(in srgb,var(--chalk) 4%,transparent);color:color-mix(in srgb,var(--chalk) 86%,var(--dim))}
+.given .givhead{display:flex;align-items:center;gap:7px;margin:0 0 6px;font:600 11.5px/1.4 var(--body);letter-spacing:.09em;text-transform:uppercase;color:var(--dim)}
+.given .givhead svg{width:13px;height:13px;flex:0 0 13px}
+.given>:last-child{margin-bottom:8px}
+.given .tablewrap{margin:8px 0 12px}
+/* a table column copied from the problem (header written ">S1"): muted, with a "given" tint, so the calculated columns stand out */
+.tablewrap th.gv,.tablewrap td.gv{color:var(--dim);background:color-mix(in srgb,var(--chalk) 4%,transparent)}
+.tablewrap table:has(th.gv) th{vertical-align:top}
+.tablewrap th.gv::after{content:"given";display:block;font:500 10px/1.3 var(--body);letter-spacing:.08em;text-transform:uppercase;opacity:.75}
 /* "On the test" callout: amber tint, thin amber border with a left accent, line-art warning icon, small-caps label */
 :root{--amber:#d4a24a}
 .callout{width:auto;max-width:none;box-sizing:border-box;margin:14px 0 22px;padding:12px 22px 14px 20px;border:1px solid color-mix(in srgb,var(--amber) 30%,transparent);border-left:3px solid var(--amber);border-radius:4px 8px 8px 4px;background:color-mix(in srgb,var(--amber) 7%,#0d0d0c)}
@@ -466,8 +477,6 @@ hr{border:0;border-top:1px solid var(--rule);margin:40px 0}
 .mcqi .fbb .fbmiss{color:#ece8da;margin-bottom:2px}
 @media print{.rv .rv-off{display:revert!important}.rv .mathrow{height:auto!important}.rv .katex *{visibility:visible!important}.stepctl{display:none!important}.check>details>div{display:block}}
 .toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:#1a1a1a;border:1px solid var(--rule);color:var(--chalk);padding:12px 16px;border-radius:6px;font-size:16px;max-width:90vw;display:none;z-index:8}
-.toast code{font-family:ui-monospace,Menlo,monospace;font-size:14px;color:var(--dim)}
-.toast .btn{margin-left:10px;font-size:14px;padding:3px 10px}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:22px;margin-top:24px}
 .hubbar{display:flex;flex-wrap:wrap;gap:14px;align-items:center;margin:6px 0 10px}
 .hubq{flex:1;min-width:220px;background:#101010;border:1px solid var(--rule);border-radius:6px;color:var(--chalk);font:inherit;font-size:18px;padding:9px 14px;outline:none}
@@ -528,29 +537,17 @@ main pre code{font:inherit}
 .interactive svg{display:block;width:100%;max-width:640px;height:auto}
 .interactive .axis{stroke:#777c70;stroke-width:1}.interactive .curve{fill:none;stroke:#d1bb83;stroke-width:3}
 
-/* chalk write-in */
-.w{display:inline-block;clip-path:inset(0 100% 0 0);animation:chalk-write var(--duration,150ms) steps(var(--letters,5),end) var(--delay,0ms) both}
-@keyframes chalk-write{from{clip-path:inset(0 100% 0 0);filter:blur(.5px)}to{clip-path:inset(0 0 0 0);filter:blur(0)}}
-@keyframes settle{from{opacity:0;filter:blur(3px);transform:translateY(2px)}60%{opacity:.85;filter:blur(.6px)}to{opacity:1;filter:blur(0)}}
-h1.new,h2.new,h3.new{--wipe:linear-gradient(90deg,#000 40%,transparent 60%);mask-image:var(--wipe);-webkit-mask-image:var(--wipe);mask-size:250% 100%;-webkit-mask-size:250% 100%;animation:wipe var(--d,900ms) cubic-bezier(.3,0,.2,1) forwards}
-@keyframes wipe{from{mask-position:100% 0;-webkit-mask-position:100% 0}to{mask-position:0 0;-webkit-mask-position:0 0}}
-.mathrow.new{clip-path:inset(0 100% 0 0);animation:sweep var(--d,1200ms) linear forwards}
-@keyframes sweep{to{clip-path:inset(0 0 0 0)}}
-.blk.new{animation:rise .5s ease-out both}
-@keyframes rise{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
-#writing{margin:28px 0 80px}
-#writing .sk span{display:block;height:13px;border-radius:3px;margin:13px 0;background:linear-gradient(90deg,#181818 0%,#2b2b28 45%,#181818 90%);background-size:220% 100%;animation:shimmer 1.8s linear infinite}
-#writing .sk span:nth-child(1){width:88%}#writing .sk span:nth-child(2){width:96%;animation-delay:.15s}#writing .sk span:nth-child(3){width:62%;animation-delay:.3s}
-#writing .wl{color:var(--dim);font-style:italic;font-size:16px;margin-top:18px}
-#writing .wl::after{content:'';display:inline-block;width:1.4em;text-align:left;animation:ellipsis 1.6s steps(1) infinite}
-@keyframes shimmer{from{background-position:200% 0}to{background-position:-20% 0}}
-@keyframes ellipsis{0%{content:''}25%{content:'.'}50%{content:'..'}75%{content:'...'}}
-#nub{position:fixed;width:9px;height:20px;border-radius:2px;background:#f2eee4;box-shadow:0 0 6px #fff6;transform:rotate(20deg);pointer-events:none;transition:left .12s,top .12s,opacity .4s;z-index:9;opacity:0}
-#nub.on{opacity:1}
-#nub.idle{animation:blink 1s steps(2) infinite}
+/* while a lesson is being written: finished chapters show normally, each planned one is a quiet row; only the bar's width moves */
+#writing{margin:34px 0 80px;color:var(--dim);font:15px/1.5 var(--body)}
+#writing .wprog{display:flex;align-items:baseline;gap:14px;margin-bottom:8px}
+#writing .wcount{color:var(--chalk)}
+#writing .wbar{height:3px;background:#222;border-radius:2px;overflow:hidden;margin-bottom:18px}
+#writing .wbar>i{display:block;height:100%;background:var(--acc);transition:width .6s ease-out}
+#writing .wrow{display:flex;justify-content:space-between;gap:16px;padding:10px 0;border-top:1px solid var(--rule)}
+#writing .wrow .wst{font-style:italic;white-space:nowrap}
 @keyframes blink{50%{opacity:.2}}
-/* The chalk-writing reveal plays even with Reduce Motion on (Caio asked for it, like the XP celebration): it is short and never loops. */
-@media (prefers-reduced-motion:reduce){.btn.ok,.mcqi.done label.right::after{animation:none!important;mask:none!important;-webkit-mask:none!important;clip-path:none!important;opacity:1!important;filter:none!important;transform:none!important}#nub{display:none}}
+/* The XP celebration plays even with Reduce Motion on (it was asked for): it is short and never loops. */
+@media (prefers-reduced-motion:reduce){.btn.ok,.mcqi.done label.right::after{animation:none!important;mask:none!important;-webkit-mask:none!important;clip-path:none!important;opacity:1!important;filter:none!important;transform:none!important}}
 
 /* contents: drawer from the left + section ticks on the reading-progress bar */
 main h2,main h3{scroll-margin-top:70px}
@@ -573,17 +570,6 @@ html.slate #title,html.slate main header h1{-webkit-mask:var(--chalkmask) 0 0/12
 .katex .mnote.first::before{content:'why';position:absolute;left:.85em;top:-1.35em;font:600 11px var(--body);letter-spacing:.14em;text-transform:uppercase;color:var(--acc);opacity:.75}
 /* Step lead-ins: boxed in a hand-drawn chalk frame in the lesson's accent */
 main p > strong.step{position:relative;display:inline-block;padding:1px 9px 2px;margin:0 4px 0 -2px;color:var(--chalk)}
-/* ---------- one pen ----------
-   Everything new is written by a single pen, top to bottom: words letter by letter (.w), math swept left to right (.ink),
-   shapes and diagram strokes drawn along their path (.drawn), figure labels faded in (.ink-fade). JS gives each piece its
-   --delay/--duration on one shared clock, so two blocks never write at the same time. */
-.ink{clip-path:inset(-4px 100% -4px 0);animation:inksweep var(--duration,600ms) linear var(--delay,0ms) both}
-.katex.ink{display:inline-block}
-@keyframes inksweep{from{clip-path:inset(-4px 100% -4px 0)}to{clip-path:inset(-4px 0 -4px 0)}}
-.drawn{stroke-dasharray:100;stroke-dashoffset:100;animation:draw var(--duration,600ms) cubic-bezier(.45,.05,.4,1) var(--delay,0ms) forwards}
-@keyframes draw{to{stroke-dashoffset:0}}
-.ink-fade{opacity:0;animation:inkfade var(--duration,250ms) ease-out var(--delay,0ms) forwards}
-@keyframes inkfade{to{opacity:1}}
 /* chalk shapes: hand-drawn SVG paths sized to their text (JS), so they can be drawn like a hand draws them */
 #toc .chalkdeco{display:none}
 .chalkdeco{position:absolute;pointer-events:none;overflow:visible}
@@ -591,16 +577,6 @@ main p > strong.step{position:relative;display:inline-block;padding:1px 9px 2px;
 main h3>.chalkdeco.ul{left:-4px;bottom:-4px;width:calc(100% + 12px);height:12px}
 main p>strong.step>.chalkdeco.box{left:-3px;top:-4px;width:calc(100% + 6px);height:calc(100% + 8px)}
 html.slate .chalkdeco{-webkit-mask:var(--chalkmask) 0 0/128px 128px repeat;mask:var(--chalkmask) 0 0/128px 128px repeat}
-/* the chalk stick that follows the pen */
-#nub{transition:left .09s linear,top .09s linear,opacity .4s}
-/* ---------- brainstorm: notes on the board while the lesson is researched; erased with a felt eraser ---------- */
-#brainstorm{position:relative;margin:30px 0 70px;min-height:160px}
-#brainstorm .bl{position:relative;width:max-content;max-width:100%;margin:4px 0 8px;font:30px/1.3 'Patrick Hand',cursive;color:#ecebe3;transform:rotate(var(--tilt,0deg))}
-#brainstorm .bl.head{color:color-mix(in srgb,var(--acc) 65%,#ecebe3)}
-#brainstorm .bl.sub{margin-left:34px;font-size:26px}
-#brainstorm .smudge{position:absolute;margin:0;filter:blur(4px);opacity:.2;transition:opacity 1.6s ease-out;pointer-events:none}
-.eraser{position:absolute;left:0;top:0;width:78px;height:36px;border-radius:6px;pointer-events:none;z-index:5;
-  background:linear-gradient(#4a4036 0 58%,#b9ad97 58% 100%);box-shadow:0 3px 8px #000b,inset 0 1px 0 #ffffff22}
 /* ### subtitles: underlined with a hand-drawn chalk stroke in the lesson's accent, so they read as sub-steps of the ## above */
 main h3{display:table;position:relative;padding-bottom:9px}
 /* one control, top right: the ring is the lesson's XP and the button that opens Contents */
@@ -955,7 +931,6 @@ details.flagged>summary .flcount{margin-left:10px;margin-right:auto;font:600 12p
 <div class="defpop" id="defpop" role="dialog" aria-live="polite"></div>
 <div class="defpop whypop" id="whypop" role="dialog" aria-label="The rule behind this step"></div>
 <div class="toast" id="toast"></div>
-<div id="nub"></div>
 <button id="tocbtn" type="button" aria-label="Contents and XP (t)" title="Contents (t)" aria-controls="toc" aria-expanded="false"><svg class="ring" viewBox="0 0 38 38" aria-hidden="true"><circle class="trk" cx="19" cy="19" r="16"/><circle class="arc" cx="19" cy="19" r="16"/></svg><svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M3 4h10M3 8h10M3 12h6"/></svg><span class="hplbl" hidden>XP</span><span class="hp" aria-hidden="true" hidden></span><span class="rl" hidden></span></button>
 <div id="topbar"><a id="toplessons" href="/lessons" title="Back" aria-label="Back"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3.5 5.5 8l4.5 4.5"/></svg></a><div id="zoomctl" role="group" aria-label="Zoom"><button type="button" data-z="-1" aria-label="Zoom out (-)" title="Zoom out (-)">&minus;</button><button type="button" class="zv" data-z="0" aria-label="Reset zoom (0)" title="Reset zoom (0)">100%</button><button type="button" data-z="1" aria-label="Zoom in (+)" title="Zoom in (+)">+</button></div><div id="topsearch" role="search"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><circle cx="7" cy="7" r="4.8"/><path d="M10.6 10.6 14 14"/></svg><input id="topq" type="search" placeholder="Search every lesson" autocomplete="off" aria-label="Search every lesson" aria-controls="topresults"><kbd>/</kbd><div id="topresults" role="listbox"></div></div></div>
 <button id="chatbtn" type="button" hidden aria-label="Chat about this lesson" aria-controls="chat" aria-expanded="false"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 3.5a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v6.5a1 1 0 0 1-1 1H7l-3 2.5V11h-.5a1 1 0 0 1-1-1z"/></svg></button>
@@ -967,8 +942,8 @@ details.flagged>summary .flcount{margin-left:10px;margin-right:auto;font:600 12p
 const MODE="__MODE__", LESSON_ARG="__LESSON__", WS="__WS__";
 const WSB=WS?"/w/"+WS:"", WSQ=WS?"&ws="+WS:"";  // pages under /w/<slug>/ stay pinned to that workspace
 const $=s=>document.querySelector(s);
-const main=$('#main'), pill=$('#pill'), toast=$('#toast'), nub=$('#nub');
-let lessonId=LESSON_ARG, offset=0, hash='', blocks=0, srcLines=[], streaming=false, expCount=0, nubTimer=null, state={};
+const main=$('#main'), pill=$('#pill'), toast=$('#toast');
+let lessonId=LESSON_ARG, offset=0, hash='', blocks=0, srcLines=[], streaming=false, expCount=0, state={};
 const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 // Reading position only; never records lesson completion or mastery.
@@ -1034,9 +1009,21 @@ function md(src){
   src=src.replace(/==(?=[^\s=`])([^=\n`]+?)(?<=[^\s=`])==/g,'$1'); // legacy Explain anchors (==words==) are plain text; `a == 0 || b == 0` and code spans are left alone
   const {src:s2,slots}=mathify(src);
   const html=unslot(marked.parse(s2,{mangle:false,headerIds:false}),slots);
-  return provLabels(html.replace(/<table>/g,'<div class="tablewrap"><table>').replace(/<\/table>/g,'</table></div>'));
+  return givenCols(provLabels(html.replace(/<table>/g,'<div class="tablewrap"><table>').replace(/<\/table>/g,'</table></div>')));
 }
-// Problem labels (TEMPLATES.md, Official problems): a link to `src:<file>#page=N` opens that source in the viewer at the
+// A table header written ">S1" marks a column copied from the problem (TEMPLATES.md, Given vs calculated): the ">" is
+// dropped and every cell of that column gets class gv, so what the problem gave reads apart from what was calculated.
+function givenCols(html){
+  if(!/<th[^>]*>\s*&gt;/.test(html))return html;
+  const t=document.createElement('template'); t.innerHTML=html;
+  t.content.querySelectorAll('table').forEach(tb=>{
+    const ths=[...tb.querySelectorAll('thead th')], cols=new Set();
+    ths.forEach((th,i)=>{ const f=th.firstChild; if(f&&f.nodeType===3&&/^\s*>/.test(f.textContent)){ f.textContent=f.textContent.replace(/^\s*>\s*/,''); cols.add(i); th.classList.add('gv'); } });
+    if(cols.size)tb.querySelectorAll('tbody tr').forEach(tr=>[...tr.children].forEach((td,i)=>{ if(cols.has(i))td.classList.add('gv'); }));
+  });
+  return t.innerHTML;
+}
+// Problem labels (TEMPLATES.md, Problems and solutions): a link to `src:<file>#page=N` opens that source in the viewer at the
 // page; "Official · …" and "*Written by Claude*" on their own line show as a small muted label above the problem.
 function provLabels(html){
   html=html.replace(/<a href="src:([^"#]*)(?:#page=(\d+))?"[^>]*>([\s\S]*?)<\/a>/g,(m,path,pg,txt)=>{
@@ -1097,7 +1084,6 @@ function container(raw){
     case 'prerequisites': return `<details class="prerequisites"><summary>Prerequisites</summary><div>${md(inner)}</div></details>`;
     case 'sources': return `<details class="prerequisites sources"><summary>Sources</summary><div>${md(inner)}</div></details>`;
     case 'contents': return `<details class="prerequisites contents"><summary>Contents</summary><div>${md(inner)}</div></details>`;
-    case 'numeric': return `<details><summary>numeric detail</summary><div>${md(inner)}</div></details>`;
     case 'predict':{
       const ls=inner.split('\n').filter(l=>l.trim()); const reveal=ls.find(l=>/^reveal:/.test(l));
       const raw=ls.filter(l=>!/^reveal:/.test(l)).map(l=>l.replace(/^\s*-\s*/,''));
@@ -1176,8 +1162,6 @@ function container(raw){
       return `<div class="score" data-item="${esc(/^\d+$/.test(it||'')?'':it)}" data-n="${n}"><p class="grade${n<=2?' low':''}"><b>Score ${n} / 5</b>${pips(n)}</p>${md(inner)}</div>`;
     }
     case 'card':{ return deckHtml([parseCard(raw)],{}); }
-    case 'recall':{ return deckHtml([{id:arg||'r',q:inner.trim(),answer:'',must:[]}],{}); }
-    case 'trap': return calloutHtml(inner);
     // size encodes importance: ::: big (level 1) for the one or two rules a chapter rests on, ::: key (level 2) for a
     // tool formula; everything else is level 3, the normal size. Writers never hand-size with \Large or \Huge.
     // cheat sheet: ::: sheet holds ::: group <label> cards (a 2-column grid on wide screens), formulas only
@@ -1185,6 +1169,8 @@ function container(raw){
     case 'group': return `<section class="sheetcard"><h4 class="sheetlbl">${mdInline(arg)}</h4>${segments(inner,0).map(sg=>/^::: /.test(sg.raw)?container(sg.raw):md(sg.raw)).join('')}</section>`;
     case 'big': case 'key': return `<div class="sz ${kind==='big'?'sz1':'sz2'}">${segments(inner,0).map(sg=>/^::: /.test(sg.raw)?container(sg.raw):md(sg.raw)).join('')}</div>`;
     case 'callout': return calloutHtml(inner);
+    // what the problem gives, quoted: its text, data tables and figures, before the work and inside a solution
+    case 'given': return `<blockquote class="given"><div class="givhead"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M3 9.5C3 6.6 4.6 4.6 7 4v1.6C5.7 6.1 5 7 5 8h2v4H3zm6 0C9 6.6 10.6 4.6 13 4v1.6c-1.3.5-2 1.4-2 2.4h2v4H9z"/></svg><span>From the problem</span></div>${segments(inner,0).map(sg=>/^::: /.test(sg.raw)?container(sg.raw):md(sg.raw)).join('')}</blockquote>`;
     default: return `<div class="${kind}">${md(inner)}</div>`;
   }
 }
@@ -1308,13 +1294,6 @@ function wireInteractive(el){
   }
 }
 
-// ---------- animation ----------
-// ---------- one pen ----------
-// A single clock for the whole page: each new block starts where the previous one stopped, so the board fills top to
-// bottom like a person writing. If the pen falls far behind (a big rebuild), it writes faster instead of lagging.
-const pen={free:0};
-function penReserve(ms){ const now=performance.now(), start=Math.max(now,pen.free); pen.free=start+ms; return start-now; }
-function penSpeed(){ const backlog=Math.max(0,pen.free-performance.now()); return backlog>5000?Math.max(.2,5000/backlog):1; }
 function seeded(str){ let h=2166136261; for(const c of str) h=Math.imul(h^c.charCodeAt(0),16777619); return ()=>{ h=Math.imul(h^(h>>>15),2246822507); h=Math.imul(h^(h>>>13),3266489909); return ((h^=h>>>16)>>>0)/4294967296; }; }
 // chalk shapes: a real path per shape, sized to its text, redrawn when the text reflows
 const decoRO=('ResizeObserver' in window)?new ResizeObserver(es=>es.forEach(e=>shapeDeco(e.target))):null;
@@ -1338,48 +1317,6 @@ function decorate(root){
     el.appendChild(svg); shapeDeco(svg); decoRO&&decoRO.observe(svg);
   });
 }
-function animate(el){
-  if(!el||el.dataset.writing==='1')return;
-  el.dataset.writing='1'; decorate(el);
-  const k=penSpeed(), CH=16*k, units=[];
-  const visit=n=>{
-    if(n.nodeType===3){
-      if(!n.data.trim()||n.parentElement.closest('svg,script,style,button,select,textarea,.interactive-stage,.pending,.w,.katex'))return;
-      const frag=document.createDocumentFragment();
-      for(const part of n.data.split(/(\s+)/)){ if(!part)continue; if(/^\s+$/.test(part)){frag.append(part);continue;}
-        const sp=document.createElement('span'); sp.className='w'; sp.textContent=part; sp.style.setProperty('--letters',String([...part].length));
-        units.push({el:sp,dur:Math.max(40,[...part].length*CH),kind:'w'}); frag.append(sp); }
-      n.replaceWith(frag); return;
-    }
-    if(n.nodeType!==1||n.matches('script,style,button,select,textarea,input,img,.interactive-stage,.pending'))return;
-    if(n.classList.contains('mathrow')){ units.push({el:n,dur:Math.min(3200,Math.max(500,n.textContent.length*CH*.55)),kind:'ink'}); return; }
-    if(n.classList.contains('katex')){ units.push({el:n,dur:Math.min(1500,Math.max(180,n.textContent.length*CH*.6)),kind:'ink'}); return; }
-    if(n instanceof SVGSVGElement){
-      if(n.classList.contains('chalkdeco'))return;
-      n.querySelectorAll('path,line,polyline,polygon,rect,circle,ellipse').forEach(p=>{ let L=60; try{L=p.getTotalLength()}catch(_){} units.push({el:p,dur:Math.min(900,Math.max(120,L*2.2*k)),kind:'draw'}); });
-      n.querySelectorAll('text').forEach(t=>units.push({el:t,dur:160,kind:'fade'})); return;
-    }
-    [...n.childNodes].forEach(visit);
-    n.querySelectorAll(':scope>.chalkdeco path').forEach(p=>units.push({el:p,dur:(n.matches('strong')?650:420)*Math.max(.5,k),kind:'draw'}));
-  };
-  visit(el);
-  if(!units.length){ delete el.dataset.writing; return; }
-  const gap=120*k, total=units.reduce((a,u)=>a+u.dur,0)+gap;
-  let t=penReserve(total);
-  const t0=t;
-  for(const u of units){
-    u.el.style.setProperty('--delay',t+'ms'); u.el.style.setProperty('--duration',u.dur+'ms');
-    if(u.kind==='ink')u.el.classList.add('ink'); else if(u.kind==='draw'){u.el.setAttribute('pathLength','100');u.el.classList.add('drawn');} else if(u.kind==='fade')u.el.classList.add('ink-fade');
-    u.at=t; t+=u.dur;
-  }
-  // the chalk stick hops along with the pen (a few stops per line is enough)
-  let last=-1e9; for(const u of units){ if(u.at-last<140)continue; last=u.at; setTimeout(()=>{ if(!u.el.isConnected)return; const r=u.el.getBoundingClientRect(); if(r.bottom<0||r.top>innerHeight)return; nub.style.left=(r.right-3)+'px'; nub.style.top=(r.bottom-18)+'px'; nub.classList.add('on'); clearTimeout(nubTimer); nubTimer=setTimeout(()=>nub.classList.remove('on'),700); },u.at); }
-  setTimeout(()=>{
-    el.querySelectorAll('.w').forEach(x=>x.replaceWith(...x.childNodes));
-    el.querySelectorAll('.ink,.drawn,.ink-fade').forEach(x=>{ x.classList.remove('ink','drawn','ink-fade'); x.style.removeProperty('--delay'); x.style.removeProperty('--duration'); });
-    el.normalize(); delete el.dataset.writing;
-  },t+250);
-}
 function inlineSvgs(){
   // a figure file can land after the page rendered (the writer draws it last): retry a missing one every 4s for a minute
   main.querySelectorAll('.svgslot[data-src]:not([data-done])').forEach(sl=>{sl.dataset.done=1;
@@ -1388,61 +1325,21 @@ function inlineSvgs(){
       .then(t=>{ if(!/<svg[\s>]/.test(t)) throw new Error('not svg'); sl.outerHTML=t.replace(/<\?xml[^>]*>/,'').replace(/<svg /,'<svg class="fig" '); })
       .catch(()=>{ if(tries<15){ sl.dataset.tries=tries+1; sl.innerHTML='<p class="fail">drawing…</p>'; setTimeout(()=>{ delete sl.dataset.done; inlineSvgs(); },4000); } else sl.innerHTML='<p class="fail">could not load '+esc(sl.dataset.src)+'</p>'; });});
 }
-// ---------- brainstorm ----------
-// While a lesson is being researched (it has a title but no body yet), the agent posts notes with bin/brainstorm.sh:
-// the page writes new lines by hand, wipes removed or moved lines with a felt eraser, and when the first real block
-// lands it wipes the whole board and starts the lesson. Same pen clock, so writing and erasing never overlap.
-function bsBox(){ let b=document.getElementById('brainstorm'); if(!b){ b=document.createElement('div'); b.id='brainstorm'; b.setAttribute('aria-label','Planning the lesson'); } return b; }
-function bodyStarted(){ return !!main.querySelector(':scope > .blk:not(.hdr)'); }
-function bsLine(t){ const d=document.createElement('div'); d.className='bl'+(/^[A-Z][^:]{0,24}:/.test(t)?' head':'')+(/^\s*[-•·]/.test(t)?' sub':''); d.dataset.t=t; d.textContent=t.replace(/^\s*[-•·]\s*/,'– '); d.style.setProperty('--tilt',((seeded(t)()-.5)*1.2).toFixed(2)+'deg'); return d; }
-function eraseLine(el,box){
-  const dur=Math.min(1200,Math.max(450,el.offsetWidth*1.2)), wait=penReserve(dur+90);
-  el.dataset.gone='1';
-  setTimeout(()=>{
-    if(!el.isConnected)return;
-    const x0=el.offsetLeft-44, x1=el.offsetLeft+el.offsetWidth-34, y=el.offsetTop+el.offsetHeight/2-18;
-    const sm=el.cloneNode(true); sm.classList.add('smudge'); sm.style.left=el.offsetLeft+'px'; sm.style.top=el.offsetTop+'px'; box.appendChild(sm);
-    const er=document.createElement('div'); er.className='eraser'; box.appendChild(er);
-    const path=[0,.2,.4,.6,.8,1].map((f,i)=>({transform:`translate(${x0+(x1-x0)*f}px,${y+(i%2?-7:6)}px) rotate(${i%2?5:-5}deg)`}));
-    er.animate(path,{duration:dur,easing:'ease-in-out',fill:'forwards'});
-    el.animate([{clipPath:'inset(-12px 0 -12px 0)'},{clipPath:'inset(-12px 0 -12px 100%)'}],{duration:dur,easing:'ease-in-out',fill:'forwards'});
-    setTimeout(()=>{ er.animate([{opacity:1},{opacity:0}],{duration:220,fill:'forwards'}).onfinish=()=>er.remove(); el.remove(); requestAnimationFrame(()=>sm.style.opacity='0'); setTimeout(()=>sm.remove(),1800); },dur);
-  },wait);
-}
-function applyBrainstorm(b){
-  if(MODE!=='lesson'||!b||String(b.lesson)!==String(lessonId)||bodyStarted())return;
-  const box=bsBox();
-  if(!box.isConnected){ const hdr=main.querySelector('.top'); (hdr&&hdr.parentElement===main)?main.appendChild(box):main.appendChild(box); setWriting(false); }
-  if((b.rev||0)<=(+box.dataset.rev||0))return; box.dataset.rev=b.rev||0;
-  const want=(b.lines||[]).map(x=>String(x)).filter(x=>x.trim());
-  if(!want.length&&fmCache&&fmCache.title) want.push('Explain: '+fmCache.title); // the board is never blank before the lesson starts
-  const cur=[...box.querySelectorAll(':scope>.bl:not(.smudge)')].filter(x=>!x.dataset.gone);
-  const old=cur.map(x=>x.dataset.t);
-  // longest common subsequence: lines that stay in the same relative order are kept, the rest are erased/rewritten
-  const L=Array.from({length:old.length+1},()=>new Array(want.length+1).fill(0));
-  for(let i=old.length-1;i>=0;i--)for(let j=want.length-1;j>=0;j--)L[i][j]=old[i]===want[j]?L[i+1][j+1]+1:Math.max(L[i+1][j],L[i][j+1]);
-  const keepOld=new Set(), pair={}; for(let i=0,j=0;i<old.length&&j<want.length;){ if(old[i]===want[j]){keepOld.add(i);pair[j]=cur[i];i++;j++;} else if(L[i+1][j]>=L[i][j+1])i++; else j++; }
-  cur.forEach((el,i)=>{ if(!keepOld.has(i)) eraseLine(el,box); });
-  let prev=null;
-  want.forEach((t,j)=>{ if(pair[j]){prev=pair[j];return;} const el=bsLine(t); if(prev)prev.after(el); else box.prepend(el); prev=el; animate(el); });
-  if(!want.length&&!cur.length) box.remove();
-}
-function bsWipeAll(){
-  const box=document.getElementById('brainstorm'); if(!box||!box.isConnected)return;
-  box.dataset.rev=1e15; // ignore further notes for this lesson
-  box.querySelectorAll(':scope>.bl:not(.smudge)').forEach(el=>{ if(!el.dataset.gone) eraseLine(el,box); });
-  setTimeout(()=>box.remove(),Math.max(0,pen.free-performance.now())+400);
-}
+// While the lesson is live: one progress line, a bar, and a quiet row per planned chapter not written yet.
+let writingInfo=null, writingAt=0;
+function fmtLeft(s){ if(s<90)return 'about a minute left'; const m=Math.round(s/60); return m<90?`about ${m} min left`:`about ${Math.round(m/6)/10} h left`; }
 function setWriting(on){
-  document.getElementById('writing')?.remove();
-  if(!on||MODE!=='lesson'){ nub.classList.remove('idle'); return; }
-  if(!bodyStarted()){
-    // nothing written yet: never an empty board or a loading bar; write the title as the first brainstorm note
-    if(!document.getElementById('brainstorm')?.isConnected&&fmCache&&fmCache.title) applyBrainstorm({lesson:lessonId,lines:['Explain: '+fmCache.title],rev:1});
-    return;
-  }
-  // between blocks: the chalk stick rests where the writing stopped, until the next block starts
-  if(pen.free<=performance.now()){ const last=[...main.querySelectorAll(':scope>.blk')].pop(); if(last){ const r=last.getBoundingClientRect(); if(r.bottom>0&&r.bottom<innerHeight+40){ nub.style.left=(r.left+8)+'px'; nub.style.top=(r.bottom+6)+'px'; nub.classList.add('on','idle'); } } }
+  let box=document.getElementById('writing');
+  if(!on||MODE!=='lesson'){ box?.remove(); return; }
+  if(!box){ box=document.createElement('div'); box.id='writing'; box.setAttribute('aria-live','polite'); }
+  const end=document.getElementById('endcard'), at=end&&end.parentElement===main?end:null;
+  if(box.nextElementSibling!==at||box.parentElement!==main) main.insertBefore(box,at);
+  const w=writingInfo||{chapters:[],finished:0,total:0,eta_s:null};
+  const left=w.eta_s==null?'':fmtLeft(Math.max(0,w.eta_s-(Date.now()-writingAt)/1000));
+  const pct=w.total?Math.round(100*w.finished/w.total):0;
+  const rows=w.chapters.filter(c=>c.state==='planned').map(c=>`<div class="wrow"><span>${esc(c.title)}</span><span class="wst">being written</span></div>`).join('');
+  box.innerHTML=`<div class="wprog"><span class="wcount">${w.total?`${w.finished} of ${w.total} chapters`:'Being written'}</span>${left?`<span>${left}</span>`:''}</div>`
+    +`<div class="wbar"><i style="width:${pct}%"></i></div>${rows}`;
 }
 function followIfAtBottom(el){
   const gap=document.documentElement.scrollHeight-window.innerHeight-window.scrollY;
@@ -1519,7 +1416,7 @@ async function loadLesson(){
   const segs=segments(b,bodyStart);
   const fresh=segs.slice(renderedUpto);
   fresh.forEach((s,k)=>{ if(fmCache.title&&/^# /.test(s.raw)&&renderedUpto+k===0)return; // title already in header
-    const el=renderSegment(s); main.appendChild(el); if(r.reset&&!streaming)return; animate(el);});
+    const el=renderSegment(s); main.appendChild(el);});
   renderedUpto=segs.length;
   imageCredits(b); srcFiles();
   wire(); endCard();
@@ -1570,8 +1467,7 @@ function grid(st){
 async function ask(req){
   req.lesson=lessonId; if(WS)req.ws=WS;
   const r=await fetch('/ask',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(req)}).then(r=>r.json()).catch(()=>({error:'bridge down'}));
-  if(r.fallback==='paste'){toast.innerHTML=`Paste in chat: <code>${esc(r.command)}</code><button class="btn" id="copy">copy</button>`;toast.style.display='block';$('#copy').onclick=()=>{navigator.clipboard.writeText(r.command);toast.style.display='none'};setTimeout(()=>toast.style.display='none',20000);}
-  else if(r.error){toast.textContent='Bridge not running. Run render.sh again.';toast.style.display='block';setTimeout(()=>toast.style.display='none',5000);}
+  if(r.error){toast.textContent='Bridge not running. Run render.sh again.';toast.style.display='block';setTimeout(()=>toast.style.display='none',5000);}
   return r;
 }
 // ---------- math selection: whole visual lines, not glyph fragments ----------
@@ -1728,7 +1624,7 @@ pill.addEventListener('mousedown',e=>{e.preventDefault();const k=e.target.datase
   // same words already explained under this block: open that note, do not write a second one
   if(!exp&&blk){ const lab=text.split(/\s+/).slice(0,6).join(' ').toLowerCase(); const hit=notesAfter(blk).find(f=>f.dataset.label===lab); if(hit){ hit.classList.remove('closed'); hit.querySelector('.exp').scrollIntoView({behavior:'smooth',block:'center'}); ask({kind:'fold',id:hit.dataset.for,folded:false}); window.getSelection().removeAllRanges(); pill.style.display='none'; return; } }
   const pending='p'+Date.now();
-  const req={kind:'explain',depth:k,text,block:blk?blk.id:'',line:blk?+blk.dataset.line:0,pending};
+  const req={kind:'explain',text,block:blk?blk.id:'',line:blk?+blk.dataset.line:0,pending};
   if(exp)req.parent=exp.dataset.id;
   // placeholder unfolds immediately
   const label=noteLabel(text);
@@ -1767,7 +1663,7 @@ function showDefine(text,blk,r){
       if(seq!==defSeq)return;                                   // a newer selection won
       const body=defpop.querySelector('.body');
       if(d&&d.error){ defpop.classList.add('err'); body.textContent=d.error; return; }
-      body.innerHTML=mdInline(d.text||'');animate(body);
+      body.innerHTML=mdInline(d.text||'');
       const hh=defpop.offsetHeight;
       if(r.bottom+hh+14>innerHeight)defpop.style.top=(r.top+window.scrollY-hh-8)+'px';
     });
@@ -1837,7 +1733,6 @@ function restoreDefinitions(){
 }
 let lastRaws=[];
 // Which top-level segments changed between two renders: [first, lastExclusive) in the new list.
-function writingContent(raw){return raw.replace(/^(::: exp[^\n]*)/gm,line=>line.replace(/\s+folded\b/g,'')).trim();}
 function changedRange(prev,next){
   if(!prev.length)return null;
   let p=0; while(p<prev.length&&p<next.length&&prev[p]===next[p])p++;
@@ -2724,7 +2619,7 @@ async function boot(){
     if(d){streaming=d.streaming; if(MODE==='lesson'&&!LESSON_ARG&&d.current&&d.current!==lessonId){location.href=WSB+'/';return}}
     const r=await fetch(`/api/lesson?id=${lessonId}&from=${offset}&hash=${hash}${WSQ}`).then(r=>r.json());
     if(r.reset){offset=0;hash='';await loadLessonWith(r);} else if(r.text){await loadLessonWith(r);}
-    if(d&&d.brainstorm)applyBrainstorm(d.brainstorm);
+    if(d&&'writing' in d){writingInfo=d.writing; writingAt=Date.now();}
     if(!was&&streaming)sfx('start'); else if(was&&!streaming)sfx('done'); else if(streaming&&main.querySelectorAll('h2').length>h2s)sfx('section');
     setWriting(streaming); endCard();
   } finally{busy=false} }
@@ -2735,7 +2630,7 @@ async function boot(){
   try{ const k='bb-scroll:'+location.pathname, y=sessionStorage.getItem(k); if(y!==null){ sessionStorage.removeItem(k); let n=0; const go=()=>{ window.scrollTo(0,+y); if(Math.abs(window.scrollY-(+y))>4&&n++<20) setTimeout(go,150); }; setTimeout(go,300); } }catch(_){}
   try{ window.es=new EventSource('/events?id='+lessonId+WSQ); window.es.addEventListener('change',e=>sync(JSON.parse(e.data))); }catch(_){}
   // polling fallback (covers webviews where EventSource is flaky)
-  setInterval(async()=>{ try{const st=await fetch('/api/state?x=1'+WSQ).then(r=>r.json()); if(state.page_version&&st.page_version!==state.page_version){boardUpdated();}  if(!(window.es&&window.es.readyState===1)) await sync({current:st.current,brainstorm:st.brainstorm,streaming:st.streaming});}catch(_){} },1500);
+  setInterval(async()=>{ try{const st=await fetch('/api/state?x=1'+WSQ).then(r=>r.json()); if(state.page_version&&st.page_version!==state.page_version){boardUpdated();}  if(!(window.es&&window.es.readyState===1)) await sync({current:st.current,writing:st.writing,streaming:st.streaming});}catch(_){} },1500);
 }
 async function loadLessonWith(r){
   // A reset rebuilds the page (a callout was written or folded, the file changed mid-way). Keep the reader where they
@@ -2744,14 +2639,12 @@ async function loadLessonWith(r){
   if(r.reset&&main.children.length){ const bl=[...main.querySelectorAll(':scope > .blk')]; const a=bl.find(b=>b.getBoundingClientRect().bottom>80);
     if(a) place={sig:a.textContent.slice(0,160),i:bl.indexOf(a),top:a.getBoundingClientRect().top}; main.style.minHeight=main.offsetHeight+'px'; }
   const isFirst=!!window.__firstLoad;
-  if(r.reset){const keep=[...main.querySelectorAll('.fold[data-pending]')]; window.__bsKeep=document.getElementById('brainstorm'); main.innerHTML='';blocks=0;headerDone=false;body='';renderedUpto=0; window.__ph=keep;}
+  if(r.reset){const keep=[...main.querySelectorAll('.fold[data-pending]')]; main.innerHTML='';blocks=0;headerDone=false;body='';renderedUpto=0; window.__ph=keep;}
   body+=r.text; offset=r.offset; if(r.hash)hash=r.hash;
-  if(!headerDone){const {fm,fmLines}=frontMatter(body); if(/^---\n[\s\S]*?\n---\n/.test(body)||!body.startsWith('---')){main.insertAdjacentHTML('afterbegin',header(fm,null));headerDone=true;document.title=(fm.title?fm.title+' · ':'')+'Blackboard';bodyStart=fmLines;fmCache=fm;applyAccent(fm);setWriting(streaming);if(streaming)animate(main.querySelector('#title'));} else {setWriting(streaming);return;}}
-  if(window.__bsKeep){ main.appendChild(window.__bsKeep); window.__bsKeep=null; } // a rebuild keeps the brainstorm notes
+  if(!headerDone){const {fm,fmLines}=frontMatter(body); if(/^---\n[\s\S]*?\n---\n/.test(body)||!body.startsWith('---')){main.insertAdjacentHTML('afterbegin',header(fm,null));headerDone=true;document.title=(fm.title?fm.title+' · ':'')+'Blackboard';bodyStart=fmLines;fmCache=fm;applyAccent(fm);setWriting(streaming);} else {setWriting(streaming);return;}}
   const {body:b}=frontMatter(body); const segs=segments(b,bodyStart); const fresh=segs.slice(renderedUpto);
   const raws=segs.map(s=>s.raw); const chg=r.reset?changedRange(lastRaws,raws):null; const hot=[];
-  if(document.getElementById('brainstorm')?.isConnected&&fresh.some(sg=>sg.raw.trim()&&!/^# /.test(sg.raw)))bsWipeAll();
-  fresh.forEach((s,k)=>{ const idx=renderedUpto+k; if(fmCache.title&&/^# /.test(s.raw)&&idx===0)return; const el=renderSegment(s); main.appendChild(el); if(chg&&idx>=chg[0]&&idx<chg[1])hot.push(el); if(!isFirst&&(!r.reset||streaming||(chg&&idx>=chg[0]&&idx<chg[1]&&!lastRaws.some(raw=>writingContent(raw)===writingContent(s.raw))))){animate(el);} if(streaming)followIfAtBottom(el); });
+  fresh.forEach((s,k)=>{ const idx=renderedUpto+k; if(fmCache.title&&/^# /.test(s.raw)&&idx===0)return; const el=renderSegment(s); main.appendChild(el); if(chg&&idx>=chg[0]&&idx<chg[1])hot.push(el); if(streaming)followIfAtBottom(el); });
   lastRaws=raws;
   setWriting(streaming);
   // Keep in-flight callouts across unrelated SSE updates; replace them in place on completion.
@@ -2957,14 +2850,30 @@ function chatImgsPaint(){
 $('#chatimgs').addEventListener('click',e=>{ const b=e.target.closest('button[data-i]'); if(!b)return; chat.imgs.splice(+b.dataset.i,1); chatImgsPaint(); chatSync(); chatQ.focus(); });
 $('#chatadd').onclick=()=>$('#chatfile').click();
 $('#chatfile').addEventListener('change',e=>{ chatAddImages(e.target.files).then(()=>{ e.target.value=''; chatQ.focus(); }); });
-chatQ.addEventListener('paste',e=>{ const fs=[...(e.clipboardData?.files||[])]; if(fs.some(f=>CHAT_IMG_OK.includes(f.type))){ e.preventDefault(); chatAddImages(fs); } });
+// Paste and drop work anywhere on the page, not only in the message box: in full screen the video fills most of the
+// screen, focus is usually on the player, and a file dropped outside the chat made the browser open it and leave the
+// lesson. The images go to the chat, which opens if it was closed.
+const chatImgFiles=dt=>[...(dt?.files||[])].filter(f=>CHAT_IMG_OK.includes(f.type));
+function chatTakeImages(files){
+  if(!chatOk())return false;
+  if(!chat.open)chatSetOpen(true,false);
+  chatAddImages(files).then(()=>chatQ.focus());
+  return true;
+}
+document.addEventListener('paste',e=>{
+  const fs=chatImgFiles(e.clipboardData); if(!fs.length)return;
+  const t=e.target instanceof Element?e.target:null;
+  if(t&&t!==chatQ&&t.closest('input,textarea,select,[contenteditable]:not([contenteditable="false"])'))return;
+  if(chatTakeImages(fs))e.preventDefault();
+});
 (function chatDrop(){
   const box=$('#chat'); let depth=0;
   const has=e=>[...(e.dataTransfer?.types||[])].includes('Files');
-  box.addEventListener('dragenter',e=>{ if(!has(e))return; e.preventDefault(); depth++; box.classList.add('cdrop'); });
-  box.addEventListener('dragover',e=>{ if(has(e))e.preventDefault(); });
-  box.addEventListener('dragleave',()=>{ if(--depth<=0){ depth=0; box.classList.remove('cdrop'); } });
-  box.addEventListener('drop',e=>{ if(!has(e))return; e.preventDefault(); depth=0; box.classList.remove('cdrop'); chatAddImages(e.dataTransfer.files).then(()=>chatQ.focus()); });
+  const off=()=>{ depth=0; box.classList.remove('cdrop'); };
+  document.addEventListener('dragenter',e=>{ if(!has(e))return; e.preventDefault(); if(depth++===0)box.classList.add('cdrop'); });
+  document.addEventListener('dragover',e=>{ if(!has(e))return; e.preventDefault(); e.dataTransfer.dropEffect='copy'; });
+  document.addEventListener('dragleave',e=>{ if(!has(e))return; if(--depth<=0)off(); });
+  document.addEventListener('drop',e=>{ if(!has(e))return; e.preventDefault(); off(); chatTakeImages(e.dataTransfer.files); });
 })();
 chatQ.addEventListener('input',chatGrow);
 chatQ.addEventListener('keydown',e=>{ if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){ e.preventDefault(); chatSendMsg(chatQ.value); } });

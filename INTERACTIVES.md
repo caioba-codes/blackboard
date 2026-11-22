@@ -45,5 +45,3 @@ The range control supports keyboard arrows. For trig functions, changing bounds,
 - The learner changes something relevant and sees its consequence.
 - Initial, middle, and final trace states or slider extrema are correct.
 - Controls work with keyboard; no autoplay; reset returns to the first trace state.
-- There is a static takeaway beside the example.
-- Lesson photos are separate from this instructional visual requirement.

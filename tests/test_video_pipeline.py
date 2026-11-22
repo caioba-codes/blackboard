@@ -304,23 +304,55 @@ class VideoPipelineTest(unittest.TestCase):
         self.assertTrue((out / "slate.jpg").is_file())
         self.assertIn("url(slate.jpg)", (out / "look.css").read_text())
 
-    def test_pace_fails_when_the_script_rushes_the_lesson(self):
+    def module(self):
         spec = importlib.util.spec_from_file_location("video_pipeline", CLI)
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
-        d = self.project.parent
-        lesson = d / "0003-long.md"
-        lesson.write_text("word " * 1000, encoding="utf-8")
-        proj = d / "pace"
-        proj.mkdir()
-        (proj / "script.json").write_text(json.dumps({"scenes": [{"cues": [{"say": "word " * 1200}]}]}), encoding="utf-8")
-        with self.assertRaises(module.PipelineError) as e:
-            module.pace_ok(lesson, proj)
-        self.assertIn("too fast", str(e.exception))
-        (proj / "script.json").write_text(json.dumps({"scenes": [{"cues": [{"say": "word " * 2100}]}]}), encoding="utf-8")
-        self.assertIn("ready", module.pace_ok(lesson, proj))
-        est = self.cli("estimate", "--lesson", lesson)
-        self.assertEqual(json.loads(est.stdout)["minutes"], 15)
+        return module
+
+    def test_every_solution_row_needs_an_anchored_spoken_cue(self):
+        # 2: a worked derivation (3 rows); 4-5: a check-in item whose answer has 2 rows; 6: a one-line item
+        self.lesson.write_text("# Motion\n$$\\begin{aligned} x &= 1 \\\\ y &= 2 &&\\text{why} \\\\ &&\\text{note} \\\\ z &= 3 \\end{aligned}$$\n"
+                               "::: checkin\n- Question one || hint\n  $$\\begin{aligned} a &= 1 \\\\ b &= 2 \\end{aligned}$$\n"
+                               "- Question two || hint\n:::\n::: sheet\n$$\\begin{aligned} p &= q \\end{aligned}$$\n:::\n", encoding="utf-8")
+        items = self.module().solution_items(self.lesson.read_text().splitlines())
+        self.assertEqual([(i["first"], i["kind"], i["rows"]) for i in items], [(2, "worked", 3), (4, "practice", 2), (6, "practice", 1)])
+        anchors = self.plan()
+        for seg, line in zip(anchors["segments"], (4, 6, 2)):
+            seg["line"] = line
+        (self.project / "anchors.json").write_text(json.dumps(anchors), encoding="utf-8")
+        self.cli("build-map", "--project", self.project)
+        stage = json.loads(self.cli("check", "--project", self.project, ok=False).stdout)["stages"]["coverage"]
+        self.assertIn("2 of 3 written solutions", stage)
+        self.assertIn("line 2 (worked, 3 rows): 1 spoken cue(s)", stage)
+        self.assertIn("line 4 (practice, 2 rows): 1 spoken cue(s)", stage)
+
+    def test_coverage_counts_only_the_solution_of_a_practice_segment(self):
+        anchors = self.plan()
+        self.cli("build-map", "--project", self.project)
+        stages = json.loads(self.cli("check", "--project", self.project, ok=False).stdout)["stages"]
+        self.assertTrue(stages["coverage"].startswith("ready"), stages["coverage"])
+        self.assertTrue(stages["padding"].startswith("ready"), stages["padding"])
+
+    def test_padding_allows_a_three_sentence_opening_and_no_unanchored_speech_after(self):
+        m = self.module()
+        lesson = self.project.parent / "0005-pad.md"
+        lesson.write_text("---\ntitle: T\n---\n# T\n\n::: contents\n1. One\n:::\n\n## Chapter 1 · One\n\nStep one.\n", encoding="utf-8")
+        def run(opening, chapter_say):
+            script = {"scenes": [{"id": "s0", "cues": [{"id": "o", "say": opening}, {"id": "h", "say": chapter_say},
+                                                       {"id": "t", "say": "Do step one."}]}]}
+            timeline = {"scenes": [{"id": "s0", "start": 0, "cues": {"o": {"s": 0}, "h": {"s": 2}, "t": {"s": 1}}}]}
+            segs = [{"id": "open", "line": 4, "start": 0, "end": 1, "practice": None},
+                    {"id": "step", "line": 12, "start": 1, "end": 2, "practice": None},
+                    {"id": "next", "line": 10, "start": 2, "end": 3, "practice": None}]
+            return m.padding_ok(lesson, segs, script, timeline)
+        with self.assertRaises(m.PipelineError) as e:
+            run("Welcome. These were the sources. We cover one. Let's go.", "")
+        self.assertIn("opening: 4 sentences", str(e.exception))
+        with self.assertRaises(m.PipelineError) as e:
+            run("Welcome. These were the sources. We cover one.", "Now chapter two.")
+        self.assertIn("next (line 10)", str(e.exception))
+        self.assertIn("ready", run("Welcome. These were the sources. We cover one.", ""))
 
 
 if __name__ == "__main__":

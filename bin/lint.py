@@ -73,7 +73,7 @@ for m in re.finditer(r"\\begin\{(array|tabular)\}\{([^}]*)\}(.*?)\\end\{\1\}", s
 for m in re.finditer(r"\\(Large|LARGE|large|Huge|huge)(?![A-Za-z])", s):
     line = s[:m.start()].count("\n") + 1
     print(f"  lint: line {line}: hand-sized math (\\{m.group(1)}). Wrap the display in ::: big (level 1) or ::: key (level 2) instead.", file=sys.stderr); warn += 1
-# official problems (TEMPLATES.md, Official problems): every problem has a label, every src: file exists, and only a
+# official problems (TEMPLATES.md, Problems and solutions): every problem has a label, every src: file exists, and only a
 # verbatim official multiple-choice item may have other than four (or two) options
 import os
 raw = open(sys.argv[1]).read()
@@ -90,14 +90,31 @@ for m in re.finditer(r"\]\(src:([^)\s]+)\)", raw):
         line = raw[:m.start()].count("\n") + 1
         print(f"  lint: line {line}: label source {m.group(1)} is not a file under sources/ or the course folder.", file=sys.stderr); warn += 1
 L = raw.split("\n")
+# lines inside a ::: given block (the quoted problem); they do not count toward a label's distance
+IN_GIVEN, _stack = set(), []
+for n, l in enumerate(L):
+    if re.match(r"^::: ", l):
+        _stack.append(l.split()[1] if len(l.split()) > 1 else "")
+    elif re.match(r"^:::\s*$", l) and _stack:
+        _stack.pop()
+    if "given" in _stack:
+        IN_GIVEN.add(n)
+for n, l in enumerate(L):   # the closing ::: of a given block
+    if re.match(r"^:::\s*$", l) and n - 1 in IN_GIVEN:
+        IN_GIVEN.add(n)
 def label_above(i, span=14):
-    """A label in the lines just above line i (0-based), not crossing a heading or another problem block's end."""
-    for k in range(i - 1, max(-1, i - span), -1):
+    """A label in the lines just above line i (0-based), not crossing a heading or another problem block's end.
+    The lines of a ::: given block in between do not count toward the span."""
+    k, left = i - 1, span
+    while k >= 0 and left > 0:
         t = L[k].strip()
-        if LABEL.search(t):
-            return True
-        if t.startswith("#") or re.match(r"^::: (mcq|checkin)\b", t):
-            return False
+        if k not in IN_GIVEN:
+            left -= 1
+            if LABEL.search(t):
+                return True
+            if t.startswith("#") or re.match(r"^::: (mcq|checkin)\b", t):
+                return False
+        k -= 1
     return False
 i = 0
 while i < len(L):
@@ -135,4 +152,15 @@ for i, l in enumerate(L):
         if re.match(r"^::: fig\b", t):
             print(f"  lint: line {k + 1}: a drawn ::: fig between an official problem's label and the problem. Show only the source's own figure (::: figure, cropped); move drawings into the solution.", file=sys.stderr); warn += 1
             break
+# given vs calculated (TEMPLATES.md): an official problem's quoted text sits in a ::: given block under its label
+for i, l in enumerate(L):
+    if not re.search(r"\[Official ·[^\]]*\]\(src:", l) or l.lstrip().startswith("-"):
+        continue
+    for k in range(i + 1, min(len(L), i + 6)):
+        t = L[k].strip()
+        if not t or t.startswith("<!--") or re.fullmatch(r"\*\*Worked example[^*]*\*\*.*", t):
+            continue
+        if not re.match(r"^(::: (given|mcq|checkin)\b|#{1,6} |\*\*Solution)", t):
+            print(f"  lint: line {k + 1}: an official problem's text outside a ::: given block. Wrap what the problem states (text, tables, figures) in ::: given so it reads apart from the work.", file=sys.stderr); warn += 1
+        break
 if warn: print(f"  lint: {warn} warning(s). TEMPLATES.md: one operation per line; tables as markdown tables.", file=sys.stderr)

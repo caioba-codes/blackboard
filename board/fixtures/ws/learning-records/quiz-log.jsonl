@@ -1,3 +1,0 @@
-{"ts":"2026-09-02T20:00:00Z","lesson":"0001","topic":"AND/OR/NOT","mode":"mcq","score":5,"misconception":null}
-{"ts":"2026-09-02T20:02:00Z","lesson":"0001","topic":"complement laws","mode":"recall","score":2,"misconception":"thinks A + NOT A can be 0 when A is 0"}
-{"ts":"2026-09-03T01:49:56Z","lesson":"0002","topic":"simplifying SOP","mode":"predict","score":2,"misconception":"expects F=1 when A=1 although every product term contains NOT A"}

@@ -1,8 +1,6 @@
 node_modules/
 media/
 board/anim/media/
-board/state.json
-board/queue.jsonl
 board/bridge.log
 board/__pycache__/
 board/anim/__pycache__/

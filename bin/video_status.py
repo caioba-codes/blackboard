@@ -2,7 +2,9 @@
 """Live progress of a lesson video that is still being made, read from the video project's own files.
 
   register --project P                 point the project's lesson at P: writes $WS/reference/video-project-NNNN.json
-  show --workspace WS --lesson NNNN    print the computed status JSON (what the board's progress card shows)
+                                       (video-project-NNNN-chNN.json for a chapter project)
+  show --workspace WS --lesson NNNN    print the computed status JSON (what the board's progress card shows);
+                                       --lesson NNNN-chNN for one chapter's video
 
 `video_pipeline.py init` registers on its own. Nothing in the pipeline writes progress: every request recomputes it
 from the artifacts the runtime already leaves, so it cannot go stale or be forgotten.
@@ -57,6 +59,8 @@ def register(project_dir):
     lid = lesson.name[:4]
     if not re.fullmatch(r"\d{4}", lid) or lesson.parent.name != "lessons":
         raise ValueError(f"{lesson} is not a lessons/NNNN-*.md file")
+    if isinstance(config.get("chapter"), int) and not isinstance(config.get("chapter"), bool):
+        lid = f"{lid}-ch{config['chapter']:02d}"
     target = pointer_path(lesson.parent.parent, lid)
     target.parent.mkdir(parents=True, exist_ok=True)
     tmp = target.with_suffix(".tmp")
@@ -158,8 +162,8 @@ def status(workspace, lid, installed=None, now=None):
     """The progress card's data. `installed` is the board's own verdict on the installed video (bridge.lesson_video);
     without it, the imported files' presence decides."""
     now = time.time() if now is None else now
-    if not re.fullmatch(r"\d{4}", str(lid)):
-        return {"active": False, "error": "lesson must be NNNN"}
+    if not re.fullmatch(r"\d{4}(?:-ch\d{2})?", str(lid)):
+        return {"active": False, "error": "lesson must be NNNN or NNNN-chNN"}
     if installed is None:
         installed = installed_files(workspace, lid)
     if installed:

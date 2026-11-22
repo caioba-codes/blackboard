@@ -38,7 +38,6 @@ Write one when any of these is true:
 ### What does _not_ qualify
 
 - Material that was merely covered. Coverage is not learning. Wait for evidence.
-- Anything already captured tersely in [[GLOSSARY.md]] as a term definition. Don't duplicate.
 - Session-by-session activity logs. Learning records are not a journal — they are decision-grade insights.
 
 ## Supersession
@@ -47,15 +46,15 @@ When a later record contradicts an earlier one (the user's understanding deepene
 
 ## Quiz results and misconceptions (Blackboard)
 
-Graded quiz items are appended to `./learning-records/quiz-log.jsonl`, one JSON object per line: `{ts, lesson, topic, mode, score, misconception}`. The board also appends every multiple-choice click there as `{ts, lesson, topic: item, mode: "mcq", item, choice, sig, score: 5|0}`; `sig` is a hash of the question stem so a rewritten question does not inherit an old answer. The board's Reset button appends `{ts, lesson, topic: item, mode: "mcq", item, event: "reset", sig}` with no score: readers skip it as evidence, and it marks the item unanswered until the next pick. This file is machine-read (grid dots, next lesson's check-in); do not edit it by hand.
+Graded quiz items are appended to `./learning-records/quiz-log.jsonl`, one JSON object per line: `{ts, lesson, topic, mode, score, misconception}`. The board also appends every multiple-choice click there as `{ts, lesson, topic: item, mode: "mcq", item, choice, sig, score: 5|0}`; `sig` is a hash of the question stem so a rewritten question does not inherit an old answer. The board's Reset button appends `{ts, lesson, topic: item, mode: "mcq", item, event: "reset", sig}` with no score: readers skip it as evidence, and it marks the item unanswered until the next pick. This file is machine-read (grid dots, XP); do not edit it by hand.
 
 A learning record written after a lesson gains one optional section:
 
 ```md
 ## Misconceptions
-- Believes two diagonal K-map cells can merge. Seen in 0004 quiz (score 2) and 0005 checkpoint.
+- Believes two diagonal K-map cells can merge. Seen in 0004 quiz (score 2) and a 0005 Your turn.
 ```
 
 Write a line the second time the same wrong belief shows up. Later quizzes re-probe it in a new context; when it passes twice, mark the line `resolved (0007)`.
 
-The next lesson's check-in takes its 1–2 questions from the most recent record: first any unresolved misconception, then the record's main claim.
+Redo rounds (the blueprints' **Redo rounds**, not built yet) start a study session with the problems missed earlier; an unresolved misconception here is re-probed in a new context there.

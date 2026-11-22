@@ -58,3 +58,10 @@ html,body{background:#000;overflow:hidden}
 .countdown .lbl{position:absolute;inset:0;display:grid;place-items:center;font-family:var(--display);font-size:54px}
 .countdown .cap{position:absolute;top:100%;right:0;white-space:nowrap;margin-top:10px;font-family:var(--hand);font-size:30px;color:var(--gold)}
 canvas.fig{position:absolute}
+
+/* given vs calculated (TEMPLATES.md): what the problem states sits in a quiet quoted card; a table column copied from
+   the problem is muted and tagged "given", so the calculated columns stand out in the normal ink */
+.given{border-left:5px solid var(--dim);border-radius:4px 14px 14px 4px;background:rgba(233,230,223,.05);padding:22px 36px 18px 30px;color:#d6d3cb}
+.given::before{content:"\201C  From the problem";display:block;margin-bottom:10px;font-size:22px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
+.gv{color:var(--dim);background:rgba(233,230,223,.05)}
+th.gv::after{content:"given";display:block;font-size:16px;letter-spacing:.1em;text-transform:uppercase;opacity:.8}

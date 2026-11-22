@@ -11,8 +11,6 @@ title: t
 ---
 # T
 
-*Why does absorption work?*
-
 Simplify with absorption first. Then use the SOP form.
 
 The method swallows the error. Plug in the root you found.
@@ -36,12 +34,11 @@ class ProseLint(unittest.TestCase):
 
     def test_order_and_patterns(self):
         out = self.run_lint(LESSON)
-        self.assertIn('line 8: "Absorption" is used here but explained on line 12', out)
-        self.assertIn('line 8: "SOP" is used here but explained on line 14', out)
+        self.assertIn('line 6: "Absorption" is used here but explained on line 10', out)
+        self.assertIn('line 6: "SOP" is used here but explained on line 12', out)
         self.assertIn('"The method swallows"', out)
         self.assertIn('"the root you found"', out)
         self.assertNotIn("carry bit", out)          # "bit" is a noun here, not a verb
-        self.assertNotIn("line 6", out)             # the opening question may preview terms
 
     def test_clean_text(self):
         self.assertEqual(check_text("You found the root $x = 2$. Plug it in."), [])

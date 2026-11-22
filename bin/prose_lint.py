@@ -48,13 +48,11 @@ def prose_lines(s):
             in_math = True; continue
         if st.startswith(":::"):
             name = st[3:].strip().split(" ")[0] if st[3:].strip() else ""
-            if name in ("prerequisites", "contents", "sources", "fig", "interactive", "sheet", "video", "figure", "photo"):
+            if name in ("prerequisites", "contents", "sources", "fig", "interactive", "sheet", "video", "figure", "photo", "given", "callout"):
                 skip_block += 1
             elif not name and skip_block:
                 skip_block -= 1
             continue
-        if re.match(r"^\*[^*].*\?\*$", st):
-            continue    # the lesson's one-line opening question previews terms on purpose
         if skip_block or not st or st.startswith(("#", "|", "<!--", "{", "credit:", "query:", "caption:", "wrong:", "right:", "topics:")):
             continue
         t = re.sub(r"\$\$.*?\$\$", " X ", st)
@@ -186,7 +184,7 @@ def main(path):
         print(f"  prose: line {ln}: {msg}", file=sys.stderr)
     if warn:
         extra = "" if nlp else " (noun-stack check off: pip install spacy && python3 -m spacy download en_core_web_sm)"
-        print(f"  prose: {len(warn)} warning(s). TEMPLATES.md, Tone and Sequence meaning before use.{extra}", file=sys.stderr)
+        print(f"  prose: {len(warn)} warning(s). TEMPLATES.md, Tone and Top to bottom.{extra}", file=sys.stderr)
     return len(warn)
 
 

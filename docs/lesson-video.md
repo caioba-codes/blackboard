@@ -1,5 +1,11 @@
 # Import an existing lesson video
 
+**Chapter videos.** Add `--chapter N` to `validate`, `import`, `status` and `captions` to work on one `##` chapter's video: files `NNNN-chNN-lecture.mp4`, `NNNN-chNN-lecture.captions.json` and `reference/video-NNNN-chNN.json`. A chapter map has one more key, `"chapter": N`; its `lessonSha256` is the SHA-256 of that chapter's text (from its `##` heading to the next one; chapter 1 starts after the front matter and holds the opening), and each `line` counts from the chapter's first line. Editing one chapter invalidates only its video. A whole-lesson `video-NNNN.json`, when present, wins over chapter maps, so existing single-file videos play as before. To make one MP4 for an upload, without re-encoding:
+
+```sh
+python3 bin/lesson_video.py join --workspace /path/to/course/learn --lesson 0013 --out /path/to/0013-full.mp4
+```
+
 Use this when the MP4 already exists and its lesson to video map has been reviewed. The importer does not create a map or judge whether its explanations match the lesson. Review every segment against the video and lesson first, especially practice pauses and reveal times.
 
 ```sh
