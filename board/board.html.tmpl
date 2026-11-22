@@ -2022,6 +2022,7 @@ async function restoreOutcomes(){
 // mid-round; Next round and reopening recompute it.
 const redo={open:false,ids:[],y:0};
 const missedIds=(ids,out)=>ids.filter(id=>(out[id]||{}).result==='missed');
+const missedNow=()=>missedIds(quizItems().map(e=>e.dataset.item),outcomes);
 const redoRowHtml=n=>`<span>${n} missed problem${n===1?'':'s'}</span> · <button type="button" class="rdgo">Redo ${n===1?'it':'them'}</button>`;
 const redoHeadHtml=(n,missed)=>n?`<span class="rdt">Redo · <span class="rdn">${missed} missed</span></span><button type="button" class="rdnext">Next round</button><button type="button" class="rdback">Back to lesson</button>`
   :`<span class="rdt">No misses left.</span><button type="button" class="rdback">Back to lesson</button>`;
@@ -2056,13 +2057,13 @@ function redoApply(){
   plan.items.forEach(([i,id])=>{ const el=quizItems(bl[i]).find(e=>e.dataset.item===id); el.classList.add('rd'); for(let p=el.parentElement;p&&p!==main;p=p.parentElement)p.classList.add('rd-path'); });
   if(!head){ head=document.createElement('div'); head.id='redohead'; head.tabIndex=-1; head.setAttribute('role','region'); head.setAttribute('aria-label','Redo round'); }
   if(main.firstElementChild!==head)main.prepend(head);
-  head.innerHTML=redoHeadHtml(plan.items.length,missedIds(quizItems().map(e=>e.dataset.item),outcomes).length);
+  head.innerHTML=redoHeadHtml(plan.items.length,missedNow().length);
   head.querySelector('.rdback').onclick=()=>redoClose();
   const next=head.querySelector('.rdnext'); if(next)next.onclick=redoOpen;
 }
 function redoOpen(){
   if(!redo.open)redo.y=window.scrollY;
-  redo.open=true; redo.ids=missedIds(quizItems().map(e=>e.dataset.item),outcomes);
+  redo.open=true; redo.ids=missedNow();
   // each check-in in the round starts folded, its solution back at the first step
   quizItems().forEach(el=>{ if(!el.matches('details')||!redo.ids.includes(el.dataset.item))return; el.open=false; const box=el.querySelector(':scope>div'); if(box&&box._rv)box._rv.k=1; });
   if(tocOpen)tocToggle(false);
@@ -2101,7 +2102,7 @@ function xpUpdate(){
   [...hp.children].forEach((c,i)=>c.classList.toggle('on',i<got));
   xpSum.innerHTML=total?`XP <b>${got}</b> / ${total}`:'';
   document.getElementById('tocbtn').title=total?`Contents (t) · XP ${got}/${total}: questions answered right`:'Contents (t)';
-  redoPaint(qs.filter(e=>itemResult(e)==='missed').length);
+  redoPaint(missedIds(qs.map(e=>e.dataset.item),outcomes).length);
 }
 // a multiple-choice answer is marked the same way live and when restored from the log
 function stemSig(it){ return textHash((it.querySelector('.q')?.textContent||'').replace(/\s+/g,' ').trim()); }

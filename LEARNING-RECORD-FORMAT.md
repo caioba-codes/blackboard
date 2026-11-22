@@ -46,7 +46,7 @@ When a later record contradicts an earlier one (the user's understanding deepene
 
 ## Quiz results and misconceptions (Blackboard)
 
-Graded quiz items are appended to `./learning-records/quiz-log.jsonl`, one JSON object per line: `{ts, lesson, topic, mode, score, misconception}`. The board also appends every multiple-choice click there as `{ts, lesson, topic: item, mode: "mcq", item, choice, sig, score: 5|0}`; `sig` is a hash of the question stem so a rewritten question does not inherit an old answer. The board's Reset button appends `{ts, lesson, topic: item, mode: "mcq", item, event: "reset", sig}` with no score: readers skip it as evidence, and it marks the item unanswered until the next pick. This file is machine-read (grid dots, XP); do not edit it by hand.
+Graded quiz items are appended to `./learning-records/quiz-log.jsonl`, one JSON object per line: `{ts, lesson, topic, mode, score, misconception}`. The board also appends every multiple-choice click there as `{ts, lesson, topic: item, mode: "mcq", item, choice, sig, chapter, score: 5|0}`; `sig` is a hash of the question stem so a rewritten question does not inherit an old answer. The board's Reset button appends `{ts, lesson, topic: item, mode: "mcq", item, event: "reset", sig}` with no score: readers skip it as evidence, and it marks the item unanswered until the next pick. A **Got it** or **Missed it** under a check-in answer appends `{ts, lesson, topic: item, mode: "self", item, chapter, result: "got"|"missed", score: 5|0}`; `item` is the row's id, a hash of its question and answer text. The latest line per item is that item's outcome. This file is machine-read (grid dots, XP, redo rounds); do not edit it by hand.
 
 A learning record written after a lesson gains one optional section:
 
@@ -57,4 +57,4 @@ A learning record written after a lesson gains one optional section:
 
 Write a line the second time the same wrong belief shows up. Later quizzes re-probe it in a new context; when it passes twice, mark the line `resolved (0007)`.
 
-Redo rounds (the blueprints' **Redo rounds**, not built yet) start a study session with the problems missed earlier; an unresolved misconception here is re-probed in a new context there.
+Redo rounds (the blueprints' **Redo rounds**) start a study session with the problems missed earlier; an unresolved misconception here is re-probed in a new context there.

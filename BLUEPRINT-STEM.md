@@ -8,13 +8,17 @@ Read every past exam, practice exam, quiz and official review for this test. Gro
 
 Conceptual questions (true or false, "explain why") are included only when the past exams ask them. Then they are a problem type like any other.
 
-No past exams: use the official review sheet, the homework and the lecture examples as the problem source, and say so in Sources.
+**Problem sources, best first.** Past exams of this test; the official review or practice set; past exams and practice sets of the earlier tests in this course; the student's own graded exams; homework; lecture examples and knowledge checks. Use the best that exist. Sources names the ones used and says when no past exam of this test exists.
+
+**Cumulative finals.** The types are those of the earlier tests plus those of the material taught since the last test. Weights come from what the syllabus or instructor says ("more questions on the newest material"). With no numbers, estimate a split and print it under the Exam Topics Breakdown as an estimate. A type already taught in an earlier lesson gets one worked example and one Your turn; a new-material type gets the full chapter.
+
+**A type with no official problem.** Use lecture examples, homework or knowledge checks. If none exist, write problems in the format of the nearest official ones, label them "Written by Claude", keep the type to one worked example and one Your turn, and say in Sources that no official problem exists for it.
 
 ## Size
 
 There is no target length. The size is the number of problem types, times the variations actually seen, times the steps per solution. A type worth under about 5% of the points that appeared once gets one example and no variations.
 
-Before writing, tell the user one line with the types, the examples and the sessions at about 45 minutes each, for example "6 types, 11 examples, about 5 mornings". The user can then cut a type.
+Before writing, tell the user one line with the types, the examples and the number of sessions, for example "6 types, 11 examples, about 5 mornings". The user can then cut a type. A session is the length the user stated, most recent first, then MISSION.md or NOTES.md; 45 minutes when none is stated.
 
 ## Top of the lesson
 
@@ -23,6 +27,8 @@ Contents, then Sources, then the **Exam Topics Breakdown**: the percent of the e
 ## One chapter per problem type
 
 Chapters go in order of exam weight, the biggest first. A chapter is one study session. It stands on its own: it never depends on reading another chapter the same day, so a concept that two types need is stated in both.
+
+**Oversized type.** When one type is a single large problem (a "write a class hierarchy" question worth most of the points), split it into chapters by the parts of the problem, each with its own worked example and Your turn, then one chapter that solves a whole problem start to finish. Each chapter still fits one session.
 
 Inside a chapter, in this order:
 
@@ -40,14 +46,14 @@ Inside a chapter, in this order:
 ## After the chapters
 
 1. **Mixed drill.** Official problems from all types, shuffled, with no type named. The first step of every solution is "which type is this".
-2. **Practice exam.** One full official-style exam. One line at its top gives the time per question: (total minutes − 10) ÷ number of questions.
+2. **Practice exam.** One full official-style exam. One line at its top gives the time per question: (total minutes − 10) ÷ number of questions. With no official exam, assemble it from official problems in the proportions of the breakdown and label it "Assembled from official problems"; never present it as a real past exam.
 3. **Cheat sheet.** Formulas only (**STEM writing rules** below).
 
 There are no chapter checkpoints and no separate end quiz. The Your turns, the mixed drill and the practice exam are the practice.
 
 ## Redo rounds
 
-The board logs which Your turns, drill problems and practice-exam problems were missed. A study session starts with the problems missed in earlier sessions, then continues with the next new chapter. A later round shows only the missed problems. The rounds stop when a round adds no new misses. (Board support is not built yet; see ROADMAP.md.)
+Every Your turn, drill problem and practice-exam part ends its answer with **Got it** and **Missed it**, and the board logs the tap; a wrong multiple-choice pick counts as missed too. While a lesson has misses, a row under its title reads "N missed problems · Redo them". A study session starts there: Redo them shows only the missed problems, each under its own label and problem text, then the session continues with the next new chapter. A Got it drops a problem from the next round; **Next round** shows what is still missed. The rounds stop at "No misses left." Every problem needs its label above it (TEMPLATES.md **Problems and solutions**) so the round can show it whole.
 
 ## STEM writing rules
 

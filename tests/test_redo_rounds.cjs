@@ -57,8 +57,8 @@ console.log('PASS: redo rounds list the missed items in lesson order with their 
 assert(source.includes('html.redo main>:not(#redohead,.rd-path,.rd-ctx){display:none}'));
 assert(source.includes('html.redo .rd-path>:not(.rd-path,.rd){display:none}'));
 assert(/function redoApply\(\)\{[\s\S]*?redoPlan\(bl\.map[\s\S]*?redo\.ids\);/.test(source),'a round applies its fixed ids');
-assert(source.includes("redo.open=true; redo.ids=missedIds(quizItems().map(e=>e.dataset.item),outcomes);"),'opening recomputes');
+assert(source.includes("redo.open=true; redo.ids=missedNow();"),'opening recomputes');
 assert(source.includes("paintOutcomes(); if(redo.open)redoApply(); if(r.reset)restoreOutcomes();"));
-assert(source.includes("redoPaint(qs.filter(e=>itemResult(e)==='missed').length);"));
+assert(source.includes("redoPaint(missedIds(qs.map(e=>e.dataset.item),outcomes).length);"));
 assert.equal((source.match(/\n  redoClose\(false\);\n/g)||[]).length,2,'tocGo and flagGo leave the round first');
 console.log('PASS: the round is drawn in place from its fixed ids, re-applied after a re-render, and left for any jump');
