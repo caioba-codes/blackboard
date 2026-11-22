@@ -1954,9 +1954,9 @@ function rvCtl(box){
 function rvSetup(box,start){
   if(!box||box._rv||!box.isConnected)return;
   const kids=[...box.children].filter(e=>!e.classList.contains('stepctl'));
-  if(!kids.some(e=>e.classList.contains('mathrow')||e.matches('figure, pre')))return;   // one-line feedback with no derivation stays as it is
+  if(!kids.some(e=>e.classList.contains('mathrow')||e.matches('figure')))return;   // one-line feedback with no derivation stays as it is
   const items=kids.map(el=>{
-    if(el.matches('figure, pre'))return {el,kind:'math'};   // a drawing or a code block is a step of its own; its label line above it arrives with it
+    if(el.matches('figure'))return {el,kind:'math'};   // a drawing is a step of its own (Step 1: draw the mux)
     if(!el.classList.contains('mathrow'))return {el,kind:'prose'};
     const tex=decodeURIComponent(el.dataset.tex||'');
     if(/^\s*\\boxed\s*\{/.test(tex)||!/\\begin\{(aligned|align\*?|alignedat)\}/.test(tex))return {el,kind:'math'};   // the boxed setup grid is one piece
