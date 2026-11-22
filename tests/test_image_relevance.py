@@ -20,6 +20,14 @@ class RelevanceTests(unittest.TestCase):
         ]:
             self.assertIsNone(rel.score(query, title), (query, title))
 
+    def test_programming_banner_names_its_language(self):
+        q = 'Java source code on a computer screen'
+        self.assertIsNone(rel.score(q, 'HTML source code on a computer screen'), 'another language is off-topic')
+        self.assertIsNone(rel.score(q, 'Source code on a computer screen'), 'the language must be named')
+        self.assertIsNone(rel.score(q, 'Java and JavaScript code on a screen'), 'a mixed-language shot is rejected')
+        self.assertEqual(rel.score(q, 'Java code on a laptop screen'), ['java', 'code', 'screen'])
+        self.assertEqual(rel.score('integral calculus handwriting', 'Python notebook of integral calculus handwriting'), ['integral', 'calculu', 'handwriting'], 'non-programming subjects are unaffected')
+
     def test_whole_words_plurals_and_camel_case(self):
         self.assertNotIn('formula', rel.words('Formulary'))
         self.assertEqual(rel.score('integral calculus handwriting', 'File:IntegralCalculus_handwriting.jpg'), ['integral', 'calculu', 'handwriting'])

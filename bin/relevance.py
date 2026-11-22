@@ -9,6 +9,10 @@ STOP = set('a an the of on in with and or for to at by from into over under its 
 GENERIC = set('''page pages sheet sheets formula formulas formulae paper papers graph graphs close closeup up macro
 view views photo photos photograph image images picture pictures desk dark board boards notes note notebook
 notebooks detail background shot top'''.split())
+# a programming lesson's banner must show its own language: the candidate has to name it, and one naming another
+# language is off-topic (an HTML screenshot for a Java lesson). Ambiguous one-letter names (C, R, Go) are left out.
+LANGS = set('''java javascript typescript python html css php ruby rust kotlin swift scala haskell sql matlab perl
+csharp cpp verilog vhdl racket ocaml lisp fortran assembly golang dart julia elixir erlang clojure lua bash'''.split())
 BOARD = re.compile(r'\b(chalk|chalkboards?|blackboards?|slates?|classrooms?|whiteboards?)\b', re.I)
 
 def stem(w):
@@ -40,6 +44,9 @@ def score(subject, *texts):
     """Matched subject terms (list) or None when the candidate is off-topic or a board photo."""
     hay = ' '.join(t or '' for t in texts)
     if BOARD.search(hay) and not BOARD.search(subject): return None
+    langs = lambda t: LANGS.intersection(re.findall(r'[a-z]+', t.lower()))  # no CamelCase split: JavaScript is not Java
+    want, have = langs(subject), langs(hay)
+    if want and (not want & have or have - want): return None
     hit = hits(subject, hay)
     return hit if len(hit) >= needed(terms(subject)) else None
 
