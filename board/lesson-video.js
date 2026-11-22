@@ -2,6 +2,8 @@
    Mounted only when the bridge reports a manifest for this lesson (/api/lesson-video). A lesson without one gets
    nothing from this file, except a progress card while its video is being made (/api/video-status). The board calls LessonVideo.refresh(ctx) after every render (first load, append, rebuild).
    Playback position, speed and view live in this browser only: never learning records, answers or XP.
+   The end of the video offers Practice this lesson (the lesson's quiz), Next lesson (Back to course on the route's last
+   lesson) and Replay; nothing moves on by itself. A video played to its end stays ended after a reload.
 
    Views: Read (the board as always) and Watch (the video alone, with its list of explanations). A saved "both" view
    from older versions opens as Read.
@@ -193,8 +195,22 @@ function load(){ try{ return JSON.parse(localStorage.getItem(S.key)||'null')||{}
 function save(){
   if(!S)return; S.saveAt=performance.now();
   const t=S.gate?S.gate.p.pauseAt:cur();
-  try{ localStorage.setItem(S.key,JSON.stringify({mode:S.mode,t:Math.round(t*100)/100,rate:S.rate,loop:S.loop,muted:S.video.muted})); }catch(_){}
+  const rec={mode:S.mode,t:Math.round(t*100)/100,rate:S.rate,loop:S.loop,muted:S.video.muted};
+  if(S.ended)rec.ended=true;
+  try{ localStorage.setItem(S.key,JSON.stringify(rec)); }catch(_){}
+  lastVideo(t,S.ended);
 }
+// the board's last-opened pointer for this folder (bb-last:v1:<slug>, written when the lesson opens) carries where this
+// lesson's video is, for Continue studying on the hub; only while it points at this lesson
+function lastVideo(t,ended){
+  if(!ctx.slug)return;
+  const k='bb-last:v1:'+ctx.slug;
+  try{ const p=JSON.parse(localStorage.getItem(k)||'null'); if(!p||p.id!==ctx.lessonId)return;
+    p.vt=Math.round(t); if(ended)p.vend=true; else delete p.vend; localStorage.setItem(k,JSON.stringify(p)); }catch(_){}
+}
+// a saved place is the end of the video when the reader played it to its end (ended), or, saved before that flag
+// existed, when it sits on the very last frame; a pause a little before the end is only a place to resume
+function endedAt(saved,dur){ return !!saved&&(saved.ended===true||(num(saved.t)&&num(dur)&&dur>0&&saved.t>=dur-.05)); }
 function persistSoon(){ if(performance.now()-S.saveAt>2000)save(); }
 const cur=()=>S.meta?S.video.currentTime:S.pendingT;
 function segAt(t){ const a=S.segs; let lo=0,hi=a.length-1,ans=0; while(lo<=hi){ const m=(lo+hi)>>1; if(a[m].start<=t+1e-3){ans=m;lo=m+1;} else hi=m-1; } return ans; }
@@ -209,12 +225,14 @@ function mount(m){
   S.prac.forEach(s=>S.armed.add(s.id));
   const saved=load();
   S.rate=SPEEDS.includes(saved.rate)?saved.rate:1; S.loop=!!saved.loop;
-  S.pendingT=num(saved.t)?clamp(saved.t,0,Math.max(0,S.dur-.5)):0; S.prevT=S.pendingT;
+  S.ended=endedAt(saved,S.dur);
+  S.pendingT=S.ended?Math.max(0,S.dur-.05):num(saved.t)?clamp(saved.t,0,Math.max(0,S.dur-.5)):0; S.prevT=S.pendingT;
   build(); S.video.muted=false;
   root.classList.add('lv-on');
   wire();
   setMode(['read','watch'].includes(saved.mode)?saved.mode:'read',{init:true});
-  paintTime(S.pendingT,true); setSeg(segAt(S.pendingT),'init'); paintPlay(); paintMenu(); paintCards(); paintFoot();
+  paintTime(S.pendingT,true); setSeg(segAt(S.pendingT),'init'); paintEnd(); paintPlay(); paintMenu(); paintCards(); paintFoot();
+  lastVideo(S.pendingT,S.ended);
   loadCaptions();
 }
 
@@ -317,9 +335,8 @@ function build(){
 <div class="lv-ccband" hidden aria-hidden="true"></div>
 <div class="lv-cc" hidden aria-hidden="true"><span class="lv-cct"></span></div>
 <div class="lv-spin" hidden aria-hidden="true"></div>
-<div class="lv-card lv-gate" role="group" aria-label="Your turn" hidden><p class="lv-ck">Your turn</p><p class="lv-ct">Pause here and work it out. The answer comes next.</p><div class="lv-cb"><button type="button" class="lv-btn pri" data-a="continue">Continue to the answer</button><button type="button" class="lv-btn" data-a="replayq">Replay the question</button></div></div>
 <div class="lv-card lv-err" role="alert" hidden><p class="lv-ck">Video unavailable</p><p class="lv-ct lv-errt"></p><div class="lv-cb"><button type="button" class="lv-btn pri" data-a="retry">Try again</button><button type="button" class="lv-btn" data-a="toread">Read the lesson</button></div></div>
-<div class="lv-card lv-end" hidden><p class="lv-ck">End of the video</p><div class="lv-cb"><button type="button" class="lv-btn pri" data-a="restart">Watch again</button><button type="button" class="lv-btn" data-a="toread">Back to the lesson</button></div></div>
+<div class="lv-card lv-end" role="group" aria-label="End of the video" hidden><p class="lv-ck">End of the video</p><div class="lv-cb lv-endb"></div><button type="button" class="lv-btn lv-sm" data-a="restart">Replay</button></div>
 <div class="lv-bar"><div class="lv-tl"><div class="lv-zones" aria-hidden="true"></div><input type="range" class="lv-range" min="0" max="${S.dur}" step="0.1" value="0" aria-label="Video position"><div class="lv-tip" hidden aria-hidden="true"><b class="lv-tipc"></b><span class="lv-tipt"></span></div></div>
 <div class="lv-ctl"><button type="button" class="lv-ib lv-play" data-a="play" aria-label="Play" title="Play (Space)">${I.play}</button>
 <span class="lv-time"><span class="lv-el">0:00</span><span class="lv-du"> / ${fmt(S.dur)}</span><span class="lv-ch"></span></span>
@@ -329,12 +346,17 @@ function build(){
 <button type="button" class="lv-ib lv-ccb" data-a="cc" aria-pressed="false" aria-label="Turn captions on" title="Captions (C)" hidden>${I.cc}</button>
 <button type="button" class="lv-ib" data-a="fs" aria-label="Full screen" title="Full screen (F)">${I.fs}</button></div></div>
 </div>
+<div class="lv-card lv-gate" role="group" aria-label="Your turn" hidden><p class="lv-ck">Your turn</p><p class="lv-ct">Pause here and work it out. The answer comes next.</p><div class="lv-cb"><button type="button" class="lv-btn pri" data-a="continue">Continue to the answer</button><button type="button" class="lv-btn" data-a="replayq">Replay the question</button></div></div>
 <ol class="lv-list" aria-label="Explanations in this video">${S.segs.map(s=>`<li><button type="button" data-a="seg" data-i="${s.i}"><span class="lv-lt">${fmt(s.start)}</span><span class="lv-ll">${esc(s.label)}</span>${s.p?'<span class="lv-tag">Your turn</span>':''}</button></li>`).join('')}</ol>
 <div class="lv-sr lv-live" aria-live="polite"></div>`;
   document.body.insertBefore(p,ctx.main);
+  // Watch hides the lesson text and its course row: a compact copy of the route stays above the player (plain links,
+  // outside the player, so Tab and Enter reach them and the player's keys stay the player's)
+  S.route=document.createElement('nav'); S.route.className='lv-route'; S.route.setAttribute('aria-label','Course'); S.route.hidden=true;
+  document.body.insertBefore(S.route,p);
   const q=s=>p.querySelector(s);
   if(Array.isArray(S.m.parts)&&S.m.parts.length)playlist(q('video'),S.m.parts);
-  Object.assign(S,{panel:p,video:q('video'),stage:q('.lv-stage'),big:q('.lv-big'),spin:q('.lv-spin'),gateEl:q('.lv-gate'),errEl:q('.lv-err'),endEl:q('.lv-end'),
+  Object.assign(S,{panel:p,video:q('video'),stage:q('.lv-stage'),big:q('.lv-big'),spin:q('.lv-spin'),gateEl:q('.lv-gate'),errEl:q('.lv-err'),endEl:q('.lv-end'),endB:q('.lv-endb'),
     bar:q('.lv-bar'),range:q('.lv-range'),tip:q('.lv-tip'),tl:q('.lv-tl'),zones:q('.lv-zones'),chEl:q('.lv-ch'),playBtn:q('.lv-play'),el:q('.lv-el'),speed:q('.lv-speed select'),moreBtn:q('[data-a="more"]'),menu:q('.lv-menu'),
     fsBtn:q('[data-a="fs"]'),prevBtn:q('[data-a="prev"]'),nextBtn:q('[data-a="next"]'),readBtn:q('[data-a="read"]'),
     list:q('.lv-list'),live:q('.lv-live'),gateBtn:q('[data-a="continue"]'),capEl:q('.lv-cc'),band2:q('.lv-ccband'),capText:q('.lv-cct'),ccBtn:q('.lv-ccb'),mask:q('.lv-mask')});
@@ -418,7 +440,7 @@ function decorate(){
     let lo=0,hi=blks.length-1,ans=-1; while(lo<=hi){ const m=(lo+hi)>>1; if(blks[m].line<=s.line){ans=m;lo=m+1;} else hi=m-1; }
     return ans<0?title:(nested(blks[ans],s.line,src)||blks[ans].b);
   });
-  applyStep(S.i);
+  applyStep(S.i); paintEnd();
 }
 // A container block (::: quiz) renders several questions from one source block: a cue line inside a `::: mcq <item>`
 // points at that question, found by its item id, not at the top of the whole block. Needs the lesson source text.
@@ -479,7 +501,7 @@ function paintModes(){
   document.querySelectorAll('.lv-modes [data-mode]').forEach(b=>{ const on=b.dataset.mode===S.mode; b.setAttribute('aria-checked',String(on)); b.tabIndex=on?0:-1; });
   paintTopModes();
 }
-function paintTopModes(){ if(S.top)S.top.hidden=S.mode!=='watch'&&S.introVis&&!!S.intro&&S.intro.isConnected; }
+function paintTopModes(){ if(S.top){ S.top.hidden=S.mode!=='watch'&&S.introVis&&!!S.intro&&S.intro.isConnected; root.classList.toggle('lv-topsw',!S.top.hidden); } }
 function paintIntro(){
   if(!S.intro)return;
   const st=S.intro.querySelector('.lv-ist'), t=cur(); let msg='';
@@ -538,6 +560,7 @@ function showGate(s){
   if(S.meta&&Math.abs(v.currentTime-s.p.pauseAt)>.05)v.currentTime=s.p.pauseAt; else if(!S.meta)S.pendingT=s.p.pauseAt;
   S.prevT=s.p.pauseAt; paintTime(s.p.pauseAt,true); setSeg(s.i,'gate'); paintCards(); paintPlay();
   say('Paused before the answer. Work it out, then choose Continue to the answer.');
+  if(!S.panel.classList.contains('lv-idle'))wake();   // shown controls fade off the question; faded ones stay faded
   const a=document.activeElement;
   if(S.mode!=='read'&&(!a||a===document.body||S.panel.contains(a)))S.gateBtn.focus({preventScroll:true});
 }
@@ -570,6 +593,63 @@ function replayQ(){
   const s=S.gate||S.segs[S.i]; S.gate=null;
   let t=s.start; if(s.p&&s.p.pauseAt-s.start<1&&s.i>0)t=S.segs[s.i-1].start;   // the question was asked before this segment
   seek(t,'replay'); play();
+}
+
+// ---------- end of the video: practice, the next lesson, replay ----------
+// The lesson's quiz: its "Quiz" heading (#s-quiz, set by the board's Contents), else the block holding the quiz.
+function quizTarget(){
+  const m=ctx.main; if(!m)return null;
+  const h=m.querySelector('#s-quiz')||m.querySelector('h2[id^="s-quiz-"]'); if(h)return h;
+  const q=m.querySelector('.blk .quiz'); return q?q.closest('.blk'):null;
+}
+// ctx.nav (the board's seqNav): next lesson, else Back to course on the route's last lesson, else All lessons
+function endLinks(nav,hasQuiz){
+  const out=[];
+  out.push(hasQuiz?{a:'practice',label:'Practice this lesson',pri:true}:{a:'toread',label:'Back to the lesson'});
+  if(nav&&nav.i>=0&&nav.next)out.push({href:nav.next.href,label:'Next lesson',title:nav.next.title});
+  else if(nav&&nav.i>=0)out.push({href:nav.all,label:'Back to course'});
+  else if(nav&&nav.all)out.push({href:nav.all,label:'All lessons'});
+  if(!hasQuiz&&out.length>1)out[1].pri=true;
+  return out;
+}
+// the course route in Watch, from the board's seqNav (ctx.nav): All lessons, Lesson N of T, Previous and Next (Back to
+// course on the last lesson). Never the player's in-lesson Previous/Next explanation.
+function routeHtml(nav){
+  if(!nav||!nav.all)return '';
+  let h=`<a class="lv-rall" href="${esc(nav.all)}">‹ All lessons</a>`;
+  if(nav.i<0)return h;
+  h+=`<span class="lv-rpos">Lesson <b>${nav.i+1}</b> of ${nav.total}</span><span class="lv-rgo">`;
+  if(nav.prev)h+=`<a href="${esc(nav.prev.href)}" rel="prev" title="${esc(nav.prev.title)}" aria-label="Previous lesson: ${esc(nav.prev.title)}">‹ Prev</a>`;
+  h+=nav.next?`<a class="lv-rnext" href="${esc(nav.next.href)}" rel="next" title="${esc(nav.next.title)}" aria-label="Next lesson: ${esc(nav.next.title)}">Next ›</a>`
+    :`<a class="lv-rnext" href="${esc(nav.all)}">Back to course</a>`;
+  return h+'</span>';
+}
+function paintRoute(){
+  if(!S||!S.route)return;
+  const h=routeHtml(ctx.nav);
+  if(h!==S.routeSig){ S.routeSig=h; S.route.innerHTML=h; }
+  S.route.hidden=!h;
+}
+function paintEnd(){
+  paintRoute();
+  if(!S||!S.endB)return;
+  const ls=endLinks(ctx.nav,!!quizTarget()), sig=JSON.stringify(ls);
+  if(sig===S.endSig)return; S.endSig=sig;
+  S.endB.innerHTML=ls.map(x=>x.href
+    ?`<a class="lv-btn${x.pri?' pri':''}" href="${esc(x.href)}"${x.title?` title="${esc(x.title)}"`:''}>${esc(x.label)}</a>`
+    :`<button type="button" class="lv-btn${x.pri?' pri':''}" data-a="${x.a}">${esc(x.label)}</button>`).join('');
+}
+// Practice: out of Watch and onto the quiz, which gets the focus. Nothing is answered or recorded.
+function practice(){
+  const q=quizTarget(); closeMenu(); exitFs();
+  if(S.mode==='watch')setMode('read');
+  if(!q)return;
+  S.ignoreUntil=performance.now()+600;
+  window.scrollTo(0,Math.max(0,window.scrollY+q.getBoundingClientRect().top-topOffset()));
+  S.autoY=window.scrollY;
+  flash(q.closest('.blk')||q);
+  if(!q.hasAttribute('tabindex'))q.setAttribute('tabindex','-1');
+  q.focus({preventScroll:true});
 }
 
 // ---------- playback ----------
@@ -702,8 +782,10 @@ function paintPlay(){
 function paintCards(){
   if(!S.gateEl)return;
   S.gateEl.hidden=!S.gate; S.errEl.hidden=!S.err||!!S.gate; S.endEl.hidden=!S.ended||!!S.gate||S.err;
-  const card=!!S.gate||S.err||S.ended;
-  S.big.hidden=card||!S.video.paused;
+  // the practice card sits under the picture, so the paused question stays whole and bright; only the error and end
+  // cards lie on it
+  const card=!S.errEl.hidden||!S.endEl.hidden;
+  S.big.hidden=card||!!S.gate||!S.video.paused;
   S.stage.classList.toggle('lv-carded',card);
 }
 function paintMenu(){
@@ -721,14 +803,15 @@ function paintFs(){
   S.fsBtn.innerHTML=on?I.fsx:I.fs; const lab=on?'Exit full screen':'Full screen'; S.fsBtn.setAttribute('aria-label',lab); S.fsBtn.title=lab+' (F)';
   S.panel.classList.toggle('lv-fs',on);
 }
-// controls fade while the video plays and come back on any pointer move, tap or key
+// controls fade while the video plays, and at a practice pause (the question under them stays readable; Continue and
+// Replay are under the picture), and come back on any pointer move, tap or key
 function wake(){
   if(!S||!S.panel)return;
   S.panel.classList.remove('lv-idle'); clearTimeout(S.idleT);
-  if(!S.video.paused)S.idleT=setTimeout(idle,2600);
+  if(!S.video.paused||S.gate)S.idleT=setTimeout(idle,2600);
 }
 function idle(){
-  if(S.video.paused||S.menuOpen||S.scrub||S.gate||S.ended||S.bar.matches(':hover')||S.bar.querySelector(':focus-visible'))return wake();
+  if((S.video.paused&&!S.gate)||S.menuOpen||S.scrub||S.ended||S.bar.matches(':hover')||S.bar.querySelector(':focus-visible'))return wake();
   S.panel.classList.add('lv-idle'); hideTip();
 }
 function openMenu(){ S.menuOpen=true; S.menu.hidden=false; S.menu.style.maxHeight=Math.max(120,S.stage.clientHeight-64)+'px'; S.moreBtn.setAttribute('aria-expanded','true'); paintMenu(); S.menu.querySelector('button')?.focus({preventScroll:true}); }
@@ -770,6 +853,7 @@ function act(a,el){
     case 'retry': return retry();
     case 'toread': exitFs(); return setMode('read');
     case 'restart': S.ended=false; seek(0,'nav'); return play();
+    case 'practice': return practice();
     case 'seg': seek(S.segs[+el.dataset.i].start,'nav'); return play();
   }
 }
@@ -788,10 +872,12 @@ function mute(){ S.video.muted=!S.video.muted; paintMenu(); save(); say(S.video.
 function seekPct(n){ const d=S.dur||S.video.duration; if(!num(d)||d<=0)return; seek(d*n/10,'nav'); }
 function wire(){
   const v=S.video, p=S.panel;
-  v.addEventListener('loadedmetadata',()=>{ fitCaptions(); S.meta=true; if(num(v.duration)&&v.duration>0)S.dur=v.duration; S.range.max=String(S.dur); buildZones(); v.defaultPlaybackRate=v.playbackRate=S.rate; seek(S.pendingT,'restore'); });
+  v.addEventListener('loadedmetadata',()=>{ fitCaptions(); S.meta=true; if(num(v.duration)&&v.duration>0)S.dur=v.duration; S.range.max=String(S.dur); buildZones(); v.defaultPlaybackRate=v.playbackRate=S.rate;
+    if(S.ended){ const t=Math.max(0,S.dur-.05); S.prevT=S.pendingT=t; v.currentTime=t; paintTime(t,true); setSeg(segAt(t),'restore'); paintCards(); }
+    else seek(S.pendingT,'restore'); });
   v.addEventListener('play',()=>{ if(S.gate)return cont(); S.ended=false; S.touched=true; paintPlay(); loop(); wake(); emit(); });   // Play from system controls at the gate = Continue
   v.addEventListener('playing',()=>{ waiting(false); paintPlay(); });
-  v.addEventListener('pause',()=>{ wake(); paintPlay(); save(); paintIntro(); emit(); });
+  v.addEventListener('pause',()=>{ if(!S.gate)wake(); paintPlay(); save(); paintIntro(); emit(); });
   v.addEventListener('waiting',()=>waiting(true));
   v.addEventListener('canplay',()=>waiting(false));
   v.addEventListener('seeked',()=>{
@@ -803,7 +889,9 @@ function wire(){
   v.addEventListener('progress',paintBuffered);
   v.addEventListener('ratechange',()=>{ if(v.playbackRate!==S.rate&&SPEEDS.includes(v.playbackRate)){ S.rate=v.playbackRate; S.speed.value=String(S.rate); save(); } });
   v.addEventListener('volumechange',paintMenu);
-  v.addEventListener('ended',()=>{ if(S.loop&&S.segs[S.i]){ seek(S.segs[S.i].start,'loop'); return play(); } S.ended=true; paintPlay(); save(); });
+  v.addEventListener('ended',()=>{ if(S.loop&&S.segs[S.i]){ seek(S.segs[S.i].start,'loop'); return play(); } S.ended=true; paintPlay(); save();
+    const a=document.activeElement, f=S.endB&&S.endB.firstElementChild;
+    if(f&&S.mode!=='read'&&(!a||a===document.body||S.panel.contains(a)))f.focus({preventScroll:true}); });
   v.addEventListener('error',onError);
   // the board's text-selection drag must not start on the player (a timeline drag would select the math beside it)
   p.addEventListener('mousedown',e=>e.stopPropagation());

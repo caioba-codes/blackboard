@@ -16,6 +16,9 @@ html{--lv-acc:color-mix(in srgb,var(--acc) 72%,var(--chalk));--lv-acc-line:color
 #topbar .lv-topmodes{flex:0 0 auto;height:var(--tb,42px);box-sizing:border-box;padding:0 4px;border:0;border-radius:21px;background:#0f0f0f;box-shadow:0 0 0 1px var(--rule)}
 #topbar .lv-topmodes button{width:34px;height:34px;padding:0;justify-content:center}
 #topbar .lv-topmodes button svg{width:16px;height:16px}
+/* a phone: the top bar keeps the switch reachable beside the chat button (pinch zoom replaces the zoom buttons while the
+   switch shows; in Watch the text and its Contents are hidden anyway) */
+@media (max-width:560px){html.lv-topsw #zoomctl{display:none}html.lv-watch #topbar #tocbtn{display:none}}
 
 /* ---------- header card: the video is there, how long, which view ---------- */
 .lv-intro{display:flex;align-items:center;flex-wrap:wrap;gap:12px 18px;margin:14px 0 26px;padding:12px 14px 12px 12px;border:1px solid var(--lv-line);border-radius:12px;background:rgba(236,232,218,.025);user-select:none;-webkit-user-select:none}
@@ -62,6 +65,8 @@ html.lv-on .mcqi{position:relative}
 @keyframes lvspin{to{transform:rotate(360deg)}}
 .lv-stage.lv-carded video{filter:brightness(.38) saturate(.7)}
 .lv-card{position:absolute;left:50%;top:50%;z-index:3;transform:translate(-50%,-50%);width:min(440px,calc(100% - 32px));box-sizing:border-box;padding:16px 20px 18px;border:1px solid var(--lv-acc-line);border-radius:12px;background:rgba(10,10,10,.92);box-shadow:0 14px 40px #000a;text-align:center;cursor:default}
+/* a practice pause: the same card, under the picture (the question on it stays whole and bright) */
+.lv-card.lv-gate{position:static;transform:none;width:auto;border:0;border-top:1px solid var(--lv-acc-line);border-radius:0;background:var(--lv-bg);box-shadow:none}
 .lv-ck{margin:0 0 4px;max-width:none;font:28px/1.2 'Patrick Hand',cursive;color:var(--lv-acc)}
 .lv-ct{margin:0 auto 14px;max-width:34ch;font-size:17px;line-height:1.45;color:#d8d3c4}
 .lv-err .lv-ck{color:#e3b2a2}
@@ -71,7 +76,14 @@ html.lv-on .mcqi{position:relative}
 .lv-btn.pri{border-color:var(--lv-acc)}
 .lv-btn.pri:hover{background:color-mix(in srgb,var(--acc) 22%,#000)}
 .lv-btn:focus-visible{outline:2px solid var(--lv-acc);outline-offset:2px}
-@media (max-width:520px){.lv-card{padding:10px 12px 12px}.lv-ck{font-size:22px}.lv-ct{font-size:15px;margin-bottom:8px}.lv-btn{height:34px;font-size:15px;padding:0 12px}}
+a.lv-btn{display:inline-flex;align-items:center;box-sizing:border-box;text-decoration:none}
+/* end of the video: Practice and Next lesson, then a quiet Replay under them */
+.lv-end .lv-ck{margin-bottom:12px}
+.lv-btn.lv-sm{height:30px;margin-top:10px;padding:0 12px;border-color:transparent;background:none;color:#bdb9ae;font-size:15px}
+.lv-btn.lv-sm:hover{color:var(--chalk);border-color:#3a3a36;background:none}
+@media (max-width:520px){.lv-card{padding:10px 12px 12px}.lv-ck{font-size:22px}.lv-ct{font-size:15px;margin-bottom:8px}.lv-btn{height:34px;font-size:15px;padding:0 12px}.lv-end .lv-ck{display:none}.lv-btn.lv-sm{height:28px;margin-top:6px}}
+/* a short picture (a phone on its side): the actions only */
+@media (max-height:460px){.lv-end .lv-ck{display:none}.lv-card{padding:8px 10px 10px}.lv-btn.lv-sm{margin-top:4px}}
 
 /* captions: an overlay on the picture (the frames carry none), sized and placed like the renderer's old caption box:
    bottom centre, 40/1080 of the picture above its foot, 36/1080 type, a translucent dark box, the lesson's font and
@@ -168,6 +180,20 @@ html.lv-watch #lvpanel{margin:84px auto 48px;width:min(var(--lvtw,960px),calc(10
 html.lv-watch .lv-list{display:block;max-height:min(46vh,520px);overflow:auto;border-top:1px solid var(--lv-line);scrollbar-width:thin;scrollbar-color:#2a2a2a transparent}
 html.lv-watch.lv-wwide #lvpanel{display:grid;grid-template-columns:var(--lvtw) 340px;width:calc(var(--lvtw) + 342px)}
 html.lv-watch.lv-wwide #lvpanel>:not(.lv-list){grid-column:1}
+/* Watch: the course route above the player (the lesson text and its route row are hidden) */
+.lv-route{display:none}
+html.lv-watch .lv-route:not([hidden]){display:flex;align-items:center;flex-wrap:wrap;gap:8px 12px;box-sizing:border-box;width:min(var(--lvtw,960px),calc(100% - 24px));margin:80px auto 0;font:16px/1.2 var(--body);color:var(--dim);user-select:none;-webkit-user-select:none}
+html.lv-watch.lv-wwide .lv-route:not([hidden]){width:calc(var(--lvtw) + 342px);max-width:calc(100% - 24px)}
+html.lv-watch .lv-route:not([hidden])+#lvpanel{margin-top:12px}
+.lv-route a{display:inline-flex;align-items:center;min-height:36px;padding:0 13px;border:1px solid var(--lv-line);border-radius:999px;background:#0f0f0e;color:var(--chalk);text-decoration:none;white-space:nowrap}
+.lv-route a:hover,.lv-route a:focus-visible{border-color:var(--lv-acc);outline:none}
+.lv-route a:focus-visible{box-shadow:0 0 0 2px var(--lv-acc-line)}
+.lv-route .lv-rnext{border-color:var(--lv-acc-line)}
+.lv-rpos{flex:1 1 auto;text-align:center;white-space:nowrap;font-variant-numeric:lining-nums tabular-nums}
+.lv-rpos b{color:var(--chalk);font-weight:500}
+.lv-rgo{display:inline-flex;gap:8px;margin-left:auto}
+@media (max-width:420px){html.lv-watch .lv-route:not([hidden]){gap:6px;font-size:15px}.lv-route a{padding:0 10px}}
+html.lv-fsmode .lv-route{display:none!important}
 html.lv-watch.lv-wwide .lv-list{grid-column:2;grid-row:1;max-height:none;contain:size;border-top:0;border-left:1px solid var(--lv-line)}
 @media (max-width:560px){
   .lv-intro .lv-modes{width:100%;justify-content:space-between}.lv-intro .lv-modes button{flex:1;justify-content:center}
@@ -187,7 +213,7 @@ html.lv-fsmode:has(.lv-panel.lv-idle):not(.chatopen) #chatbtn:focus-visible{opac
   .blk.lv-flash,.mcqi.lv-flash{animation:none;outline:1px solid color-mix(in srgb,var(--acc) 50%,transparent)}
   .lv-big,.lv-range::-webkit-slider-thumb,.lv-modes button,.lv-z,.lv-bar{transition:none}
 }
-@media print{#lvpanel,.lv-intro,.lv-topmodes{display:none!important}html.lv-watch main#main{display:block!important}}
+@media print{.lv-route,#lvpanel,.lv-intro,.lv-topmodes{display:none!important}html.lv-watch main#main{display:block!important}}
 
 /* chapter videos: one quiet row under each chapter heading (Read mode) */
 .lv-chrow{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;margin:-6px 0 18px;font:14px/1.4 var(--body);color:var(--dim,#9a978f)}
