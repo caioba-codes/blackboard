@@ -164,4 +164,51 @@ for i, l in enumerate(L):
         if not re.match(r"^(::: (given|mcq|checkin)\b|#{1,6} |\*\*Solution)", t):
             print(f"  lint: line {k + 1}: an official problem's text outside a ::: given block. Wrap what the problem states (text, tables, figures) in ::: given so it reads apart from the work.", file=sys.stderr); warn += 1
         break
+# a Written by Claude problem reads like an official one: its statement sits in the same ::: given card under the label
+for i, l in enumerate(L):
+    if l.strip() != "*Written by Claude*":
+        continue
+    for k in range(i + 1, min(len(L), i + 6)):
+        t = L[k].strip()
+        if not t or t.startswith("<!--"):
+            continue
+        if re.fullmatch(r"\*\*Worked example[^*]*\*\*.*", t):
+            continue
+        if not re.match(r"^(::: (given|mcq|checkin)\b|#{1,6} |\*\*Solution)", t):
+            print(f"  lint: line {k + 1}: a Written by Claude problem's statement outside a ::: given block. Put it in ::: given under the label, as for an official problem.", file=sys.stderr); warn += 1
+        break
+# code lines stay at or under 60 characters (TEMPLATES.md, Board rules); official code quoted in a ::: given block is
+# verbatim and never rewrapped, so it is exempt; so is the stem of an official multiple-choice item, quoted as printed
+MAX_CODE = 60
+OFFICIAL_CODE = set(IN_GIVEN)
+for i, l in enumerate(L):
+    if re.match(r"^::: mcq\b", l) and re.search(r"\[Official ·", "\n".join(L[max(0, i - 14):i])) and label_above(i):
+        j = i + 1
+        while j < len(L) and not re.match(r"^:::\s*$", L[j]):
+            OFFICIAL_CODE.add(j); j += 1
+fence = None
+for n, l in enumerate(L):
+    m = re.match(r"^(\s*)(```+)", l)
+    if m:
+        fence = None if fence is not None else len(m.group(1))
+        continue
+    if fence is None or n in OFFICIAL_CODE:
+        continue
+    code = l[fence:] if l[:fence].strip() == "" else l.lstrip()
+    if len(code.rstrip()) > MAX_CODE:
+        print(f"  lint: line {n + 1}: a code line of {len(code.rstrip())} characters (over {MAX_CODE}). Wrap it, or move a trailing comment onto its own line above.", file=sys.stderr); warn += 1
+# an estimated breakdown (BLUEPRINT-STEM.md, Cumulative finals) is marked "**Exam Topics Breakdown (estimate)**" and must
+# keep the line under its table that says it is an estimate and what it rests on
+for i, l in enumerate(L):
+    if not re.match(r"^\*\*Exam Topics Breakdown \(estimate\)\*\*", l.strip()):
+        continue
+    k = i + 1
+    while k < len(L) and not L[k].strip():
+        k += 1
+    while k < len(L) and L[k].lstrip().startswith("|"):
+        k += 1
+    while k < len(L) and not L[k].strip():
+        k += 1
+    if k >= len(L) or "estimate" not in L[k].lower():
+        print(f"  lint: line {i + 1}: an estimated Exam Topics Breakdown without its estimate line under the table. Keep the line that says the split is an estimate and what it rests on.", file=sys.stderr); warn += 1
 if warn: print(f"  lint: {warn} warning(s). TEMPLATES.md: one operation per line; tables as markdown tables.", file=sys.stderr)

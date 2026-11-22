@@ -35,7 +35,7 @@ If the writer fails, pick the next best model, say so in one line, and launch an
 When the writer is done, a fresh agent on the same model and effort edits the lesson for tone and order. Do not fork the writer's conversation.
 
 - **Briefing:** the lesson path, the path to TEMPLATES.md (**Tone** and **Top to bottom**), and `Role: Blackboard tone editor. Do not run model selection, spawn agents, or add new teaching content.`
-- **What it does:** rewrites prose to the Tone rules and the **Hard-to-read patterns** table; deletes what TEMPLATES.md **What a lesson leaves out** lists; moves each explanation above the first use of its term and bolds the term there; runs `python3 bin/prose_lint.py <lesson>` and fixes every real warning.
+- **What it does:** rewrites prose to the Tone rules and the **Hard-to-read patterns** table; deletes what TEMPLATES.md **What a lesson leaves out** lists; moves each explanation above the first use of its term and bolds the term there; runs `python3 bin/prose_lint.py <lesson>` and fixes every real warning. It never removes required content that can look like provenance: the estimate line under an estimated Exam Topics Breakdown and the Sources line saying no past exam exists (TEMPLATES.md **No inline provenance**).
 - **What it must not change:** math, code blocks, `::: fig` and `::: interactive` specs, `::: mcq` and `::: checkin` questions, options and keys, front matter, headings and the `::: sources` block.
 - **Parent checks:** copy the writer's version to `$WS/reference/lesson-NNNN.draft.md` first, diff afterwards, and revert any hunk that touches the list above. If the pass fails, keep the writer's version and say so in one line.
 

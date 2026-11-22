@@ -10,7 +10,7 @@ Conceptual questions (true or false, "explain why") are included only when the p
 
 **Problem sources, best first.** Past exams of this test; the official review or practice set; past exams and practice sets of the earlier tests in this course; the student's own graded exams; homework; lecture examples and knowledge checks. Use the best that exist. Sources names the ones used and says when no past exam of this test exists.
 
-**Cumulative finals.** The types are those of the earlier tests plus those of the material taught since the last test. Weights come from what the syllabus or instructor says ("more questions on the newest material"). With no numbers, estimate a split and print it under the Exam Topics Breakdown as an estimate. A type already taught in an earlier lesson gets one worked example and one Your turn; a new-material type gets the full chapter.
+**Cumulative finals.** The types are those of the earlier tests plus those of the material taught since the last test. Weights come from what the syllabus or instructor says ("more questions on the newest material"). With no numbers, estimate a split: head the table `**Exam Topics Breakdown (estimate)**` and put one line under it saying it is an estimate and what it rests on ("Estimate: no point split exists; weighted toward the material since Test 3, as the syllabus says."). That line is required; `bin/lint.py` warns when an estimated breakdown lacks it. A type already taught in an earlier lesson gets one worked example and one Your turn; a new-material type gets the full chapter.
 
 **A type with no official problem.** Use lecture examples, homework or knowledge checks. If none exist, write problems in the format of the nearest official ones, label them "Written by Claude", keep the type to one worked example and one Your turn, and say in Sources that no official problem exists for it.
 
@@ -46,7 +46,7 @@ Inside a chapter, in this order:
 ## After the chapters
 
 1. **Mixed drill.** Official problems from all types, shuffled, with no type named. The first step of every solution is "which type is this".
-2. **Practice exam.** One full official-style exam. One line at its top gives the time per question: (total minutes − 10) ÷ number of questions. With no official exam, assemble it from official problems in the proportions of the breakdown and label it "Assembled from official problems"; never present it as a real past exam.
+2. **Practice exam.** One full official-style exam. One line at its top gives the time per question: (total minutes − 10) ÷ number of questions. With no official exam, assemble it from official problems in the proportions of the breakdown and label it "Assembled from official problems"; never present it as a real past exam. Each question stands on its own, as a real exam prints it: when it builds on a class or result from an earlier chapter, put that class or result inside the question's `::: given` card under a short context line ("Uses this class:"), never a pointer to the chapter.
 3. **Cheat sheet.** Formulas only (**STEM writing rules** below).
 
 There are no chapter checkpoints and no separate end quiz. The Your turns, the mixed drill and the practice exam are the practice.
