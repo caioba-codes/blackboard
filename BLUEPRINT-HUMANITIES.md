@@ -31,7 +31,7 @@ Inside a chapter, in this order:
 1. **The question.** One official question, verbatim, with its label, in a `::: given` block.
 2. **What it asks.** In plain words, and what a full-credit answer must contain. Take this from the rubric when one exists.
 3. **What you need.** Only the ideas this question uses. Each concept, author or argument is one claim, the reason for it, and one concrete example from the course material.
-4. **Model answer.** A full answer with its parts labelled: claim, reason, evidence, term defined.
+4. **Model answer.** A full answer with its parts labelled: claim, reason, evidence, term defined. A part that answers something the question asks says which part of the question it answers and cites the tagged phrase (TEMPLATES.md **Step sources**); the same holds for every model answer below.
 5. **Your turn.** Another official question. The student answers from memory, and the model answer sits behind the reveal.
 6. **Variations.** Each variation that really appeared on a past exam: what is different, a model answer, and a Your turn.
 

@@ -463,6 +463,14 @@ html.redo .rd-path>:not(.rd-path,.rd){display:none}
 html.redo #toc-ticks{display:none}
 /* step-by-step reveal */
 .rv .rv-off{display:none}
+/* step sources: a tagged phrase in the given card lights while the step that uses it is shown, hovered, tapped or focused */
+.given .gtag{border-radius:3px;transition:background-color .2s,color .2s,box-shadow .2s}
+.given .gtag.gon{color:var(--chalk);background:color-mix(in srgb,var(--acc) 48%,transparent);box-shadow:0 0 0 2px color-mix(in srgb,var(--acc) 48%,transparent);text-decoration:underline 2px color-mix(in srgb,var(--acc) 85%,var(--chalk));text-underline-offset:4px}
+.gsrcstep{cursor:pointer;border-radius:4px}
+.gsrcstep:focus-visible{outline:2px solid color-mix(in srgb,var(--acc) 60%,transparent);outline-offset:3px}
+.gchip{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:baseline;width:fit-content;max-width:100%;margin:2px 0 10px;padding:3px 11px;border:1px solid color-mix(in srgb,var(--acc) 40%,transparent);border-radius:999px;font:500 12.5px/1.45 var(--body);color:var(--chalk)}
+.gchip .gchl{font:600 10.5px/1.4 var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
+@media print{.gchip{display:none}.given .gtag.gon{background:none;box-shadow:none}}
 .rv .mathrow.rv-clip{transition:height .3s cubic-bezier(.2,.8,.2,1)}
 .rv-in{animation:rvin .45s ease-out both}
 @keyframes rvin{from{opacity:0;filter:blur(2px);transform:translateY(3px)}to{opacity:1;filter:none;transform:none}}
@@ -987,8 +995,9 @@ function whyPre(t){ return t.indexOf('\\why')<0?t:whyMap(t,g=>{ const key=g.name
 const KTRUST=c=>c.command==='\\htmlClass'||c.command==='\\htmlData';
 // every formula on the board renders here: hints expanded, and the TeX annotation (what copy and Explain read) kept plain
 function ktx(t,display){
-  const html=katex.renderToString(whyPre(t),{displayMode:display,throwOnError:false,trust:KTRUST});
-  return t.indexOf('\\why')<0?html:html.replace(/(<annotation encoding="application\/x-tex">)[\s\S]*?(<\/annotation>)/,(m,a,b)=>a+esc(stripWhy(t))+b);
+  const refs=t.indexOf('{@')>=0;   // step-source refs: an empty \htmlData mark, never in the plain TeX
+  const html=katex.renderToString(whyPre(refs?texRefs(t):t),{displayMode:display,throwOnError:false,trust:KTRUST});
+  return t.indexOf('\\why')<0&&!refs?html:html.replace(/(<annotation encoding="application\/x-tex">)[\s\S]*?(<\/annotation>)/,(m,a,b)=>a+esc(refs?stripRefs(stripWhy(t)):stripWhy(t))+b);
 }
 function mathify(src){
   const slots=[];
@@ -1003,7 +1012,7 @@ function unslot(html,slots){return html.replace(/<p>\s*@@M(\d+)@@\s*<\/p>/g,(m,i
 function md(src){
   src=src.replace(/==(?=[^\s=`])([^=\n`]+?)(?<=[^\s=`])==/g,'$1'); // legacy Explain anchors (==words==) are plain text; `a == 0 || b == 0` and code spans are left alone
   const {src:s2,slots}=mathify(src);
-  const html=unslot(marked.parse(s2,{mangle:false,headerIds:false}),slots);
+  const html=unslot(marked.parse(stepSrcMd(s2),{mangle:false,headerIds:false}),slots);
   return givenCols(provLabels(html.replace(/<table>/g,'<div class="tablewrap"><table>').replace(/<\/table>/g,'</table></div>')));
 }
 // A table header written ">S1" marks a column copied from the problem (TEMPLATES.md, Given vs calculated): the ">" is
@@ -1232,7 +1241,7 @@ function fitMath(el){
   el.innerHTML=ktx(stackNotes(tex),true);
   if(!fits()) el.style.fontSize='.86em';
 }
-let fitT=0; function fitAllMath(){ clearTimeout(fitT); fitT=setTimeout(()=>{ main.querySelectorAll('.mathrow[data-tex]').forEach(fitMath); rvReapply(); whyWire(); },60); }
+let fitT=0; function fitAllMath(){ clearTimeout(fitT); fitT=setTimeout(()=>{ main.querySelectorAll('.mathrow[data-tex]').forEach(fitMath); rvReapply(); whyWire(); srcWire(); },60); }
 window.addEventListener('resize',fitAllMath);
 if('ResizeObserver' in window) new ResizeObserver(fitAllMath).observe(document.body);
 function marginNotes(t){ if(!/\\begin\{(aligned|align\*?|alignedat)\}/.test(t)) return t; let first=true;
@@ -1876,8 +1885,84 @@ function wire(){
   main.querySelectorAll('.smark .smbtn').forEach(b=>{b.onclick=()=>markSelf(b.closest('details'),b.dataset.r);});
   // a check-in answer with worked steps opens one step at a time (see the step-by-step reveal below)
   main.querySelectorAll('.check details').forEach(d=>{ if(d.dataset.rvw)return; d.dataset.rvw='1';
-    d.addEventListener('toggle',()=>{ if(!d.open)return; const box=d.querySelector(':scope>div'); if(!box)return; if(box._rv)rvApply(box,false); else rvSetup(box,1); }); });
+    d.addEventListener('toggle',()=>{ if(!d.open)return; const box=d.querySelector(':scope>div'); if(!box)return; if(box._rv)rvApply(box,false); else rvSetup(box,1); if(box._rv&&box._rv.k<box._rv.plan.steps.length)rvSrc(box); }); d.addEventListener('toggle',()=>{ if(!d.open&&GSRC.el&&d.contains(GSRC.el))srcClear(); }); });
 }
+
+// ---------- step sources: which part of the problem a step comes from ----------
+// The quoted problem tags a phrase in its ::: given card: [the start state is E]{#start}. A solution step names the tags it
+// uses with {@start} (several: {@start @out}), in its prose line or after its margin note in math. The words of the problem
+// stay as written; the board shows them unchanged and the refs not at all. Revealing a step (Next step), hovering it,
+// tapping it or focusing it lights its phrases in that problem's given card; when the card is off screen, a small chip
+// under the step quotes them instead of moving the page. A Your turn's steps are hidden until its answer opens, so
+// nothing lights before that.
+const GTAG=/\[([^\[\]\n]+?)\]\{#([A-Za-z][\w-]*)\}/g, GREF=/\{@([A-Za-z][\w-]*(?:\s+@?[A-Za-z][\w-]*)*)\}/g;
+function srcIds(s){ return String(s||'').split(/\s+/).map(x=>x.replace(/^@/,'')).filter(Boolean); }
+function stripRefs(t){ return t.indexOf('{@')<0?t:t.replace(GREF,'').replace(/[ \t]+$/gm,''); }
+function texRefs(t){ return t.indexOf('{@')<0?t:t.replace(GREF,(m,ids)=>`\\htmlData{gref=${srcIds(ids).join(' ')}}{}`); }
+// tags and refs in markdown (math already slotted out); fenced code is left exactly as written
+function stepSrcMd(src){
+  if(src.indexOf('{#')<0&&src.indexOf('{@')<0)return src;
+  return src.split(/(^[ \t]*```[^\n]*\n[\s\S]*?^[ \t]*```[ \t]*$)/m).map((part,i)=>i%2?part:part
+    .replace(GTAG,(m,txt,id)=>`<span class="gtag" data-g="${id}">${txt}</span>`)
+    .replace(GREF,(m,ids)=>`<span class="gref" data-refs="${srcIds(ids).join(' ')}"></span>`)).join('');
+}
+// the tag ids one revealed piece cites: a prose line's refs, a whole display's, or one row of an aligned display
+function stepRefs(el,row){
+  let nodes;
+  if(row==null)nodes=[...el.querySelectorAll('.gref,[data-gref]')];
+  else { const g=(rvGroups(el)||[])[row]||[]; nodes=g.flatMap(c=>c.hosts.flatMap(h=>[...(h.matches('[data-gref]')?[h]:[]),...h.querySelectorAll('[data-gref]')])); }
+  return [...new Set(nodes.flatMap(n=>srcIds(n.dataset.refs||n.dataset.gref)))];
+}
+// the tagged phrases for ids in the nearest problem above el: the last given card before el that holds the tag
+function srcTags(el,ids){
+  const out=[];
+  ids.forEach(id=>{ let hit=null;
+    main.querySelectorAll('.given [data-g]').forEach(t=>{ if(t.dataset.g===id&&(t.compareDocumentPosition(el)&Node.DOCUMENT_POSITION_FOLLOWING))hit=t; });
+    if(hit)hit.closest('.given').querySelectorAll('[data-g]').forEach(t=>{ if(t.dataset.g===id&&!out.includes(t))out.push(t); }); });
+  return out;
+}
+const GSRC={el:null,pin:false,key:''};
+function srcClear(){ main.querySelectorAll('.gtag.gon').forEach(t=>t.classList.remove('gon')); main.querySelectorAll('.gchip').forEach(c=>c.remove()); GSRC.el=null; GSRC.pin=false; GSRC.key=''; }
+function srcLight(el,ids){
+  srcClear(); if(!el||!ids||!ids.length)return;
+  const tags=srcTags(el,ids); if(!tags.length)return;
+  tags.forEach(t=>t.classList.add('gon')); GSRC.el=el;
+  const off=tags.filter(t=>{ const r=t.getBoundingClientRect(); return r.bottom<0||r.top>innerHeight; });
+  if(!off.length)return;
+  const c=document.createElement('div'); c.className='gchip';
+  c.innerHTML=`<span class="gchl">From the problem</span>${off.map(t=>`<q>${esc(t.textContent.replace(/\s+/g,' ').trim())}</q>`).join('')}`;
+  el.insertAdjacentElement('afterend',c);
+}
+// the step just revealed by Next step (its refs, if any); before step 1 and after Show all nothing is lit
+function rvSrc(box){
+  const st=box&&box._rv; if(!st)return;
+  const step=st.k>0&&st.k<=st.plan.steps.length?st.plan.steps[st.k-1]:null;
+  if(!step){ if(GSRC.el&&box.contains(GSRC.el))srcClear(); return; }
+  const ents=st.k===1?st.plan.lead.concat(step):step;   // step 1 arrives with the lead line (a code answer's first label)
+  const ids=[...new Set(ents.flatMap(e=>stepRefs(st.items[e.i].el,e.row)))];
+  if(ids.length)srcLight(st.items[step[step.length-1].i].el,ids); else if(GSRC.el&&box.contains(GSRC.el))srcClear();
+}
+// hover, tap and keyboard focus on any step that cites the problem (taught worked examples too)
+function srcHost(n){ return n&&n.closest?n.closest('.gsrcstep'):null; }
+function srcAt(host,y){
+  if(!host.matches('.mathrow'))return stepRefs(host,null);
+  const g=rvGroups(host); if(!g||g.length<2||y==null)return stepRefs(host,null);
+  let best=0, bd=1e9;
+  g.forEach((cs,i)=>{ const t=Math.min(...cs.map(c=>c.top)), b=Math.max(...cs.map(c=>c.bottom)), d=y<t?t-y:y>b?y-b:0; if(d<bd){bd=d;best=i;} });
+  return stepRefs(host,best);
+}
+function srcWire(){
+  main.querySelectorAll('.gref,[data-gref]').forEach(r=>{
+    const host=r.closest('.mathrow')||r.closest('p,li,td,th,h4,div'); if(!host||host.classList.contains('gsrcstep'))return;
+    host.classList.add('gsrcstep'); if(!host.hasAttribute('tabindex'))host.tabIndex=0;
+    host.setAttribute('aria-description','Shows the part of the problem this step uses');
+  });
+}
+main.addEventListener('pointermove',e=>{ if(e.pointerType==='touch'||GSRC.pin)return; const h=srcHost(e.target); if(!h){ if(GSRC.el&&!GSRC.el.closest('.rv'))srcClear(); return; } const ids=srcAt(h,e.clientY), key=ids.join(' '); if(GSRC.el===h&&GSRC.key===key)return; srcLight(h,ids); GSRC.key=key; });
+main.addEventListener('pointerleave',()=>{ if(!GSRC.pin&&GSRC.el&&!GSRC.el.closest('.rv'))srcClear(); });
+main.addEventListener('click',e=>{ const h=srcHost(e.target); if(!h||e.target.closest('a,button,summary'))return; if(GSRC.pin&&GSRC.el===h){ srcClear(); return; } srcLight(h,srcAt(h,e.clientY)); GSRC.pin=true; });
+main.addEventListener('focusin',e=>{ const h=srcHost(e.target); if(h&&e.target===h)srcLight(h,stepRefs(h,null)); });
+main.addEventListener('focusout',e=>{ const h=srcHost(e.target); if(h&&GSRC.el===h&&!GSRC.pin)srcClear(); });
 
 // ---------- step-by-step reveal ----------
 // A solution the student works out themselves (a check-in answer, multiple-choice feedback with worked steps) opens one
@@ -1942,8 +2027,8 @@ function rvCtl(box){
   if(!c){
     c=st.ctl=document.createElement('div'); c.className='stepctl';
     c.innerHTML=`<button type="button" class="stepnext"><span class="stl">Next step</span><span class="stct"></span>${RV_ARROW}</button><button type="button" class="stepall">Show all</button><span class="srlive" aria-live="polite"></span>`;
-    c.querySelector('.stepnext').onclick=e=>{ e.stopPropagation(); rvGo(box,st.k+1); };
-    c.querySelector('.stepall').onclick=e=>{ e.stopPropagation(); rvGo(box,n); };
+    c.querySelector('.stepnext').onclick=e=>{ e.stopPropagation(); rvGo(box,st.k+1); rvSrc(box); };
+    c.querySelector('.stepall').onclick=e=>{ e.stopPropagation(); rvGo(box,n); if(GSRC.el&&box.contains(GSRC.el))srcClear(); };
     box.appendChild(c);
   }
   c.querySelector('.stct').textContent=`${st.k+1} of ${n}`;

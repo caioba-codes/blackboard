@@ -211,4 +211,38 @@ for i, l in enumerate(L):
         k += 1
     if k >= len(L) or "estimate" not in L[k].lower():
         print(f"  lint: line {i + 1}: an estimated Exam Topics Breakdown without its estimate line under the table. Keep the line that says the split is an estimate and what it rests on.", file=sys.stderr); warn += 1
+# step sources (TEMPLATES.md, Problems and solutions): a step's {@id} must name a [phrase]{#id} tagged in its own problem's
+# given card (between the problem's label and the step); in a lesson that tags its problems, a worked solution that never
+# cites its problem gets a soft note
+GTAG = re.compile(r"\[[^\[\]\n]+?\]\{#([A-Za-z][\w-]*)\}")
+GREF = re.compile(r"\{@([A-Za-z][\w-]*(?:\s+@?[A-Za-z][\w-]*)*)\}")
+IN_FENCE, _f = set(), False
+for n, l in enumerate(L):
+    if re.match(r"^\s*```", l):
+        _f = not _f; IN_FENCE.add(n); continue
+    if _f:
+        IN_FENCE.add(n)
+LABEL_LINES = [n for n, l in enumerate(L) if LABEL.search(l) and not l.lstrip().startswith("-")]
+def problem_start(n):
+    """The line of the nearest problem label at or above line n (0 when none)."""
+    starts = [k for k in LABEL_LINES if k <= n]
+    return starts[-1] if starts else 0
+for n, l in enumerate(L):
+    if n in IN_FENCE:
+        continue
+    for m in GREF.finditer(l):
+        start = problem_start(n)
+        tags = {t for k in range(start, n + 1) if k not in IN_FENCE for t in GTAG.findall(L[k])}
+        for rid in (x.lstrip("@") for x in m.group(1).split()):
+            if rid not in tags:
+                print(f"  lint: line {n + 1}: the step cites {{@{rid}}} but its problem has no phrase tagged {{#{rid}}}. Tag the phrase in the ::: given card: [its words]{{#{rid}}}.", file=sys.stderr); warn += 1
+if any(GTAG.search(l) for n, l in enumerate(L) if n not in IN_FENCE):
+    bounds = LABEL_LINES + [len(L)]
+    for a, b in zip(LABEL_LINES, bounds[1:]):
+        heads = [k for k in range(a + 1, b) if re.match(r"^#{1,3} ", L[k])]
+        end = heads[0] if heads else b
+        chunk = L[a:end]
+        worked = any("$$" in x or x.lstrip().startswith("```") for x in chunk)
+        if worked and not any(GREF.search(x) for x in chunk):
+            print(f"  lint: line {a + 1}: (soft) this solved problem has no step citing its problem ({{@id}}). Say where each fact comes from and tag it (TEMPLATES.md, Step sources).", file=sys.stderr)
 if warn: print(f"  lint: {warn} warning(s). TEMPLATES.md: one operation per line; tables as markdown tables.", file=sys.stderr)

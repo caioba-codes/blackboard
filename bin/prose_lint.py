@@ -55,6 +55,8 @@ def prose_lines(s):
             continue
         if skip_block or not st or st.startswith(("#", "|", "<!--", "{", "credit:", "query:", "caption:", "wrong:", "right:", "topics:")):
             continue
+        st = re.sub(r"\{@[^}]*\}", "", st)                                   # step-source refs are markup, not words
+        st = re.sub(r"\[([^\[\]\n]+?)\]\{#[A-Za-z][\w-]*\}", r"\1", st)   # a tagged phrase reads as its words
         t = re.sub(r"\$\$.*?\$\$", " X ", st)
         t = re.sub(r"\$[^$]+\$", "X", t)
         t = re.sub(r"`[^`]*`", "X", t)
