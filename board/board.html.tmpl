@@ -1935,7 +1935,7 @@ function srcTags(el,ids){
   return out;
 }
 // the code lines a step cites: {pre, from, to} with pre the named block, else the last code block in a problem card
-function srcLines(el,ids){
+function srcCodeLines(el,ids){
   const out=[];
   ids.forEach(id=>{ const m=id.match(GLINE); if(!m)return;
     let pre=null; const sel=m[1]?`[data-gcode="${m[1]}"] pre`:PCARD.split(', ').map(c=>c+' pre').join(', ');
@@ -1956,7 +1956,7 @@ const GSRC={el:null,pin:false,key:''};
 function srcClear(){ main.querySelectorAll('.gtag.gon').forEach(t=>t.classList.remove('gon')); main.querySelectorAll('.gline').forEach(b=>b.remove()); main.querySelectorAll('.gchip').forEach(c=>c.remove()); GSRC.el=null; GSRC.pin=false; GSRC.key=''; }
 function srcLight(el,ids){
   srcClear(); if(!el||!ids||!ids.length)return;
-  const tags=srcTags(el,ids), lines=srcLines(el,ids); if(!tags.length&&!lines.length)return;
+  const tags=srcTags(el,ids), lines=srcCodeLines(el,ids); if(!tags.length&&!lines.length)return;
   tags.forEach(t=>t.classList.add('gon')); GSRC.el=el;
   const bands=lines.map(l=>({el:lineBand(l.pre,l.from,l.to),text:codeText(l.pre,l.from,l.to)}));
   const offscr=e=>{ const r=e.getBoundingClientRect(); return r.bottom<0||r.top>innerHeight; };
