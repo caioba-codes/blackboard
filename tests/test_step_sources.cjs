@@ -1,12 +1,15 @@
 // Step sources: a phrase tagged in the quoted problem ([words]{#id}) lights when a solution step citing it ({@id}) is shown.
 const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),assert=require('node:assert/strict');
 const source=fs.readFileSync(path.join(__dirname,'../board/board.html.tmpl'),'utf8');
+// the board's whole script must parse: one duplicate name (a let and a function) blanks every lesson
+const boardScript=[...source.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m=>m[1]).sort((a,b)=>b.length-a.length)[0];
+assert.doesNotThrow(()=>new vm.Script(boardScript),'board script parses');
 const grab=name=>{const a=source.indexOf('function '+name+'(');assert(a>0,name);const b=source.indexOf('\nfunction ',a+10);return source.slice(a,b);};
 const ctx={};vm.createContext(ctx);
 vm.runInContext(source.match(/^const GTAG=.*$/m)[0].replace(/^const /,'var '),ctx);
 vm.runInContext(source.match(/^const GLINE=.*$/m)[0].replace(/^const /,'var '),ctx);
 vm.runInContext(source.match(/^const before=.*$/m)[0].replace(/^const /,'var '),ctx);
-for(const f of ['srcIds','stripRefs','texRefs','stepSrcMd','codeName','srcTags','srcLines','rvSrc'])vm.runInContext(grab(f),ctx);
+for(const f of ['srcIds','stripRefs','texRefs','stepSrcMd','codeName','srcTags','srcCodeLines','rvSrc'])vm.runInContext(grab(f),ctx);
 
 // tags wrap the problem's words without changing them
 const g=ctx.stepSrcMd('The machine [starts in state E]{#start} and must [output 1 on XYZ]{#out}.');
@@ -49,8 +52,8 @@ ctx.Node={DOCUMENT_POSITION_FOLLOWING:FOLLOW};
 ctx.main={querySelectorAll:q=>q==='[data-g]'?[t1,t2,mt]:q.includes('data-gcode="node"')?[pre2]:[pre1,pre2]};
 assert.equal(ctx.srcTags(step,['start','out']).map(t=>t.dataset.g).join(),'start,out','a step cites tags on both pages of its problem');
 assert.equal(ctx.srcTags(step,['stem']).length,0,'a later mcq stem is not part of this problem');
-assert.equal(ctx.srcLines(step,['node:L2-4'])[0].pre,pre2,'a named block');
-assert.deepEqual(JSON.parse(JSON.stringify(ctx.srcLines(step,['L3']).map(l=>[l.from,l.to]))),[[3,3]],'the last code block before the step');
+assert.equal(ctx.srcCodeLines(step,['node:L2-4'])[0].pre,pre2,'a named block');
+assert.deepEqual(JSON.parse(JSON.stringify(ctx.srcCodeLines(step,['L3']).map(l=>[l.from,l.to]))),[[3,3]],'the last code block before the step');
 assert.equal(ctx.srcTags(step,['L3']).length,0,'line refs are not tags');
 
 // Next step lights the refs of the step just shown; Show all / before step 1 lights nothing
