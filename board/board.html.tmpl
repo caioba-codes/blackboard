@@ -14,6 +14,7 @@
 <script src="/lib/rough.js"></script>
 <script src="/lib/fig.js"></script>
 <script src="/lib/lesson-video.js"></script>
+<script src="/lib/lesson-listen.js"></script>
 <style>
 :root{--bg:#0c0c0c;--chalk:#e9e6df;--dim:#8a8a84;--acc:#9b3a4a;--acc2:#9b3a4a;--rule:#262626;--ok:#4ea672;--no:#c2564f;--display:'Playfair Display',Georgia,serif;--body:'Crimson Pro',Georgia,serif}
 *{box-sizing:border-box}
@@ -927,6 +928,7 @@ details.flagged>summary .flcount{margin-left:10px;margin-right:auto;font:600 12p
 @media (prefers-reduced-motion:reduce){.flagflash{animation-duration:2.4s}}
 </style>
 <link rel="stylesheet" href="/lib/lesson-video.css">
+<link rel="stylesheet" href="/lib/lesson-listen.css">
 </head>
 <body>
 <div class="rail" id="reading-progress" role="progressbar" aria-label="Lesson reading position" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" hidden><span class="fill"></span><div id="toc-ticks"></div></div>
@@ -948,7 +950,7 @@ const MODE="__MODE__", LESSON_ARG="__LESSON__", WS="__WS__";
 const WSB=WS?"/w/"+WS:"", WSQ=WS?"&ws="+WS:"";  // pages under /w/<slug>/ stay pinned to that workspace
 const $=s=>document.querySelector(s);
 const main=$('#main'), pill=$('#pill'), toast=$('#toast');
-let lessonId=LESSON_ARG, offset=0, hash='', blocks=0, srcLines=[], streaming=false, expCount=0, state={};
+let lessonId=LESSON_ARG, offset=0, hash='', blocks=0, streaming=false, expCount=0, state={};
 const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 // Reading position only; never records lesson completion or mastery.
@@ -1935,7 +1937,7 @@ function srcTags(el,ids){
   return out;
 }
 // the code lines a step cites: {pre, from, to} with pre the named block, else the last code block in a problem card
-function srcCodeLines(el,ids){
+function srcLines(el,ids){
   const out=[];
   ids.forEach(id=>{ const m=id.match(GLINE); if(!m)return;
     let pre=null; const sel=m[1]?`[data-gcode="${m[1]}"] pre`:PCARD.split(', ').map(c=>c+' pre').join(', ');
@@ -1956,7 +1958,7 @@ const GSRC={el:null,pin:false,key:''};
 function srcClear(){ main.querySelectorAll('.gtag.gon').forEach(t=>t.classList.remove('gon')); main.querySelectorAll('.gline').forEach(b=>b.remove()); main.querySelectorAll('.gchip').forEach(c=>c.remove()); GSRC.el=null; GSRC.pin=false; GSRC.key=''; }
 function srcLight(el,ids){
   srcClear(); if(!el||!ids||!ids.length)return;
-  const tags=srcTags(el,ids), lines=srcCodeLines(el,ids); if(!tags.length&&!lines.length)return;
+  const tags=srcTags(el,ids), lines=srcLines(el,ids); if(!tags.length&&!lines.length)return;
   tags.forEach(t=>t.classList.add('gon')); GSRC.el=el;
   const bands=lines.map(l=>({el:lineBand(l.pre,l.from,l.to),text:codeText(l.pre,l.from,l.to)}));
   const offscr=e=>{ const r=e.getBoundingClientRect(); return r.bottom<0||r.top>innerHeight; };
@@ -2845,6 +2847,8 @@ async function loadLessonWith(r){
   else if(first&&r.reset&&location.hash){ const h=location.hash.slice(1); const t=main.querySelector(`.exp[data-id="${h}"]`)||document.getElementById(h); if(t){ const d=t.closest('details'); if(d) d.open=true; const f=t.closest('.fold'); if(f){f.classList.remove('closed');f.querySelector('.exptoggle')?.setAttribute('aria-expanded','true');} setTimeout(()=>t.scrollIntoView({block:'center'}),80); } }
   // lesson video (board/lesson-video.js): mounts only when this lesson has a video manifest; re-marks blocks after every render
   if(window.LessonVideo)LessonVideo.refresh({lessonId,ws:WS,main,first,reset:!!r.reset,streaming,rvGo,rvGroups,src:body});
+  // lesson podcast (board/lesson-listen.js): the Listen view, only when the front matter has `podcast:`
+  if(window.LessonListen)LessonListen.refresh({lessonId,ws:WS,wsb:WSB,main,fm:fmCache||{}});
 }
 // hash: the server hashes the first N bytes with md5; the client cannot md5 cheaply, so we ask the server for it on every reset
 // and keep offset/hash pairs consistent by only ever appending. loadLesson (initial) delegates to loadLessonWith.

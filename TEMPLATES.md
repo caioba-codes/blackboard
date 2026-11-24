@@ -171,6 +171,7 @@ image: calculus integrals handwritten in a notebook   # the lesson's literal sub
 photo: assets/0004.jpg     # filled by bin/image.sh
 credit: Photo by … (Openverse, CC0)   # shown only in the Image credits line
 caption: a short description of the banner   # optional; otherwise the title part of credit:
+podcast: assets/0004-podcast.mp3   # optional; adds the Listen view (board/README.md **Listen**)
 ---
 
 # How to Ace Your Second Integral Calculus Test

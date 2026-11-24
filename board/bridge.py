@@ -1725,6 +1725,7 @@ class H(BaseHTTPRequestHandler):
         if path.startswith("/lib/"):
             lib = {"rough.js": os.path.join(ROOT, "node_modules", "roughjs", "bundled", "rough.js"), "fig.js": os.path.join(BOARD, "fig.js"),
                    "lesson-video.js": os.path.join(BOARD, "lesson-video.js"), "lesson-video.css": os.path.join(BOARD, "lesson-video.css"),
+                   "lesson-listen.js": os.path.join(BOARD, "lesson-listen.js"), "lesson-listen.css": os.path.join(BOARD, "lesson-listen.css"),
                    "slate.jpg": next((x for x in (os.path.join(BOARD, "slate-custom.jpg"), os.path.join(BOARD, "slate.jpg")) if os.path.exists(x)), "")}.get(os.path.basename(path))
             if lib: return self.static(lib)
         if path in ("/favicon.svg", "/favicon.ico"):
@@ -1753,7 +1754,7 @@ class H(BaseHTTPRequestHandler):
             return self.send(404, "missing", "text/plain")
         ext = os.path.splitext(p)[1].lower()
         ctype = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".gif": "image/gif", ".svg": "image/svg+xml",
-                 ".mp4": "video/mp4", ".webp": "image/webp", ".txt": "text/plain", ".md": "text/plain",
+                 ".mp4": "video/mp4", ".mp3": "audio/mpeg", ".m4a": "audio/mp4", ".json": "application/json", ".webp": "image/webp", ".txt": "text/plain", ".md": "text/plain",
                  ".js": "text/javascript", ".css": "text/css", ".pdf": "application/pdf", ".csv": "text/plain",
                  ".tex": "text/plain"}.get(ext, "application/octet-stream")
         try:
